@@ -1,6 +1,7 @@
 import type { CareerState } from '../engine/types'
 import { ATTR_KEYS, isGoalkeeper } from '../engine/attributes'
 import { currentOvr, currentValue, squadStanding } from '../engine/career'
+import { averageRating } from '../engine/performance'
 import { findClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
 import { formatMoney } from '../i18n'
@@ -16,6 +17,7 @@ export function Hud({ state }: { state: CareerState }) {
   const club = findClub(state.season?.clubId ?? state.contract?.clubId ?? null)
   const standing = squadStanding(state)
   const tally = state.season?.tally
+  const rating = tally ? averageRating(tally.ratingSum, tally.ratingCount) : 0
   const gk = isGoalkeeper(player.position)
 
   return (
@@ -46,11 +48,29 @@ export function Hud({ state }: { state: CareerState }) {
           <Stat labelKey="hud.money" value={formatMoney(player.money, locale)} />
         </div>
 
+        {/* У вратаря продуктивность — это сухие матчи и пропущенные, а не голы. */}
         <div className="stat-row">
           <Stat labelKey="hud.apps" value={tally?.apps ?? 0} />
-          <Stat labelKey="hud.goals" value={tally?.goals ?? 0} />
-          <Stat labelKey="hud.assists" value={tally?.assists ?? 0} />
+          {gk ? (
+            <>
+              <Stat labelKey="hud.clean_sheets" value={tally?.cleanSheets ?? 0} />
+              <Stat labelKey="hud.conceded" value={tally?.goalsConceded ?? 0} />
+            </>
+          ) : (
+            <>
+              <Stat labelKey="hud.goals" value={tally?.goals ?? 0} />
+              <Stat labelKey="hud.assists" value={tally?.assists ?? 0} />
+            </>
+          )}
         </div>
+
+        {rating > 0 && (
+          <KeyValue
+            labelKey="hud.rating"
+            tone={rating >= 7.1 ? 'good' : rating < 6.5 ? 'bad' : 'neutral'}
+            value={rating.toFixed(2)}
+          />
+        )}
 
         {state.season && (
           <KeyValue labelKey="hud.role" value={t({ key: `role.${state.season.role}` })} />

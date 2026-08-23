@@ -32,8 +32,18 @@ export function Retired({ state, onRestart }: { state: CareerState; onRestart: (
         <BigStat labelKey="retired.clubs" value={state.clubsPlayed.length} />
         <BigStat labelKey="retired.peak" value={peak} />
         <BigStat labelKey="hud.apps" value={totals.apps} />
-        <BigStat labelKey="hud.goals" value={totals.goals} />
-        <BigStat labelKey="hud.assists" value={totals.assists} />
+        {/* У вратаря голы и передачи всегда нули — показываем его статистику. */}
+        {state.player.position === 'GK' ? (
+          <>
+            <BigStat labelKey="hud.clean_sheets" value={totals.cleanSheets} />
+            <BigStat labelKey="hud.conceded" value={totals.goalsConceded} />
+          </>
+        ) : (
+          <>
+            <BigStat labelKey="hud.goals" value={totals.goals} />
+            <BigStat labelKey="hud.assists" value={totals.assists} />
+          </>
+        )}
         <BigStat labelKey="hud.caps" value={totals.caps} />
         <BigStat labelKey="panel.trophies" value={totals.trophies} />
         <BigStat labelKey="hud.money" value={formatMoney(state.player.money, locale)} />

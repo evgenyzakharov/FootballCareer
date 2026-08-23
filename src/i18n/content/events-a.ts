@@ -286,10 +286,10 @@ export const EVENTS_A: Content = {
   'ev.penalty_duty.hl.missed': { ru: 'Промахнулся с пенальти в важном матче', en: 'Missed a penalty in a big game' },
 
   // ─── teammate_partner ─────────────────────────────────────────────────────
-  'ev.teammate_partner.title': { ru: 'Неудобное предложение', en: 'An awkward proposition' },
+  'ev.teammate_partner.title': { ru: 'Неудобный разговор', en: 'An awkward proposition' },
   'ev.teammate_partner.body': {
-    ru: 'Партнёр партнёра по команде явно даёт понять, что не против большего.',
-    en: 'A teammate’s partner is making it very clear they would not mind more.',
+    ru: 'Девушка одного из партнёров по команде откровенно с вами флиртует. Отшутиться уже не получится.',
+    en: 'The girlfriend of one of your teammates is openly flirting with you. Laughing it off is no longer an option.',
   },
   'ev.teammate_partner.opt.refuse': { ru: 'Отказать', en: 'Say no' },
   'ev.teammate_partner.opt.accept': { ru: 'Согласиться', en: 'Go along with it' },

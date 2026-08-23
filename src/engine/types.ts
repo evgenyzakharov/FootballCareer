@@ -24,6 +24,8 @@ export interface League {
   level: number
   /** Сила лиги 1..5: влияет на рост игрока и внимание скаутов. */
   strength: number
+  /** Клубов в лиге: от этого зависит шкала мест в таблице. */
+  teams: number
 }
 
 export interface Club {
@@ -38,6 +40,10 @@ export interface Club {
 export interface Country {
   code: string
   name: Localized
+  /** Родительный падеж: «сборная Нигерии», «клубы из Нигерии». */
+  nameGen: Localized
+  /** Винительный: «играть за Нигерию», «вернуться в Нигерию». */
+  nameAcc: Localized
   confederation: Confederation
   homeLeagueId: string | null
   strength: number
@@ -258,6 +264,8 @@ export interface SeasonTally {
   goals: number
   assists: number
   cleanSheets: number
+  /** Пропущено мячей: считается только для вратаря. */
+  goalsConceded: number
   ratingSum: number
   ratingCount: number
   yellow: number
@@ -286,6 +294,8 @@ export interface SeasonRecord {
   awards: string[]
   objective: Objective | null
   objectiveMet: boolean | null
+  /** Место клуба в лиге по итогам сезона. null — сезон без клуба. */
+  leaguePos: number | null
 }
 
 export interface CurrentSeason {
@@ -313,6 +323,8 @@ export type Phase = 'intro' | 'identity' | 'academy' | 'season' | 'retired'
 export interface CareerState {
   version: number
   seed: string
+  /** Календарный год первого сезона: из него собираются подписи «2026/27». */
+  startYear: number
   /** Счётчик обращений к RNG: делает карьеру воспроизводимой по (seed, step). */
   step: number
   phase: Phase

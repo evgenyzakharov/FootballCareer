@@ -73,6 +73,28 @@ export function rollClubTrophies(
   return won
 }
 
+/**
+ * Ожидаемое место в таблице как доля сверху вниз: тир 5 — борьба за титул,
+ * тир 0 — борьба за выживание. Отдельной таблицы лиги мы не считаем, но место
+ * должно быть согласовано с трофеем: выиграл лигу — значит первый.
+ */
+const TIER_SHARE = [0.85, 0.7, 0.5, 0.32, 0.16, 0.06]
+
+export function rollLeaguePosition(
+  club: Club,
+  wonLeague: boolean,
+  impact: number,
+  rng: Rng,
+): number {
+  if (wonLeague) return 1
+  const teams = getLeague(club.leagueId).teams
+  const share = TIER_SHARE[clamp(Math.round(club.tier), 0, 5)]
+  const expected = clamp(Math.round(teams * share), 2, teams)
+  // Сильный сезон игрока подтягивает клуб вверх, провальный — вниз.
+  const shifted = expected - (impact - 1) * teams * 0.18
+  return clamp(Math.round(rng.around(shifted, teams * 0.14)), 2, teams)
+}
+
 // ─── Сборная ────────────────────────────────────────────────────────────────
 
 export const NATIONAL_TOURNAMENT: Record<Confederation, string> = {

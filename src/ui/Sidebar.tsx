@@ -1,5 +1,6 @@
 import type { CareerState } from '../engine/types'
 import { Chip, Empty, Panel } from './bits'
+import { seasonShort } from './format'
 import { useLocale, useT } from './locale'
 
 function stanceTone(stance: number): 'good' | 'bad' | 'neutral' {
@@ -46,14 +47,15 @@ export function Sidebar({ state }: { state: CareerState }) {
           <Empty textKey="panel.no_trophies" />
         ) : (
           <div className="chips">
+            {/* Подписываем сезоном, а не возрастом: «'17» читалось как 2017 год. */}
             {state.trophies.map((trophy, i) => (
               <Chip key={`tr-${i}`} tone="good">
-                {t({ key: `comp.${trophy.name}` })} ’{String(trophy.age).padStart(2, '0')}
+                {t({ key: `comp.${trophy.name}` })} {seasonShort(state.startYear, trophy.age)}
               </Chip>
             ))}
             {state.awards.map((award, i) => (
               <Chip key={`aw-${i}`} tone="risky">
-                {t({ key: `award.${award.key}` })} ’{String(award.age).padStart(2, '0')}
+                {t({ key: `award.${award.key}` })} {seasonShort(state.startYear, award.age)}
               </Chip>
             ))}
           </div>

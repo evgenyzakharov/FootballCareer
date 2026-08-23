@@ -73,9 +73,14 @@ for (let i = 0; i < n; i++) {
       const club = h.clubId ? getClub(h.clubId) : { name: { ru: 'без клуба' } }
       const trophies = h.trophies.map((x) => t({ key: `comp.${x}` }, 'ru')).join(', ')
       const awards = h.awards.map((x) => t({ key: `award.${x}` }, 'ru')).join(', ')
+      const rating = h.tally.ratingCount > 0 ? (h.tally.ratingSum / h.tally.ratingCount).toFixed(2) : '—'
+      const pos = h.leaguePos === null ? '—' : String(h.leaguePos)
+      const gk = h.tally.cleanSheets > 0 || h.tally.goalsConceded > 0
+        ? `  сух ${String(h.tally.cleanSheets).padStart(2)} проп ${String(h.tally.goalsConceded).padStart(2)}`
+        : ''
       console.log(
-        `${h.age}  ${club.name.ru.padEnd(24)} OVR ${String(h.ovrEnd).padStart(2)}  ` +
-        `${String(h.tally.apps).padStart(2)}и ${String(h.tally.goals).padStart(2)}г ${String(h.tally.assists).padStart(2)}п  ` +
+        `${h.age}  ${club.name.ru.padEnd(24)} OVR ${String(h.ovrEnd).padStart(2)}  оц ${rating}  место ${pos.padStart(2)}  ` +
+        `${String(h.tally.apps).padStart(2)}и ${String(h.tally.goals).padStart(2)}г ${String(h.tally.assists).padStart(2)}п${gk}  ` +
         `${h.loan ? '(аренда) ' : ''}${trophies}${awards ? ' | ' + awards : ''}`,
       )
     }

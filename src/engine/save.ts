@@ -43,6 +43,21 @@ const MIGRATIONS: Record<number, (state: RawState) => RawState> = {
     if (typeof player.banBlocks !== 'number') player.banBlocks = 0
     return { ...state, player, version: 3 }
   },
+
+  // v3 → v4. Появились год первого сезона (для подписей «2026/27»), место в
+  // лиге и пропущенные мячи у вратаря. Для старых карьер место неизвестно —
+  // ставим null, а не выдумываем цифру.
+  3: (state) => {
+    const withTally = (season: Record<string, unknown>) => {
+      const tally = { goalsConceded: 0, ...(season.tally as Record<string, unknown>) }
+      return { leaguePos: null, ...season, tally }
+    }
+    const history = Array.isArray(state.history)
+      ? (state.history as Array<Record<string, unknown>>).map(withTally)
+      : state.history
+    const season = state.season ? withTally(state.season as Record<string, unknown>) : state.season
+    return { ...state, startYear: state.startYear ?? 2026, history, season, version: 4 }
+  },
 }
 
 /** Минимальная проверка формы: битый или чужой JSON не должен ронять игру. */

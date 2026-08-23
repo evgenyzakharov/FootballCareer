@@ -89,6 +89,7 @@ export interface BlockResult {
   goals: number
   assists: number
   cleanSheets: number
+  goalsConceded: number
   ratingSum: number
   ratingCount: number
   yellow: number
@@ -134,8 +135,12 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const goals = poisson(gExp, rng)
   const assists = poisson(aExp, rng)
 
-  const cleanSheets = player.position === 'GK'
-    ? poisson(apps * (0.14 + club.tier * 0.038 + (ovr - 60) * 0.004), rng)
+  // Сухие матчи и пропущенные считаем связанно: в каждом «не сухом» матче
+  // минимум один мяч. Иначе цифры противоречат друг другу.
+  const cleanRate = clamp(0.14 + club.tier * 0.038 + (ovr - 60) * 0.004, 0.02, 0.6)
+  const cleanSheets = player.position === 'GK' ? Math.min(apps, poisson(apps * cleanRate, rng)) : 0
+  const conceded = player.position === 'GK' && apps > 0
+    ? (apps - cleanSheets) + poisson((apps - cleanSheets) * 0.55, rng)
     : 0
 
   // Оценка: база от разницы с уровнем состава, плюс вклад результативных действий.
@@ -162,7 +167,7 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const fanDelta = round((rating - 6.85) * 6 + goals * 0.9 + assists * 0.5 - red * 4, 1)
 
   return {
-    apps, goals, assists, cleanSheets,
+    apps, goals, assists, cleanSheets, goalsConceded: conceded,
     ratingSum: apps > 0 ? rating * apps : 0,
     ratingCount: apps,
     yellow, red,

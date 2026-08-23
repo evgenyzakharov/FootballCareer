@@ -71,7 +71,8 @@ export default function App() {
                 <button
                   type="button"
                   className="primary-btn"
-                  onClick={() => setState(newCareer(seed))}
+                  // Год первого сезона приходит из календаря: движку про дату знать нельзя.
+                  onClick={() => setState(newCareer(seed, new Date().getFullYear()))}
                 >
                   {tr('app.start')}
                 </button>

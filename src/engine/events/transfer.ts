@@ -284,7 +284,7 @@ export const TRANSFER_EVENTS: EventDef[] = [
     build: (c) => {
       const offers = generateOffers(c.state, c.rng, { count: 2, country: c.player.countryCode })
       return {
-        bodyParams: { home: getCountry(c.player.countryCode).name },
+        bodyParams: { home: getCountry(c.player.countryCode).nameGen },
         options: [
           ...offers.map((o) => ({
             id: `${TO}${o.clubId}`,

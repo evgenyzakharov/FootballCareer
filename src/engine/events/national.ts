@@ -11,7 +11,7 @@ export const NATIONAL_EVENTS: EventDef[] = [
     once: true,
     weight: 0,
     build: (c) => ({
-      bodyParams: { country: getCountry(c.player.countryCode).name },
+      bodyParams: { country: getCountry(c.player.countryCode).nameGen },
       options: [
         { id: 'accept', hints: [H.fameUp, H.fitnessDown] },
         { id: 'wait', hints: [H.fitnessUp, H.mediaDown] },
@@ -33,16 +33,22 @@ export const NATIONAL_EVENTS: EventDef[] = [
     stages: ['winter'],
     once: true,
     weight: 4,
-    when: (c) => c.player.age >= 19 && c.player.age <= 28 && getCountry(c.player.countryCode).strength <= 3,
+    // Сменить сборную можно только до дебюта: сыграл за первую — дороги назад нет.
+    when: (c) =>
+      c.player.age >= 19 &&
+      c.player.age <= 28 &&
+      getCountry(c.player.countryCode).strength <= 3 &&
+      (c.state.flags.national_established ?? 0) === 0 &&
+      c.state.history.every((h) => h.national.caps === 0),
     build: (c) => {
       const options = COUNTRIES.filter(
         (x) => x.code !== c.player.countryCode && x.strength >= getCountry(c.player.countryCode).strength + 1,
       )
       const target = options.length > 0 ? c.rng.pick(options) : null
       return {
-        bodyParams: { country: target?.name ?? { key: 'npc.country' } },
+        bodyParams: { country: target?.nameAcc ?? { key: 'npc.country' } },
         options: [
-          { id: target ? `switch:${target.code}` : 'stay', labelParams: { country: target?.name ?? '' }, hints: [H.gamble, H.fameUp] },
+          { id: target ? `switch:${target.code}` : 'stay', labelParams: { country: target?.nameAcc ?? '' }, hints: [H.gamble, H.fameUp] },
           { id: 'stay', hints: [H.fansUp, H.safe] },
         ],
       }
@@ -52,7 +58,7 @@ export const NATIONAL_EVENTS: EventDef[] = [
         const code = id.slice('switch:'.length)
         return {
           outcome: 'switched',
-          params: { country: getCountry(code).name },
+          params: { country: getCountry(code).nameAcc },
           effects: [{ t: 'nationality', code }, gauge('fame', 12), gauge('fanLove', -10), flag('switched_nation')],
           headline: true,
           tone: 'neutral',
@@ -95,7 +101,7 @@ export const NATIONAL_EVENTS: EventDef[] = [
     once: true,
     weight: 5,
     when: (c) => (c.state.flags.national_established ?? 0) > 0 && c.player.age >= 26 && c.ovr >= 78,
-    build: (c) => ({ bodyParams: { country: getCountry(c.player.countryCode).name }, options: [
+    build: (c) => ({ bodyParams: { country: getCountry(c.player.countryCode).nameGen }, options: [
       { id: 'accept', hints: [H.fameUp, H.lockerUp] },
       { id: 'decline', hints: [H.safe] },
     ] }),

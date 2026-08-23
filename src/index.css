@@ -441,9 +441,12 @@ input { font: inherit; color: inherit; }
   background: var(--bg-raised);
 }
 .timeline td { padding: 5px 4px; border-top: 1px solid var(--line-soft); vertical-align: top; }
-.timeline td:first-child { color: var(--text-faint); font-variant-numeric: tabular-nums; }
 .timeline .num { text-align: right; font-variant-numeric: tabular-nums; }
 .timeline__club { overflow-wrap: anywhere; }
+.timeline__season { white-space: nowrap; color: var(--text-dim); }
+.timeline__age { color: var(--text-faint); font-size: 10.5px; margin-left: 4px; }
+/* Лига и место — второй строкой под клубом: столбцов и так семь. */
+.timeline__league { display: block; color: var(--text-faint); font-size: 10.5px; margin-top: 1px; }
 .timeline__loan { color: var(--text-faint); font-size: 11px; }
 .timeline tr[data-current='true'] td { background: #1b2229; }
 .timeline__ovr {

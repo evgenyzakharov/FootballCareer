@@ -43,7 +43,7 @@ export const LIFE_EVENTS: EventDef[] = [
     once: true,
     weight: 5,
     when: (c) => c.player.money > 3_000_000 && c.club !== null && c.club.country !== c.player.countryCode,
-    build: (c) => ({ bodyParams: { country: getCountry(c.club?.country ?? c.player.countryCode).name }, options: [
+    build: (c) => ({ bodyParams: { country: getCountry(c.club?.country ?? c.player.countryCode).nameGen }, options: [
       { id: 'settle', hints: [H.moneyDown, H.safe] },
       { id: 'fight', hints: [H.gamble, H.mediaDown] },
       { id: 'leave_country', hints: [H.leaveClub] },
@@ -67,7 +67,7 @@ export const LIFE_EVENTS: EventDef[] = [
     once: false,
     weight: 6,
     when: (c) => c.club !== null && c.club.country !== c.player.countryCode && c.player.age >= 22,
-    build: (c) => ({ bodyParams: { home: getCountry(c.player.countryCode).name }, options: [
+    build: (c) => ({ bodyParams: { home: getCountry(c.player.countryCode).nameAcc }, options: [
       { id: 'bring_them', hints: [H.moraleUp, H.moneyDown] },
       { id: 'promise_return', hints: [H.moraleUp, H.consequenceLater] },
       { id: 'refuse', hints: [H.moraleDown, H.formUp] },
@@ -84,7 +84,7 @@ export const LIFE_EVENTS: EventDef[] = [
     stages: ['winter'],
     once: true,
     weight: 0,
-    build: (c) => ({ bodyParams: { home: getCountry(c.player.countryCode).name }, options: [
+    build: (c) => ({ bodyParams: { home: getCountry(c.player.countryCode).nameAcc }, options: [
       { id: 'keep_promise', hints: [H.moraleUp, H.leaveClub] },
       { id: 'break_promise', hints: [H.moraleDown, H.stayClub] },
     ] }),

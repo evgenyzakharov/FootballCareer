@@ -1,12 +1,14 @@
 import type {
-  Attributes, Beat, Card, CareerState, Effect, NationalTally, Player, Role, SeasonRecord, Stage, Text,
+  Attributes, Beat, Card, CareerState, Effect, NationalTally, Player, Role, SeasonRecord,
+  SeasonTally, Stage, Text,
 } from './types'
 import { ATTR_KEYS, attrAgeBand, isGoalkeeper, marketValue, overall } from './attributes'
 import { MAX_AGE, START_AGE, createPlayer, playerOvr, squadLevel } from './player'
 import type { Identity } from './player'
 import { BLOCK_MATCHES, averageRating, determineRole, simulateBlock } from './performance'
 import {
-  NATIONAL_TOURNAMENT, callUpChance, nationalTrophyChance, rollClubTrophies, tournamentThisSeason,
+  NATIONAL_TOURNAMENT, callUpChance, nationalTrophyChance, playerImpact, rollClubTrophies,
+  rollLeaguePosition, tournamentThisSeason,
 } from './competitions'
 import { rollAwards } from './awards'
 import { Rng, clamp, round } from './rng'
@@ -27,16 +29,21 @@ import type { ManagerStyle } from './relationships'
  * Версия формы состояния. Растёт при любом несовместимом изменении схемы;
  * подъём версии обязан сопровождаться миграцией в `save.ts`.
  */
-export const STATE_VERSION = 3
+export const STATE_VERSION = 4
 
 const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'review']
 
 // ─── Инициализация ──────────────────────────────────────────────────────────
 
-export function newCareer(seed: string): CareerState {
+/**
+ * Год первого сезона передаётся извне: движку нельзя знать сегодняшнюю дату,
+ * иначе карьера перестанет быть воспроизводимой по одному сиду.
+ */
+export function newCareer(seed: string, startYear = 2026): CareerState {
   return {
     version: STATE_VERSION,
     seed,
+    startYear,
     step: 0,
     phase: 'identity',
     player: {
@@ -238,7 +245,10 @@ function joinClub(state: CareerState, effect: Extract<Effect, { t: 'transfer' }>
 // ─── Сезон ──────────────────────────────────────────────────────────────────
 
 function emptyTally() {
-  return { apps: 0, goals: 0, assists: 0, cleanSheets: 0, ratingSum: 0, ratingCount: 0, yellow: 0, red: 0 }
+  return {
+    apps: 0, goals: 0, assists: 0, cleanSheets: 0, goalsConceded: 0,
+    ratingSum: 0, ratingCount: 0, yellow: 0, red: 0,
+  }
 }
 
 function emptyNational(): NationalTally {
@@ -499,6 +509,7 @@ function runBlock(state: CareerState): CareerState {
     goals: season.tally.goals + result.goals,
     assists: season.tally.assists + result.assists,
     cleanSheets: season.tally.cleanSheets + result.cleanSheets,
+    goalsConceded: season.tally.goalsConceded + result.goalsConceded,
     ratingSum: season.tally.ratingSum + result.ratingSum,
     ratingCount: season.tally.ratingCount + result.ratingCount,
     yellow: season.tally.yellow + result.yellow,
@@ -605,6 +616,12 @@ function finishSeason(state: CareerState): CareerState {
   const national = simulateNational(state, rng)
   const withResults = { ...season, trophies, national }
   const awards = rollAwards(state.player, club, withResults, rng)
+  const leaguePos = rollLeaguePosition(
+    club,
+    trophies.includes(club.leagueId),
+    playerImpact(withResults, season.role),
+    rng,
+  )
 
   const objective = state.contract?.objective ?? null
   const objectiveMet = objective ? checkObjective(objective, withResults, state.flags) : null
@@ -636,6 +653,7 @@ function finishSeason(state: CareerState): CareerState {
     awards,
     objective,
     objectiveMet,
+    leaguePos,
   }
 
   // Развитие, возраст и срок контракта.
@@ -675,7 +693,10 @@ function finishSeason(state: CareerState): CareerState {
       },
     },
     options: [],
-    details: seasonDetails(trophies, awards, national, objective, objectiveMet),
+    details: seasonDetails(
+      trophies, awards, national, objective, objectiveMet, leaguePos, club.leagueId,
+      state.player.position === 'GK' ? withResults.tally : null,
+    ),
   }
   return { ...next, card }
 }
@@ -696,6 +717,7 @@ function finishIdleSeason(state: CareerState, season: NonNullable<CareerState['s
     awards: [],
     objective: null,
     objectiveMet: null,
+    leaguePos: null,
   }
 
   let next = develop(state)
@@ -722,8 +744,21 @@ function seasonDetails(
   national: NationalTally,
   objective: SeasonRecord['objective'],
   objectiveMet: boolean | null,
+  leaguePos: number,
+  leagueId: string,
+  gkTally: SeasonTally | null,
 ): Text[] {
   const lines: Text[] = []
+  lines.push({
+    key: 'report.season.league_pos',
+    params: { pos: leaguePos, league: getLeague(leagueId).name },
+  })
+  if (gkTally) {
+    lines.push({
+      key: 'report.season.gk',
+      params: { clean: gkTally.cleanSheets, conceded: gkTally.goalsConceded },
+    })
+  }
   for (const t of trophies) lines.push({ key: 'report.season.trophy', params: { comp: { key: `comp.${t}` } } })
   for (const a of awards) lines.push({ key: 'report.season.award', params: { award: { key: `award.${a}` } } })
   if (national.caps > 0) {
@@ -1000,11 +1035,16 @@ export function careerTotals(state: CareerState) {
       apps: acc.apps + s.tally.apps,
       goals: acc.goals + s.tally.goals,
       assists: acc.assists + s.tally.assists,
+      cleanSheets: acc.cleanSheets + s.tally.cleanSheets,
+      goalsConceded: acc.goalsConceded + s.tally.goalsConceded,
       caps: acc.caps + s.national.caps,
       nationalGoals: acc.nationalGoals + s.national.goals,
       trophies: acc.trophies + s.trophies.length + (s.national.trophy ? 1 : 0),
       awards: acc.awards + s.awards.length,
     }),
-    { apps: 0, goals: 0, assists: 0, caps: 0, nationalGoals: 0, trophies: 0, awards: 0 },
+    {
+      apps: 0, goals: 0, assists: 0, cleanSheets: 0, goalsConceded: 0,
+      caps: 0, nationalGoals: 0, trophies: 0, awards: 0,
+    },
   )
 }

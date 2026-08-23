@@ -92,6 +92,23 @@ describe('сохранение', () => {
     expect(loaded!.player.blocksOut).toBe(2)
   })
 
+  it('поднимает сохранение v3, добавляя год сезона и место в лиге', () => {
+    const state = sampleState()
+    const raw = { ...state, version: 3 } as unknown as Record<string, unknown>
+    delete raw.startYear
+    raw.history = [
+      { age: 16, clubId: 'venezia', tally: { apps: 4, goals: 0, assists: 0, cleanSheets: 0 } },
+    ]
+    data.set('football-career:state', JSON.stringify(raw))
+
+    const loaded = loadState()
+    expect(loaded!.version).toBe(STATE_VERSION)
+    expect(loaded!.startYear).toBe(2026)
+    // Место в старых карьерах неизвестно — null, а не выдуманная цифра.
+    expect(loaded!.history[0].leaguePos).toBeNull()
+    expect(loaded!.history[0].tally.goalsConceded).toBe(0)
+  })
+
   it('сохранение из будущего не принимается', () => {
     const state = sampleState()
     data.set('football-career:state', JSON.stringify({ ...state, version: STATE_VERSION + 5 }))

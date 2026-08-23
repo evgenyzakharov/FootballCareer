@@ -154,7 +154,7 @@ export const EVENTS_C: Content = {
   // ─── national_captain ─────────────────────────────────────────────────────
   'ev.national_captain.title': { ru: 'Капитан сборной', en: 'Captain of your country' },
   'ev.national_captain.body': {
-    ru: 'Тренер {country} предлагает вам повязку сборной.',
+    ru: 'Тренер сборной {country} предлагает вам повязку.',
     en: 'The {country} manager offers you the national armband.',
   },
   'ev.national_captain.opt.accept': { ru: 'Принять', en: 'Accept' },
