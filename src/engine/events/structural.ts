@@ -1,4 +1,4 @@
-import { H, attr, flag, gauge, minutes, money, odds, rel, release, trait } from './context'
+import { H, attr, flag, gauge, minutes, money, objective, odds, rel, release, trait } from './context'
 import type { EventDef, OptionDraft } from './context'
 import type { Effect, Objective } from '../types'
 import { getClub } from '../../data/clubs'
@@ -45,6 +45,31 @@ export function makeObjective(
   return { kind: 'assists', target, reward: 12, penalty: 10 }
 }
 
+/**
+ * Пересмотр задачи. Меняем саму цель, а не множитель на проверку: иначе игроку
+ * показывается одно число, а сверяется другое.
+ *
+ * Для счётных целей (матчи, голы, передачи) сдвиг пропорциональный. Для средней
+ * оценки — абсолютный: она живёт в узком коридоре 6–8, и умножить 6.7 на 1.25
+ * значит потребовать 8.4, чего не бывает.
+ */
+export function adjustObjective(target: Objective, direction: 'up' | 'down'): Objective {
+  const up = direction === 'up'
+  const rewardScale = up ? 1.5 : 0.6
+  const next: Objective = {
+    ...target,
+    reward: Math.round(target.reward * rewardScale),
+    penalty: Math.round(target.penalty * rewardScale),
+    target: target.target,
+  }
+  if (target.kind === 'rating') {
+    next.target = Math.round((target.target + (up ? 0.25 : -0.2)) * 100) / 100
+  } else {
+    next.target = Math.max(1, Math.round(target.target * (up ? 1.25 : 0.8)))
+  }
+  return next
+}
+
 export const STRUCTURAL_EVENTS: EventDef[] = [
   {
     key: 'season_objective',
@@ -65,8 +90,8 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
       ],
     }),
     resolve: (_c, id) => {
-      if (id === 'negotiate') return { outcome: 'negotiate', effects: [flag('objective_lowered'), gauge('coachTrust', -6)], tone: 'neutral' }
-      if (id === 'raise') return { outcome: 'raise', effects: [flag('objective_raised'), gauge('coachTrust', 8), rel('manager', 8)], tone: 'neutral' }
+      if (id === 'negotiate') return { outcome: 'negotiate', effects: [objective('down'), gauge('coachTrust', -6)], tone: 'neutral' }
+      if (id === 'raise') return { outcome: 'raise', effects: [objective('up'), gauge('coachTrust', 8), rel('manager', 8)], tone: 'neutral' }
       return { outcome: 'accept', effects: [], tone: 'neutral' }
     },
   },

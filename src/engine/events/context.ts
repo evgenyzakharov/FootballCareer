@@ -108,6 +108,7 @@ export const odds = (comp: CompetitionKind, mult: number): Effect => ({ t: 'trop
 export const potential = (delta: number): Effect => ({ t: 'potential', delta })
 export const minutes = (mult: number): Effect => ({ t: 'minutes', mult })
 export const release = (): Effect => ({ t: 'release' })
+export const objective = (direction: 'up' | 'down'): Effect => ({ t: 'objective', direction })
 
 export function later(
   eventKey: string,

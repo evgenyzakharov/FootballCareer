@@ -173,12 +173,15 @@ export interface Effect_Stat { t: 'stat'; key: 'goals' | 'assists' | 'apps'; del
 export interface Effect_Potential { t: 'potential'; delta: number }
 /** Множитель игрового времени до конца сезона. */
 export interface Effect_Minutes { t: 'minutes'; mult: number }
+/** Пересмотр задачи на сезон: вверх или вниз. Меняет саму цель, а не проверку. */
+export interface Effect_Objective { t: 'objective'; direction: 'up' | 'down' }
 
 export type Effect =
   | Effect_Attr | Effect_Gauge | Effect_Money | Effect_Injury | Effect_Suspend
   | Effect_Trait | Effect_Flag | Effect_TrophyOdds | Effect_Transfer
   | Effect_Relationship | Effect_Schedule | Effect_Retire | Effect_Nationality
   | Effect_Position | Effect_Stat | Effect_Potential | Effect_Minutes | Effect_Release
+  | Effect_Objective
 
 /**
  * Отложенное последствие. Именно оно превращает набор случайных событий

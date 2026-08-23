@@ -18,7 +18,7 @@ import { getLeague } from '../data/leagues'
 import { buildCard, getEvent, pickEvent, resolveCard } from './events'
 import type { EventCtx } from './events'
 import { BLOCKS_OUT, INJURY_TYPES, injuryRisk } from './events/medical'
-import { makeObjective } from './events/structural'
+import { adjustObjective, makeObjective } from './events/structural'
 import { academyOffers, generateOffers } from './offers'
 import {
   createAgent, createJournalist, createManager, find, managerSackChance, relocate, styleFit,
@@ -188,6 +188,15 @@ function applyEffect(state: CareerState, effect: Effect): CareerState {
       return { ...state, player: { ...player, position: effect.position } }
     case 'retire':
       return { ...state, phase: 'retired', retiredAt: player.age, card: null, queue: [] }
+    case 'objective':
+      // Задача меняется на месте: и в панели игрока, и в отчёте, и в проверке
+      // теперь одно и то же число.
+      return state.contract?.objective
+        ? {
+            ...state,
+            contract: { ...state.contract, objective: adjustObjective(state.contract.objective, effect.direction) },
+          }
+        : state
     case 'release':
       // Контракт расторгнут: сезон здесь не трогаем — он уже закрыт и записан
       // в историю, а новый соберётся в startSeason уже без клуба.
@@ -296,8 +305,6 @@ function startSeason(state: CareerState): CareerState {
       // Желание уйти живёт одно окно: новый сезон — новая расстановка.
       wants_out: 0,
       free_agent_soon: 0,
-      objective_lowered: 0,
-      objective_raised: 0,
     },
   }
 }
@@ -624,7 +631,7 @@ function finishSeason(state: CareerState): CareerState {
   )
 
   const objective = state.contract?.objective ?? null
-  const objectiveMet = objective ? checkObjective(objective, withResults, state.flags) : null
+  const objectiveMet = objective ? checkObjective(objective, withResults) : null
 
   let next: CareerState = { ...state, season: { ...withResults, awards } }
 
@@ -777,14 +784,17 @@ function seasonDetails(
   return lines
 }
 
-function checkObjective(
+/**
+ * Проверка задачи сравнивает с той же целью, которая записана в контракте и
+ * показана игроку. Раньше цель домножалась здесь на скрытый коэффициент, и
+ * отчёт печатал «провалена» при выполненной с виду задаче.
+ */
+export function checkObjective(
   objective: NonNullable<SeasonRecord['objective']>,
   season: CareerState['season'],
-  flags: Record<string, number>,
 ): boolean {
   if (!season) return false
-  const scale = (flags.objective_lowered ?? 0) > 0 ? 0.8 : (flags.objective_raised ?? 0) > 0 ? 1.25 : 1
-  const target = objective.target * scale
+  const target = objective.target
   switch (objective.kind) {
     case 'apps': return season.tally.apps >= target
     case 'goals': return season.tally.goals >= target

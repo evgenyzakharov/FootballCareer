@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ack, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
-import type { CareerState, Position } from '../src/engine/types'
+import type { CareerState, Objective, Position } from '../src/engine/types'
+import { averageRating } from '../src/engine/performance'
+import { adjustObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
 import { playerOvr } from '../src/engine/player'
 import { missingKeys, t } from '../src/i18n'
@@ -139,6 +141,48 @@ describe('движок карьеры', () => {
   it('у каждого события уникальный ключ', () => {
     const keys = ALL_EVENTS.map((e) => e.key)
     expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('вердикт по задаче сезона сходится с целью, которая показана игроку', () => {
+    // Именно это и разъезжалось: проверка домножала цель на скрытый
+    // коэффициент, а в отчёт печаталась исходная.
+    for (const seed of ['obj-1', 'obj-2', 'obj-3', 'obj-4', 'obj-5']) {
+      const state = playCareer(seed)
+      for (const season of state.history) {
+        const objective = season.objective
+        if (!objective || season.objectiveMet === null) continue
+        const achieved =
+          objective.kind === 'apps' ? season.tally.apps
+            : objective.kind === 'goals' ? season.tally.goals
+              : objective.kind === 'assists' ? season.tally.assists
+                : objective.kind === 'rating' ? averageRating(season.tally.ratingSum, season.tally.ratingCount)
+                  : season.trophies.length
+        const expected = objective.kind === 'trophy'
+          ? season.trophies.length > 0
+          : achieved >= objective.target
+        expect(
+          season.objectiveMet,
+          `сид ${seed}, сезон ${season.age}, ${objective.kind}: достигнуто ${achieved}, цель ${objective.target}`,
+        ).toBe(expected)
+      }
+    }
+  })
+
+  it('пересмотр задачи меняет саму цель и остаётся в реальном коридоре', () => {
+    const byRating: Objective = { kind: 'rating', target: 6.72, reward: 12, penalty: 10 }
+    const up = adjustObjective(byRating, 'up')
+    const down = adjustObjective(byRating, 'down')
+    // Оценка живёт в коридоре 6–8: домножить 6.72 на 1.25 значило бы 8.4.
+    expect(up.target).toBeCloseTo(6.97, 2)
+    expect(down.target).toBeCloseTo(6.52, 2)
+    // Пообещал больше — выше и награда, и штраф.
+    expect(up.reward).toBeGreaterThan(byRating.reward)
+    expect(up.penalty).toBeGreaterThan(byRating.penalty)
+    expect(down.reward).toBeLessThan(byRating.reward)
+
+    const byGoals: Objective = { kind: 'goals', target: 12, reward: 14, penalty: 12 }
+    expect(adjustObjective(byGoals, 'up').target).toBe(15)
+    expect(adjustObjective(byGoals, 'down').target).toBe(10)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {
