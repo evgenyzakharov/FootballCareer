@@ -1,6 +1,6 @@
 import type { CareerState } from '../engine/types'
 import { ATTR_KEYS, isGoalkeeper } from '../engine/attributes'
-import { currentOvr, currentValue } from '../engine/career'
+import { currentOvr, currentValue, squadStanding } from '../engine/career'
 import { findClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
 import { formatMoney } from '../i18n'
@@ -14,6 +14,7 @@ export function Hud({ state }: { state: CareerState }) {
   const player = state.player
   const ovr = currentOvr(state)
   const club = findClub(state.season?.clubId ?? state.contract?.clubId ?? null)
+  const standing = squadStanding(state)
   const tally = state.season?.tally
   const gk = isGoalkeeper(player.position)
 
@@ -53,6 +54,19 @@ export function Hud({ state }: { state: CareerState }) {
 
         {state.season && (
           <KeyValue labelKey="hud.role" value={t({ key: `role.${state.season.role}` })} />
+        )}
+        {standing && (
+          <KeyValue
+            labelKey="hud.squad_bar"
+            tone={standing.gap >= 2 ? 'good' : standing.gap <= -2 ? 'bad' : 'neutral'}
+            value={t({
+              key: 'hud.squad_bar_value',
+              params: {
+                level: standing.level,
+                gap: standing.gap > 0 ? `+${standing.gap}` : `−${Math.abs(standing.gap)}`,
+              },
+            })}
+          />
         )}
         {(player.banBlocks > 0 || player.blocksOut > 0) && (
           <KeyValue

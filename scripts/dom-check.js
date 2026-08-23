@@ -74,7 +74,7 @@
       finalScreen = 'retired'
       return finish('reached retirement')
     }
-    if (clicks > 600) return finish('click cap')
+    if (clicks > 1400) return finish('click cap')
 
     if (phase === 0) {
       const btn = document.querySelector('.intro .primary-btn')
@@ -122,7 +122,7 @@
           attrs: document.querySelectorAll('.attr').length,
           ovr: (document.querySelector('.ovr__value') || {}).textContent,
           club: (document.querySelector('.hud__meta:last-of-type') || {}).textContent,
-          role: (document.querySelector('.kv__v') || {}).textContent,
+          kvRows: Array.prototype.map.call(document.querySelectorAll('.career__left .kv'), function (n) { return n.textContent }),
           timelineRows: document.querySelectorAll('.timeline tbody tr').length,
           sampleTitles: Object.keys(seenEvents).slice(0, 6),
           sampleOptions: Array.prototype.map.call(card.querySelectorAll('.option__label'), function (n) { return n.textContent }),

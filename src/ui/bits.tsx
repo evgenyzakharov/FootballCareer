@@ -64,12 +64,20 @@ export function Stat({ labelKey, value }: { labelKey: string; value: ReactNode }
   )
 }
 
-export function KeyValue({ labelKey, value }: { labelKey: string; value: ReactNode }) {
+export function KeyValue({
+  labelKey,
+  value,
+  tone,
+}: {
+  labelKey: string
+  value: ReactNode
+  tone?: 'good' | 'bad' | 'neutral'
+}) {
   const t = useT()
   return (
     <div className="kv">
       <span className="kv__k">{t({ key: labelKey })}</span>
-      <span className="kv__v">{value}</span>
+      <span className="kv__v" data-tone={tone}>{value}</span>
     </div>
   )
 }

@@ -972,13 +972,24 @@ export function currentOvr(state: CareerState): number {
   return overall(state.player.attrs, state.player.position)
 }
 
-export function currentRole(state: CareerState): Role {
-  return state.season?.role ?? 'reserve'
+export interface SquadStanding {
+  /** Уровень состава, с которым игрок конкурирует за место. */
+  level: number
+  /** Насколько игрок выше или ниже этого уровня. */
+  gap: number
 }
 
-export function squadBar(state: CareerState): number {
+/**
+ * Положение игрока относительно состава. Именно эта разница управляет ролью,
+ * а через неё — минутами и всей статистикой, поэтому её стоит показывать
+ * игроку: иначе непонятно, почему при том же OVR он то лидер, то запасной.
+ * null — клуба нет, сравнивать не с чем.
+ */
+export function squadStanding(state: CareerState): SquadStanding | null {
   const club = findClub(state.season?.clubId ?? state.contract?.clubId ?? null)
-  return club ? squadLevel(club.tier) : 0
+  if (!club) return null
+  const level = squadLevel(club.tier)
+  return { level, gap: playerOvr(state.player) - level }
 }
 
 export function careerTotals(state: CareerState) {

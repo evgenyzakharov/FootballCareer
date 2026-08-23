@@ -278,8 +278,8 @@ career__right    Timeline (история сезонов) + Sidebar (люди, �
 ```
 
 Компоненты не считают игровую логику. Всё, что им нужно, приходит готовым из
-`engine/career.ts` (`currentOvr`, `currentValue`, `careerTotals`) или прямо из
-состояния. Локаль передаётся контекстом (`ui/locale.ts`), хук `useT()` — это
+`engine/career.ts` (`currentOvr`, `currentValue`, `squadStanding`,
+`careerTotals`) или прямо из состояния. Локаль передаётся контекстом (`ui/locale.ts`), хук `useT()` — это
 единственный способ получить строку.
 
 ## Инварианты
@@ -312,7 +312,7 @@ career__right    Timeline (история сезонов) + Sidebar (люди, �
 ## Проверка
 
 ```bash
-npm test                        23 теста: карьеры, детерминизм, локали, сохранения, год без клуба, баны
+npm test                        24 теста: карьеры, детерминизм, локали, сохранения, год без клуба, баны
 npm run lint && npm run build
 npx tsx scripts/balance.ts 80   разброс по 80 карьерам со случайными выборами
 npx tsx scripts/counts.ts       актуальные счётчики (события, ключи, клубы)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ack, choose, newCareer, setIdentity } from '../src/engine/career'
+import { ack, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
 import type { CareerState } from '../src/engine/types'
 import { Rng } from '../src/engine/rng'
 import { playerOvr } from '../src/engine/player'
@@ -109,5 +109,26 @@ describe('движок карьеры', () => {
   it('у каждого события уникальный ключ', () => {
     const keys = ALL_EVENTS.map((e) => e.key)
     expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('положение относительно состава считается от текущего клуба', () => {
+    // Без клуба сравнивать не с чем.
+    expect(squadStanding(newCareer('standing'))).toBeNull()
+
+    let state = setIdentity(newCareer('standing'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 10,
+      foot: 'right',
+      countryCode: 'ITA',
+      position: 'CAM',
+    })
+    // Выбираем академию — после этого клуб есть.
+    state = ack(choose(state, state.card!.options[0].id))
+
+    const standing = squadStanding(state)
+    expect(standing).not.toBeNull()
+    // Уровень состава — из таблицы по тиру клуба, разрыв считается от OVR.
+    expect([58, 66, 72, 78, 83, 88]).toContain(standing!.level)
+    expect(standing!.gap).toBe(currentOvr(state) - standing!.level)
   })
 })

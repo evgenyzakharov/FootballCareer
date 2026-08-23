@@ -76,6 +76,7 @@ export const UI: Content = {
   'hud.objective': { ru: 'Задача на сезон', en: 'Season objective' },
   'hud.objective_value': { ru: '{kind}: {target}', en: '{kind}: {target}' },
   'hud.squad_bar': { ru: 'Уровень состава', en: 'Squad level' },
+  'hud.squad_bar_value': { ru: '{level} · вы {gap}', en: '{level} · you {gap}' },
   'hud.status': { ru: 'Вне игры', en: 'Unavailable' },
   'hud.status_injured': { ru: 'травма, {blocks} отр.', en: 'injured, {blocks} block(s)' },
   'hud.status_suspended': { ru: 'дисквалификация, {blocks} отр.', en: 'suspended, {blocks} block(s)' },

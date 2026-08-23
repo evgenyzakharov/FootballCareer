@@ -321,6 +321,8 @@ input { font: inherit; color: inherit; }
 .kv { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; }
 .kv__k { color: var(--text-dim); }
 .kv__v { font-weight: 600; text-align: right; }
+.kv__v[data-tone='good'] { color: #86efac; }
+.kv__v[data-tone='bad'] { color: #fca5a5; }
 
 .gauge { margin-bottom: 9px; }
 .gauge__head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
