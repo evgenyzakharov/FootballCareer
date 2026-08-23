@@ -126,6 +126,23 @@ export const UI: Content = {
   'report.season.objective_failed': { ru: 'Задача клуба провалена ({kind}: {target})', en: 'Club objective missed ({kind}: {target})' },
   'report.season.empty': { ru: 'Без титулов и наград.', en: 'No titles, no awards.' },
 
+  // Отрезки и сезоны без клуба.
+  'report.idle.title': { ru: 'Отрезок без клуба', en: 'A stretch without a club' },
+  'report.idle.body': {
+    ru: 'Матчей не было. Вы тренировались один и ждали звонка.',
+    en: 'No games. You trained alone and waited for the phone.',
+  },
+  'report.idle.detail': { ru: 'Форма уходит, о вас постепенно забывают.', en: 'Your form is going and people are starting to forget you.' },
+  'report.idle_season.title': { ru: 'Сезон в {age}: без клуба', en: 'Season at {age}: no club' },
+  'report.idle_season.body': {
+    ru: 'Год без футбола. OVR — {ovr} ({delta}).',
+    en: 'A year without football. OVR {ovr} ({delta}).',
+  },
+  'report.idle_season.detail': {
+    ru: 'Ни матчей, ни трофеев, ни вызовов в сборную.',
+    en: 'No games, no trophies, no call-ups.',
+  },
+
   // ─── Финал ────────────────────────────────────────────────────────────────
   'retired.title': { ru: 'Карьера закончена', en: 'The career is over' },
   'retired.subtitle': { ru: 'Вы повесили бутсы в {age}. Вот что осталось.', en: 'You hung up your boots at {age}. Here is what remains.' },

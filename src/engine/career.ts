@@ -23,7 +23,11 @@ import {
 } from './relationships'
 import type { ManagerStyle } from './relationships'
 
-export const STATE_VERSION = 1
+/**
+ * Версия формы состояния. Растёт при любом несовместимом изменении схемы;
+ * подъём версии обязан сопровождаться миграцией в `save.ts`.
+ */
+export const STATE_VERSION = 2
 
 const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'review']
 
@@ -177,6 +181,10 @@ function applyEffect(state: CareerState, effect: Effect): CareerState {
       return { ...state, player: { ...player, position: effect.position } }
     case 'retire':
       return { ...state, phase: 'retired', retiredAt: player.age, card: null, queue: [] }
+    case 'release':
+      // Контракт расторгнут: сезон здесь не трогаем — он уже закрыт и записан
+      // в историю, а новый соберётся в startSeason уже без клуба.
+      return { ...state, contract: null, flags: { ...state.flags, free_agent: 1 } }
     case 'transfer':
       return joinClub(state, effect)
   }
@@ -214,7 +222,14 @@ function joinClub(state: CareerState, effect: Extract<Effect, { t: 'transfer' }>
     // Приход в новый клуб: авторитет в раздевалке начинается заново.
     next = applyEffect(next, { t: 'gauge', key: 'lockerRoom', delta: -Math.round(next.player.gauges.lockerRoom * 0.6) })
     if (next.season) {
-      next = { ...next, season: { ...next.season, clubId: club.id, loan: effect.loan, parentClubId } }
+      // Переход посреди сезона: роль в новом составе считаем сразу, иначе
+      // подписавшийся в январе играл бы весну по старой роли.
+      const role = determineRole({
+        player: next.player,
+        club,
+        rivalPressure: rivalPressureFor(next),
+      })
+      next = { ...next, season: { ...next.season, clubId: club.id, loan: effect.loan, parentClubId, role } }
     }
   }
   return next
@@ -230,17 +245,21 @@ function emptyNational(): NationalTally {
   return { caps: 0, goals: 0, tournament: null, trophy: null }
 }
 
+/**
+ * Начинает сезон. Клуба может не быть: игрок остался свободным агентом —
+ * тогда сезон всё равно идёт (возраст, спад формы), но без матчей и задач.
+ */
 function startSeason(state: CareerState): CareerState {
-  const clubId = state.contract?.clubId
-  if (!clubId) return state
-  const club = getClub(clubId)
+  const clubId = state.contract?.clubId ?? null
+  const club = findClub(clubId)
   const rng = rngFor(state, 'season')
-  const role = determineRole({
-    player: state.player,
-    club,
-    rivalPressure: rivalPressureFor(state),
-  })
-  const objective = makeObjective(state.player.position, role, club.tier, playerOvr(state.player))
+  const role: Role = club
+    ? determineRole({ player: state.player, club, rivalPressure: rivalPressureFor(state) })
+    : 'reserve'
+  const objective = club
+    ? makeObjective(state.player.position, role, club.tier, playerOvr(state.player))
+    : null
+
   return {
     ...state,
     season: {
@@ -258,12 +277,21 @@ function startSeason(state: CareerState): CareerState {
       blocksPlayed: 0,
       minutesMult: rng.around(1, 0.05),
     },
-    contract: { ...state.contract!, objective },
+    contract: state.contract ? { ...state.contract, objective } : null,
     seasonEvents: [],
     stage: 'preseason',
     queue: [],
-    // Желание уйти живёт одно окно: новый сезон — новая расстановка.
-    flags: { ...state.flags, wants_out: 0, free_agent_soon: 0, objective_lowered: 0, objective_raised: 0 },
+    flags: {
+      ...state.flags,
+      // Желание уйти живёт одно окно: новый сезон — новая расстановка.
+      wants_out: 0,
+      free_agent_soon: 0,
+      objective_lowered: 0,
+      objective_raised: 0,
+      // Дисквалификации отбывают по сезону, а не висят до конца карьеры.
+      doping_ban: Math.max(0, (state.flags.doping_ban ?? 0) - 1),
+      match_fixing_ban: Math.max(0, (state.flags.match_fixing_ban ?? 0) - 1),
+    },
   }
 }
 
@@ -294,6 +322,10 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
   let next: CareerState = { ...state, stage }
   const beats: Beat[] = [...dueConsequences(next, stage)]
   next = dropConsequences(next, stage)
+
+  // Год без клуба идёт по своему, короткому сценарию: почти все обычные
+  // ситуации требуют клуба и без него читались бы бессмысленно.
+  if (next.contract === null) return { ...next, queue: freeAgentBeats(beats, stage) }
 
   switch (stage) {
     case 'preseason': {
@@ -352,7 +384,19 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
   return { ...next, queue: beats }
 }
 
+function freeAgentBeats(beats: Beat[], stage: Stage): Beat[] {
+  switch (stage) {
+    case 'preseason': return [...beats, { t: 'event', key: 'free_agent_year' }]
+    case 'autumn': return [...beats, { t: 'sim' }]
+    case 'winter': return [...beats, { t: 'event', key: 'trial_offer' }]
+    case 'spring': return [...beats, { t: 'sim' }]
+    case 'run_in': return beats
+    case 'review': return [...beats, { t: 'season_end' }, { t: 'market' }]
+  }
+}
+
 function shouldCallUp(state: CareerState): boolean {
+  if (state.contract === null) return false
   const country = getCountry(state.player.countryCode)
   const p = callUpChance({
     ovr: playerOvr(state.player),
@@ -397,8 +441,10 @@ function nextStage(state: CareerState): CareerState {
   if (index < STAGES.length - 1) {
     return enterStage(state, STAGES[index + 1])
   }
-  // Страховка: этапы кончились, а новый сезон не начался.
-  return state.contract ? startNextSeason(state) : { ...state, phase: 'retired', retiredAt: state.player.age }
+  // Страховка: этапы кончились, а рынок так и не начал новый сезон. Стартуем
+  // следующий только если предыдущий действительно закрыт — иначе зациклимся.
+  const closed = !state.season || state.season.age < state.player.age
+  return closed ? startNextSeason(state) : { ...state, phase: 'retired', retiredAt: state.player.age }
 }
 
 function openBeat(state: CareerState, beat: Beat): CareerState {
@@ -435,8 +481,9 @@ function openBeat(state: CareerState, beat: Beat): CareerState {
 
 function runBlock(state: CareerState): CareerState {
   const season = state.season
-  const club = findClub(season?.clubId ?? null)
-  if (!season || !club) return state
+  if (!season) return state
+  const club = findClub(season.clubId)
+  if (!club) return runIdleBlock(state, season)
 
   const rng = rngFor(state, `block:${season.blocksPlayed}`)
   const blocksOut = Math.min(1, state.player.blocksOut)
@@ -491,6 +538,32 @@ function runBlock(state: CareerState): CareerState {
   return { ...next, card }
 }
 
+/** Отрезок без клуба: матчей нет, форма тает, о вас забывают. */
+function runIdleBlock(state: CareerState, season: NonNullable<CareerState['season']>): CareerState {
+  let next: CareerState = {
+    ...state,
+    season: { ...season, blocksPlayed: season.blocksPlayed + 1 },
+  }
+  next = applyEffects(next, [
+    { t: 'gauge', key: 'form', delta: -9 },
+    { t: 'gauge', key: 'fitness', delta: 5 },
+    { t: 'gauge', key: 'fame', delta: -3 },
+    { t: 'gauge', key: 'morale', delta: -5 },
+  ])
+  const card: Card = {
+    id: `idle@${state.player.age}:${season.blocksPlayed}`,
+    kind: 'report',
+    stage: state.stage,
+    eventKey: 'idle_report',
+    channel: 'life',
+    title: { key: 'report.idle.title' },
+    body: { key: 'report.idle.body' },
+    options: [],
+    details: [{ key: 'report.idle.detail' }],
+  }
+  return { ...next, card }
+}
+
 function blockDetails(result: ReturnType<typeof simulateBlock>, wasOut: boolean): Text[] {
   const lines: Text[] = []
   if (wasOut) lines.push({ key: 'report.block.missed' })
@@ -506,10 +579,12 @@ function blockDetails(result: ReturnType<typeof simulateBlock>, wasOut: boolean)
 
 function finishSeason(state: CareerState): CareerState {
   const season = state.season
-  const club = findClub(season?.clubId ?? null)
-  if (!season || !club) return state
+  if (!season) return state
+  const club = findClub(season.clubId)
 
   const rng = rngFor(state, 'season_end')
+  // Год без клуба тоже надо закрыть: иначе игрок не стареет и карьера зависает.
+  if (!club) return finishIdleSeason(state, season)
   const wonContinentalBefore = state.history.some(
     (h) => h.age === state.player.age - 1 && h.trophies.some((t) => t === 'ucl' || t === 'libertadores' || t === 'afc_elite' || t === 'caf_cl'),
   )
@@ -592,6 +667,42 @@ function finishSeason(state: CareerState): CareerState {
   return { ...next, card }
 }
 
+/** Закрывает сезон без клуба: ни трофеев, ни задач, только возраст и спад. */
+function finishIdleSeason(state: CareerState, season: NonNullable<CareerState['season']>): CareerState {
+  const record: SeasonRecord = {
+    age: season.age,
+    clubId: null,
+    loan: false,
+    parentClubId: null,
+    ovrStart: season.ovrStart,
+    ovrEnd: 0,
+    role: 'reserve',
+    tally: season.tally,
+    national: emptyNational(),
+    trophies: [],
+    awards: [],
+    objective: null,
+    objectiveMet: null,
+  }
+
+  let next = develop(state)
+  const ovrEnd = playerOvr(next.player)
+  next = { ...next, history: [...next.history, { ...record, ovrEnd }] }
+
+  const card: Card = {
+    id: `season@${season.age}`,
+    kind: 'report',
+    stage: 'review',
+    eventKey: 'season_report',
+    channel: 'life',
+    title: { key: 'report.idle_season.title', params: { age: season.age } },
+    body: { key: 'report.idle_season.body', params: { ovr: ovrEnd, delta: ovrEnd - season.ovrStart } },
+    options: [],
+    details: [{ key: 'report.idle_season.detail' }],
+  }
+  return { ...next, card }
+}
+
 function seasonDetails(
   trophies: string[],
   awards: string[],
@@ -636,6 +747,8 @@ function checkObjective(
 }
 
 function simulateNational(state: CareerState, rng: Rng): NationalTally {
+  // Без клуба в сборную не вызывают.
+  if (state.contract === null) return emptyNational()
   if ((state.flags.national_retired ?? 0) > 0 || (state.flags.national_blacklist ?? 0) > 0) return emptyNational()
   const country = getCountry(state.player.countryCode)
   const established = (state.flags.national_established ?? 0) > 0
@@ -667,7 +780,10 @@ function simulateNational(state: CareerState, rng: Rng): NationalTally {
 function growthFactor(state: CareerState): number {
   const season = state.season
   const club = findClub(season?.clubId ?? null)
-  if (!season || !club) return 0.4
+  // Без клуба навыки почти не растут: тренировок в одиночку недостаточно.
+  if (!season || !club) {
+    return 0.2 * clamp((state.player.potential - playerOvr(state.player)) / 12, 0.08, 1.3)
+  }
   const league = getLeague(club.leagueId)
   const minutesRatio = clamp(season.tally.apps / (BLOCK_MATCHES * 2), 0, 1)
   const headroom = clamp((state.player.potential - playerOvr(state.player)) / 12, 0.08, 1.3)
@@ -804,8 +920,9 @@ function afterCard(state: CareerState): CareerState {
     const withPhase: CareerState = { ...state, phase: 'season' }
     return enterStage(startSeason(withPhase), 'preseason')
   }
-  if (state.phase === 'season' && state.stage === 'review' && state.queue.length === 0 && state.contract) {
-    // Рынок закрыт — начинаем следующий сезон.
+  // Рынок закрыт — начинаем следующий сезон. Контракта может и не быть:
+  // свободный агент тоже проживает год.
+  if (state.phase === 'season' && state.stage === 'review' && state.queue.length === 0) {
     if (state.season && state.season.age === state.player.age - 1) {
       return startNextSeason(state)
     }

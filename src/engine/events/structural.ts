@@ -1,9 +1,9 @@
-import { H, flag, gauge, minutes, money, odds, rel, trait } from './context'
+import { H, attr, flag, gauge, minutes, money, odds, rel, release, trait } from './context'
 import type { EventDef, OptionDraft } from './context'
 import type { Effect, Objective } from '../types'
 import { getClub } from '../../data/clubs'
 import { getLeague } from '../../data/leagues'
-import { contractYears, generateOffers, loanOffers, wageFor } from '../offers'
+import { contractYears, fallbackOffers, generateOffers, loanOffers, wageFor } from '../offers'
 import { roleRank } from '../performance'
 
 const TO = 'to:'
@@ -189,27 +189,122 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
     stages: ['review'],
     once: false,
     weight: 0,
-    build: (c) => ({
-      options: [
-        { id: 'drop_down', hints: [H.minutesUp, H.moneyDown] },
-        ...(c.player.age >= 30 ? [{ id: 'retire', hints: [H.safe] }] : []),
-        { id: 'train_alone', hints: [H.gamble, H.formDown] },
-      ],
-    }),
+    build: (c) => {
+      // Клуб «дивизионом ниже» показываем сразу: иначе игрок выбирает вслепую.
+      const fallback = fallbackOffers(c.state, c.rng, 1)[0]
+      const options: OptionDraft[] = []
+      if (fallback) {
+        const club = getClub(fallback.clubId)
+        options.push({
+          id: `${TO}${fallback.clubId}`,
+          labelParams: { club: club.name, league: getLeague(club.leagueId).name },
+          hints: [H.minutesUp, H.moneyDown],
+        })
+      }
+      if (c.player.age >= 30) options.push({ id: 'retire', hints: [H.safe] })
+      options.push({ id: 'train_alone', hints: [H.gamble, H.formDown, H.leaveClub] })
+      return { options }
+    },
     resolve: (c, id) => {
       if (id === 'retire') return { outcome: 'retire', effects: [{ t: 'retire' }], headline: true, tone: 'neutral' }
-      if (id === 'drop_down') {
-        const offers = generateOffers(c.state, c.rng, { count: 1 })
-        const target = offers[0]
-        if (!target) return { outcome: 'retire', effects: [{ t: 'retire' }], headline: true, tone: 'bad' }
+      if (id.startsWith(TO)) {
+        const clubId = id.slice(TO.length)
         return {
           outcome: 'drop_down',
-          params: { club: getClub(target.clubId).name },
-          effects: [move(target.clubId, c.ovr, c.player.age, false, 0.6), gauge('morale', -8)],
+          params: { club: getClub(clubId).name },
+          effects: [move(clubId, c.ovr, c.player.age, false, 0.6), gauge('morale', -8)],
           tone: 'neutral',
         }
       }
-      return { outcome: 'train_alone', effects: [gauge('form', -14), gauge('fitness', 8), flag('free_agent')], tone: 'bad' }
+      // Контракт расторгается: иначе игрок «без клуба» продолжал играть за старый.
+      return {
+        outcome: 'train_alone',
+        effects: [release(), gauge('form', -14), gauge('fitness', 8), gauge('morale', -10)],
+        headline: true,
+        tone: 'bad',
+      }
+    },
+  },
+  {
+    key: 'free_agent_year',
+    channel: 'life',
+    stages: ['preseason'],
+    once: false,
+    weight: 0,
+    build: (c) => {
+      const fallback = fallbackOffers(c.state, c.rng, 1)[0]
+      const options: OptionDraft[] = []
+      if (fallback) {
+        const club = getClub(fallback.clubId)
+        options.push({
+          id: `${TO}${fallback.clubId}`,
+          labelParams: { club: club.name, league: getLeague(club.leagueId).name },
+          hints: [H.minutesUp, H.moneyDown],
+        })
+      }
+      options.push({ id: 'keep_fit', hints: [H.fitnessUp, H.moneyDown] })
+      options.push({ id: 'badges', hints: [H.growthUp, H.formDown] })
+      return { options }
+    },
+    resolve: (c, id) => {
+      if (id.startsWith(TO)) {
+        const clubId = id.slice(TO.length)
+        return {
+          outcome: 'signed_low',
+          params: { club: getClub(clubId).name },
+          effects: [move(clubId, c.ovr, c.player.age, false, 0.55), gauge('morale', 12), gauge('form', 6)],
+          headline: true,
+          tone: 'good',
+        }
+      }
+      if (id === 'keep_fit') {
+        return {
+          outcome: 'keep_fit',
+          effects: [money(-120_000), gauge('fitness', 18), gauge('form', 6), trait('self_made')],
+          tone: 'neutral',
+        }
+      }
+      return {
+        outcome: 'badges',
+        effects: [attr('mental', 4), gauge('form', -8), trait('future_coach')],
+        tone: 'neutral',
+      }
+    },
+  },
+  {
+    key: 'trial_offer',
+    channel: 'transfer',
+    stages: ['winter'],
+    once: false,
+    weight: 0,
+    build: (c) => {
+      const offers = fallbackOffers(c.state, c.rng, 2)
+      return {
+        options: [
+          ...offers.map((o) => {
+            const club = getClub(o.clubId)
+            return {
+              id: `${TO}${o.clubId}`,
+              labelParams: { club: club.name, league: getLeague(club.leagueId).name, wage: o.wage },
+              hints: [H.minutesUp, H.moraleUp],
+            }
+          }),
+          { id: 'wait', hints: [H.gamble, H.formDown] },
+        ],
+      }
+    },
+    resolve: (c, id) => {
+      if (id.startsWith(TO)) {
+        const clubId = id.slice(TO.length)
+        return {
+          outcome: 'signed',
+          params: { club: getClub(clubId).name },
+          effects: [move(clubId, c.ovr, c.player.age, false, 0.6), gauge('morale', 14), gauge('form', 8)],
+          headline: true,
+          tone: 'good',
+        }
+      }
+      return { outcome: 'wait', effects: [gauge('form', -6), gauge('morale', -8)], tone: 'bad' }
     },
   },
   {

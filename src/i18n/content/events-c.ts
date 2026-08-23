@@ -362,13 +362,49 @@ export const EVENTS_C: Content = {
     ru: 'Телефон молчит. Клубы вашего уровня закрыли состав, остались варианты пониже.',
     en: 'The phone is silent. Clubs at your level are done; what is left is a level down.',
   },
-  'ev.no_offers.opt.drop_down': { ru: 'Идти уровнем ниже', en: 'Drop down a level' },
+  'ev.no_offers.opt.to': { ru: 'Уровнем ниже: {club} — {league}', en: 'A level down: {club} — {league}' },
   'ev.no_offers.opt.retire': { ru: 'Завершить карьеру', en: 'Retire' },
-  'ev.no_offers.opt.train_alone': { ru: 'Тренироваться самому и ждать', en: 'Train alone and wait' },
+  'ev.no_offers.opt.train_alone': { ru: 'Остаться без клуба и ждать', en: 'Go without a club and wait' },
   'ev.no_offers.res.retire': { ru: 'Вы закончили. Без прощального матча.', en: 'You are done. No farewell game.' },
   'ev.no_offers.hl.retire': { ru: 'Завершил карьеру без предложений', en: 'Retires with no offers on the table' },
   'ev.no_offers.res.drop_down': { ru: 'Новый клуб — {club}. Уровень ниже, зато играете.', en: 'New club: {club}. A level down, but you play.' },
-  'ev.no_offers.res.train_alone': { ru: 'Вы тренировались один и ждали звонка. Форма ушла.', en: 'You trained alone and waited for the phone. The form went.' },
+  'ev.no_offers.res.train_alone': {
+    ru: 'Контракт расторгнут. Вы свободный агент: тренируетесь один и ждёте звонка.',
+    en: 'The contract is terminated. You are a free agent: training alone, waiting for a call.',
+  },
+  'ev.no_offers.hl.train_alone': { ru: 'Остался без клуба', en: 'Left without a club' },
+
+  // ─── free_agent_year ──────────────────────────────────────────────────────
+  'ev.free_agent_year.title': { ru: 'Год без клуба', en: 'A year without a club' },
+  'ev.free_agent_year.body': {
+    ru: 'Сезон начинается, а вы не в заявке ни у кого. Надо решить, как прожить этот год.',
+    en: 'The season is starting and you are not in anyone’s squad. You have to decide how to live this year.',
+  },
+  'ev.free_agent_year.opt.to': { ru: 'Согласиться на {club} — {league}', en: 'Take {club} — {league}' },
+  'ev.free_agent_year.opt.keep_fit': { ru: 'Наняться к личному тренеру', en: 'Hire a private trainer' },
+  'ev.free_agent_year.opt.badges': { ru: 'Пойти на тренерские курсы', en: 'Start coaching badges' },
+  'ev.free_agent_year.res.signed_low': { ru: 'Вы подписались за {club}. Не то, о чём мечтали, но это футбол.', en: 'You signed for {club}. Not the dream, but it is football.' },
+  'ev.free_agent_year.hl.signed_low': { ru: 'Нашёл клуб — {club}', en: 'Finds a club: {club}' },
+  'ev.free_agent_year.res.keep_fit': {
+    ru: 'Вы платите сами и держите себя в форме. Если позвонят — будете готовы.',
+    en: 'You pay for it yourself and stay in shape. If the call comes, you will be ready.',
+  },
+  'ev.free_agent_year.res.badges': {
+    ru: 'Год ушёл на учёбу. Голова стала работать лучше, ноги — хуже.',
+    en: 'The year went into studying. Your head got better, your legs worse.',
+  },
+
+  // ─── trial_offer ──────────────────────────────────────────────────────────
+  'ev.trial_offer.title': { ru: 'Приглашение на просмотр', en: 'An invitation to trial' },
+  'ev.trial_offer.body': {
+    ru: 'В зимнее окно вами наконец заинтересовались. Условия скромные, зато это работа.',
+    en: 'In the winter window someone finally called. The terms are modest, but it is a job.',
+  },
+  'ev.trial_offer.opt.to': { ru: '{club} — {league}, {wage}', en: '{club} — {league}, {wage}' },
+  'ev.trial_offer.opt.wait': { ru: 'Ждать варианта получше', en: 'Wait for something better' },
+  'ev.trial_offer.res.signed': { ru: 'Просмотр пройден, контракт есть: {club}.', en: 'The trial went well and there is a contract: {club}.' },
+  'ev.trial_offer.hl.signed': { ru: 'Подписал контракт с {club} после просмотра', en: 'Signs for {club} after a trial' },
+  'ev.trial_offer.res.wait': { ru: 'Вы отказались. Телефон снова молчит.', en: 'You said no. The phone is silent again.' },
 
   // ─── retirement_thoughts ──────────────────────────────────────────────────
   'ev.retirement_thoughts.title': { ru: 'Ещё один сезон?', en: 'One more season?' },

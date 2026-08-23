@@ -154,6 +154,8 @@ export interface Effect_Transfer { t: 'transfer'; clubId: string; loan: boolean;
 export interface Effect_Relationship { t: 'relationship'; role: RelationRole; delta: number }
 export interface Effect_Schedule { t: 'schedule'; consequence: Consequence }
 export interface Effect_Retire { t: 'retire' }
+/** Расторгнуть контракт: игрок остаётся без клуба. */
+export interface Effect_Release { t: 'release' }
 export interface Effect_Nationality { t: 'nationality'; code: string }
 export interface Effect_Position { t: 'position'; position: Position }
 export interface Effect_Stat { t: 'stat'; key: 'goals' | 'assists' | 'apps'; delta: number }
@@ -165,7 +167,7 @@ export type Effect =
   | Effect_Attr | Effect_Gauge | Effect_Money | Effect_Injury | Effect_Suspend
   | Effect_Trait | Effect_Flag | Effect_TrophyOdds | Effect_Transfer
   | Effect_Relationship | Effect_Schedule | Effect_Retire | Effect_Nationality
-  | Effect_Position | Effect_Stat | Effect_Potential | Effect_Minutes
+  | Effect_Position | Effect_Stat | Effect_Potential | Effect_Minutes | Effect_Release
 
 /**
  * Отложенное последствие. Именно оно превращает набор случайных событий
@@ -266,7 +268,8 @@ export interface NationalTally {
 
 export interface SeasonRecord {
   age: number
-  clubId: string
+  /** null — сезон без клуба: игрок был свободным агентом. */
+  clubId: string | null
   loan: boolean
   parentClubId: string | null
   ovrStart: number
@@ -282,7 +285,8 @@ export interface SeasonRecord {
 
 export interface CurrentSeason {
   age: number
-  clubId: string
+  /** null — сезон без клуба: игрок был свободным агентом. */
+  clubId: string | null
   loan: boolean
   parentClubId: string | null
   ovrStart: number

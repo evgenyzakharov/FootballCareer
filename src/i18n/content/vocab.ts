@@ -228,4 +228,5 @@ export const VOCAB: Content = {
   'trait.incorruptible': { ru: 'Неподкупный', en: 'Incorruptible' },
   'trait.penalty_taker': { ru: 'Пенальтист', en: 'Penalty taker' },
   'trait.last_dance': { ru: 'Последний танец', en: 'Last dance' },
+  'trait.self_made': { ru: 'Вытащил себя сам', en: 'Self-made' },
 }

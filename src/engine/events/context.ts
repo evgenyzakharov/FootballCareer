@@ -107,6 +107,7 @@ export const suspend = (blocks: number): Effect => ({ t: 'suspend', blocks })
 export const odds = (comp: CompetitionKind, mult: number): Effect => ({ t: 'trophyOdds', comp, mult })
 export const potential = (delta: number): Effect => ({ t: 'potential', delta })
 export const minutes = (mult: number): Effect => ({ t: 'minutes', mult })
+export const release = (): Effect => ({ t: 'release' })
 
 export function later(
   eventKey: string,

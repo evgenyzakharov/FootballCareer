@@ -47,7 +47,11 @@ function interest(club: Club, state: CareerState, ovr: number): number {
   if (gap < -12) return 0
   if (gap > 16) return 0
 
+  // Дисквалифицированного игрока клубы не подписывают: именно так карьера и
+  // попадает в состояние «без клуба», а не только через пустой рынок.
+  if ((state.flags.match_fixing_ban ?? 0) > 0) return 0
   let w = 10 - Math.abs(gap + 2) * 0.55
+  if ((state.flags.doping_ban ?? 0) > 0) w *= 0.25
   w += player.gauges.fame * 0.06
   w += (league.strength - 3) * 0.6
   if (club.country === player.countryCode) w += 2.2
@@ -143,6 +147,31 @@ export function generateOffers(state: CareerState, rng: Rng, req: OfferRequest =
     offers.push(toOffer(club, state, ovr, loan ? 'loan' : 'transfer', rng))
   }
   return offers
+}
+
+/**
+ * Клубы «на самый край»: без учёта интереса, только по уровню. Нужны, чтобы
+ * «уйти дивизионом ниже» всегда срабатывало — иначе игрок без предложений
+ * упирался в тупик и карьера обрывалась на ровном месте.
+ */
+export function fallbackOffers(state: CareerState, rng: Rng, count = 2): Offer[] {
+  const ovr = playerOvr(state.player)
+  const ceiling = Math.max(0, Math.floor((ovr - 52) / 8))
+  const pool = CLUBS.filter((c) => c.tier <= ceiling && c.id !== state.contract?.clubId)
+  const list = pool.length > 0 ? pool : CLUBS.filter((c) => c.tier === 0)
+  // Своя страна и уже знакомые клубы охотнее берут игрока без вариантов.
+  const weighted = list.map((club) => ({
+    item: club,
+    weight: 1 + (club.country === state.player.countryCode ? 2 : 0) + (state.clubsPlayed.includes(club.id) ? 1 : 0),
+  }))
+  const picked: Club[] = []
+  let guard = 0
+  while (picked.length < count && guard < 40) {
+    guard++
+    const club = rng.weighted(weighted)
+    if (!picked.includes(club)) picked.push(club)
+  }
+  return picked.map((club) => toOffer(club, state, ovr, 'transfer', rng))
 }
 
 /** Клубы, куда молодого игрока отдают в аренду: ниже уровнем, но с игровым временем. */
