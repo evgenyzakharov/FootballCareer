@@ -10,9 +10,14 @@ npm install
 npm run dev
 ```
 
-Прочее: `npm run build`, `npm test`, `npm run lint`,
-`npx tsx scripts/balance.ts 80 [позиция]` — диагностика баланса,
-`npx tsx scripts/counts.ts` — актуальные счётчики контента.
+Прочее: `npm run build`, `npm test`, `npm run lint`, `npm run typecheck`,
+`npm run check:browser` — сквозной прогон интерфейса в headless-браузере,
+`npm run balance 80 [позиция]` — диагностика баланса,
+`npm run counts` — актуальные счётчики контента.
+
+На пуш и pull request в `main` то же самое гоняет CI: линт, типы, тесты и
+сборку на Node 22 и 24, затем браузерные проверки
+([ci.yml](.github/workflows/ci.yml)).
 
 Документация: [ARCHITECTURE.md](ARCHITECTURE.md) — как устроен движок и его
 инварианты · [BACKLOG.md](BACKLOG.md) — что не сделано и почему ·
@@ -152,11 +157,11 @@ review     турнир сборной? → итоги сезона → тран
 - `npm test` — 26 тестов: сквозные карьеры, детерминизм по сиду, границы
   статистики, полнота обеих локалей (по всем восьми амплуа), миграции
   сохранений, год без клуба, дисквалификации, вратарские ситуации.
-- `scripts/dom-check.js` — сквозной прогон интерфейса в headless-браузере:
-  щёлкает от интро до пенсии и складывает отчёт в `<pre id="TESTOUT">`.
-- `scripts/layout-check.js` + `scripts/cdp.mjs` — аудит раскладки на точном
-  вьюпорте (переполнения, порядок колонок, размеры кнопок под палец) и
-  скриншоты. Подробности — в [ARCHITECTURE.md](ARCHITECTURE.md).
+- `npm run check:browser` — 31 проверка в headless-браузере: две полные карьеры
+  (полевой и вратарь) до пенсии и аудит раскладки на 375/768/1440. Падает с
+  ненулевым кодом, поэтому годится и для CI.
+- `scripts/cdp.mjs` — то же вручную, с точным вьюпортом и скриншотом.
+  Подробности — в [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Что дальше
 

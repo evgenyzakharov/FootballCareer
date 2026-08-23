@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # Обе версии из engines: так проверяется и нижняя граница поддержки, и то,
+    # на чём проект собирают локально.
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  browser:
+    # Отдельной работой: браузерный прогон дольше остальных проверок вместе,
+    # и запускать его до того, как сошлись тесты, смысла нет.
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Какие браузеры есть на раннере
+        # Диагностика: если проверка упадёт с «браузер не найден», по этому шагу
+        # сразу видно, что искать. Скрипт умеет BROWSER_BIN для нестандартного пути.
+        run: |
+          for bin in google-chrome chromium-browser chromium microsoft-edge; do
+            path=$(command -v "$bin" || true)
+            echo "$bin -> ${path:-нет}"
+          done
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check:browser
