@@ -97,8 +97,13 @@ export interface Player {
   potential: number
   traits: string[]
   injuries: InjuryRecord[]
-  /** Блоков пропуска из-за травмы/дисквалификации. */
+  /** Блоков пропуска из-за травмы. Лечится в межсезонье. */
   blocksOut: number
+  /**
+   * Блоков дисквалификации. В отличие от травмы межсезонье её не снимает:
+   * бан на два блока — это реально пропущенный сезон.
+   */
+  banBlocks: number
   money: number
 }
 

@@ -57,10 +57,10 @@ function advanceUntil(
 }
 
 describe('игрок без клуба', () => {
-  it('дисквалификация за сдачу матча высушивает рынок предложений', () => {
+  it('длинная дисквалификация высушивает рынок предложений', () => {
     let state = start('ban')
     state = advanceUntil(state, (s) => s.phase === 'season')
-    state = applyEffects(state, [{ t: 'flag', key: 'match_fixing_ban', delta: 1 }])
+    state = applyEffects(state, [{ t: 'suspend', blocks: 4 }])
     state = advanceUntil(state, (s) => s.card?.eventKey === 'no_offers')
     expect(state.card?.eventKey).toBe('no_offers')
   })
@@ -68,7 +68,7 @@ describe('игрок без клуба', () => {
   it('вариант «остаться без клуба» действительно расторгает контракт', () => {
     let state = start('release')
     state = advanceUntil(state, (s) => s.phase === 'season')
-    state = applyEffects(state, [{ t: 'flag', key: 'match_fixing_ban', delta: 1 }])
+    state = applyEffects(state, [{ t: 'suspend', blocks: 4 }])
     state = advanceUntil(state, (s) => s.card?.eventKey === 'no_offers')
 
     const trainAlone = state.card!.options.find((o) => o.id === 'train_alone')
@@ -82,7 +82,7 @@ describe('игрок без клуба', () => {
   it('год без клуба проходит целиком: возраст растёт, матчей нет, карьера не зависает', () => {
     let state = start('idle-year')
     state = advanceUntil(state, (s) => s.phase === 'season')
-    state = applyEffects(state, [{ t: 'flag', key: 'match_fixing_ban', delta: 1 }])
+    state = applyEffects(state, [{ t: 'suspend', blocks: 4 }])
     state = advanceUntil(state, (s) => s.card?.eventKey === 'no_offers')
 
     const ageBefore = state.player.age
@@ -103,7 +103,7 @@ describe('игрок без клуба', () => {
   it('из состояния без клуба карьера доходит до конца, а не обрывается', () => {
     let state = start('idle-finish')
     state = advanceUntil(state, (s) => s.phase === 'season')
-    state = applyEffects(state, [{ t: 'flag', key: 'match_fixing_ban', delta: 1 }])
+    state = applyEffects(state, [{ t: 'suspend', blocks: 4 }])
     state = advanceUntil(state, (s) => s.card?.eventKey === 'no_offers')
     state = ack(choose(state, 'train_alone'))
 

@@ -48,10 +48,12 @@ function interest(club: Club, state: CareerState, ovr: number): number {
   if (gap > 16) return 0
 
   // Дисквалифицированного игрока клубы не подписывают: именно так карьера и
-  // попадает в состояние «без клуба», а не только через пустой рынок.
-  if ((state.flags.match_fixing_ban ?? 0) > 0) return 0
+  // попадает в состояние «без клуба», а не только через пустой рынок. Смотрим
+  // на реальный остаток срока, а не на флаг события — длинный бан отпугивает
+  // всех, короткий только сбивает цену.
+  if (player.banBlocks >= 2) return 0
   let w = 10 - Math.abs(gap + 2) * 0.55
-  if ((state.flags.doping_ban ?? 0) > 0) w *= 0.25
+  if (player.banBlocks > 0) w *= 0.35
   w += player.gauges.fame * 0.06
   w += (league.strength - 3) * 0.6
   if (club.country === player.countryCode) w += 2.2

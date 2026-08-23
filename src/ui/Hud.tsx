@@ -54,6 +54,15 @@ export function Hud({ state }: { state: CareerState }) {
         {state.season && (
           <KeyValue labelKey="hud.role" value={t({ key: `role.${state.season.role}` })} />
         )}
+        {(player.banBlocks > 0 || player.blocksOut > 0) && (
+          <KeyValue
+            labelKey="hud.status"
+            value={t({
+              key: player.banBlocks > 0 ? 'hud.status_suspended' : 'hud.status_injured',
+              params: { blocks: player.banBlocks > 0 ? player.banBlocks : player.blocksOut },
+            })}
+          />
+        )}
         {state.contract && (
           <>
             <KeyValue labelKey="hud.wage" value={formatMoney(state.contract.wage, locale)} />

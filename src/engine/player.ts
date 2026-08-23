@@ -60,6 +60,7 @@ export function createPlayer(identity: Identity, clubTier: number, rng: Rng): Pl
     traits: [],
     injuries: [],
     blocksOut: 0,
+    banBlocks: 0,
     money: 0,
   }
 }

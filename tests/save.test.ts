@@ -57,20 +57,39 @@ describe('сохранение', () => {
     expect(loadState()).toBeNull()
   })
 
-  it('поднимает сохранение v1 до текущей версии, а не выбрасывает его', () => {
+  it('прогоняет сохранение v1 через всю цепочку миграций', () => {
     const state = sampleState()
-    // В v1 «остаться без клуба» выставляло флаг, но контракт не расторгало.
-    const v1 = { ...state, version: 1, flags: { ...state.flags, free_agent: 1, doped: 1 } }
+    // В v1 «остаться без клуба» выставляло флаг, но контракт не расторгало,
+    // а отдельного счётчика дисквалификации ещё не было.
+    const player = { ...state.player } as Record<string, unknown>
+    delete player.banBlocks
+    const v1 = { ...state, player, version: 1, flags: { ...state.flags, free_agent: 1, doped: 1 } }
     data.set('football-career:state', JSON.stringify(v1))
 
     const loaded = loadState()
     expect(loaded).not.toBeNull()
     expect(loaded!.version).toBe(STATE_VERSION)
-    // Залипший флаг снят, остальные флаги на месте, карьера цела.
+    // v1 → v2: залипший флаг снят, остальные на месте.
     expect(loaded!.flags.free_agent).toBeUndefined()
     expect(loaded!.flags.doped).toBe(1)
+    // v2 → v3: появился счётчик дисквалификации.
+    expect(loaded!.player.banBlocks).toBe(0)
     expect(loaded!.seed).toBe(state.seed)
     expect(loaded!.player.lastName).toBe('ТЕСТОВ')
+  })
+
+  it('поднимает сохранение v2, добавляя счётчик дисквалификации', () => {
+    const state = sampleState()
+    const player = { ...state.player } as Record<string, unknown>
+    delete player.banBlocks
+    player.blocksOut = 2
+    data.set('football-career:state', JSON.stringify({ ...state, player, version: 2 }))
+
+    const loaded = loadState()
+    expect(loaded!.version).toBe(STATE_VERSION)
+    expect(loaded!.player.banBlocks).toBe(0)
+    // Накопленное в v2 остаётся травмой: отличить его от бана уже нельзя.
+    expect(loaded!.player.blocksOut).toBe(2)
   })
 
   it('сохранение из будущего не принимается', () => {

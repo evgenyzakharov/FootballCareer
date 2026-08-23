@@ -32,6 +32,17 @@ const MIGRATIONS: Record<number, (state: RawState) => RawState> = {
     delete flags.free_agent
     return { ...state, flags, version: 2 }
   },
+
+  // v2 → v3. Дисквалификация переехала из player.blocksOut в отдельный
+  // player.banBlocks: раньше межсезонье обнуляло blocksOut и бан на четыре
+  // блока фактически истекал к концу сезона. У старых сохранений нового поля
+  // нет, а остаток в blocksOut уже не отличить от травмы — заводим счётчик
+  // нулём и трактуем накопленное как травму.
+  2: (state) => {
+    const player = { ...(state.player as Record<string, unknown>) }
+    if (typeof player.banBlocks !== 'number') player.banBlocks = 0
+    return { ...state, player, version: 3 }
+  },
 }
 
 /** Минимальная проверка формы: битый или чужой JSON не должен ронять игру. */

@@ -27,7 +27,7 @@ import type { ManagerStyle } from './relationships'
  * Версия формы состояния. Растёт при любом несовместимом изменении схемы;
  * подъём версии обязан сопровождаться миграцией в `save.ts`.
  */
-export const STATE_VERSION = 2
+export const STATE_VERSION = 3
 
 const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'review']
 
@@ -44,7 +44,7 @@ export function newCareer(seed: string): CareerState {
       age: START_AGE,
       attrs: { pace: 40, shooting: 40, passing: 40, dribbling: 40, defending: 40, physical: 40, mental: 40, goalkeeping: 40 },
       gauges: { form: 60, fitness: 88, morale: 70, coachTrust: 42, fanLove: 50, mediaRep: 0, lockerRoom: 18, fame: 3 },
-      potential: 70, traits: [], injuries: [], blocksOut: 0, money: 0,
+      potential: 70, traits: [], injuries: [], blocksOut: 0, banBlocks: 0, money: 0,
     },
     contract: null,
     season: null,
@@ -143,7 +143,7 @@ function applyEffect(state: CareerState, effect: Effect): CareerState {
       }
     }
     case 'suspend':
-      return { ...state, player: { ...player, blocksOut: player.blocksOut + effect.blocks } }
+      return { ...state, player: { ...player, banBlocks: player.banBlocks + effect.blocks } }
     case 'trait': {
       let traits = player.traits
       if (effect.add && !traits.includes(effect.add)) traits = [...traits, effect.add]
@@ -288,9 +288,6 @@ function startSeason(state: CareerState): CareerState {
       free_agent_soon: 0,
       objective_lowered: 0,
       objective_raised: 0,
-      // Дисквалификации отбывают по сезону, а не висят до конца карьеры.
-      doping_ban: Math.max(0, (state.flags.doping_ban ?? 0) - 1),
-      match_fixing_ban: Math.max(0, (state.flags.match_fixing_ban ?? 0) - 1),
     },
   }
 }
@@ -486,7 +483,10 @@ function runBlock(state: CareerState): CareerState {
   if (!club) return runIdleBlock(state, season)
 
   const rng = rngFor(state, `block:${season.blocksPlayed}`)
-  const blocksOut = Math.min(1, state.player.blocksOut)
+  // Травма и дисквалификация выбивают блок одинаково, но списываются отдельно.
+  const injured = state.player.blocksOut > 0
+  const banned = state.player.banBlocks > 0
+  const blocksOut = injured || banned ? 1 : 0
   const result = simulateBlock(
     { player: state.player, club, role: season.role, minutesMult: season.minutesMult, blocksOut },
     rng,
@@ -506,7 +506,11 @@ function runBlock(state: CareerState): CareerState {
   let next: CareerState = {
     ...state,
     season: { ...season, tally, blocksPlayed: season.blocksPlayed + 1 },
-    player: { ...state.player, blocksOut: Math.max(0, state.player.blocksOut - 1) },
+    player: {
+      ...state.player,
+      blocksOut: Math.max(0, state.player.blocksOut - 1),
+      banBlocks: Math.max(0, state.player.banBlocks - 1),
+    },
   }
   next = applyEffects(next, [
     { t: 'gauge', key: 'fitness', delta: result.fitnessDelta },
@@ -533,7 +537,7 @@ function runBlock(state: CareerState): CareerState {
       params: { apps: result.apps, goals: result.goals, assists: result.assists, rating: rating || 0 },
     },
     options: [],
-    details: blockDetails(result, state.player.blocksOut > 0),
+    details: blockDetails(result, injured, banned),
   }
   return { ...next, card }
 }
@@ -543,6 +547,12 @@ function runIdleBlock(state: CareerState, season: NonNullable<CareerState['seaso
   let next: CareerState = {
     ...state,
     season: { ...season, blocksPlayed: season.blocksPlayed + 1 },
+    // Срок дисквалификации течёт и без клуба — иначе бан стал бы вечным.
+    player: {
+      ...state.player,
+      blocksOut: Math.max(0, state.player.blocksOut - 1),
+      banBlocks: Math.max(0, state.player.banBlocks - 1),
+    },
   }
   next = applyEffects(next, [
     { t: 'gauge', key: 'form', delta: -9 },
@@ -564,9 +574,10 @@ function runIdleBlock(state: CareerState, season: NonNullable<CareerState['seaso
   return { ...next, card }
 }
 
-function blockDetails(result: ReturnType<typeof simulateBlock>, wasOut: boolean): Text[] {
+function blockDetails(result: ReturnType<typeof simulateBlock>, injured: boolean, banned: boolean): Text[] {
   const lines: Text[] = []
-  if (wasOut) lines.push({ key: 'report.block.missed' })
+  if (banned) lines.push({ key: 'report.block.suspended' })
+  else if (injured) lines.push({ key: 'report.block.missed' })
   if (result.apps === 0) lines.push({ key: 'report.block.no_minutes' })
   if (result.red > 0) lines.push({ key: 'report.block.red', params: { n: result.red } })
   if (result.yellow >= 5) lines.push({ key: 'report.block.cards', params: { n: result.yellow } })
@@ -817,7 +828,10 @@ function develop(state: CareerState): CareerState {
     ...state.player,
     age: state.player.age + 1,
     attrs,
-    blocksOut: 0,
+    // Межсезонье лечит: считаем его за один блок восстановления. Остаток
+    // тяжёлой травмы переносится на следующий сезон, а не обнуляется.
+    // Дисквалификация здесь не трогается — её отбывают матчами, а не летом.
+    blocksOut: Math.max(0, state.player.blocksOut - 1),
     gauges: {
       ...state.player.gauges,
       fitness: clamp(state.player.gauges.fitness + 26 + (state.player.traits.includes('pro_diet') ? 6 : 0), 0, 100),
