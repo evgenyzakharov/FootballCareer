@@ -371,7 +371,9 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
       if (tournament && (next.flags.national_established ?? 0) > 0 && (next.flags.national_retired ?? 0) === 0) {
         const country = getCountry(next.player.countryCode)
         const id = tournament === 'world' ? 'world_cup' : NATIONAL_TOURNAMENT[country.confederation]
-        beats.push({ t: 'event', key: 'tournament_moment', payload: { tournament: id } })
+        // Решающий момент турнира вратарь переживает с другой стороны точки.
+        const key = next.player.position === 'GK' ? 'tournament_moment_gk' : 'tournament_moment'
+        beats.push({ t: 'event', key, payload: { tournament: id } })
       }
       beats.push({ t: 'season_end' })
       beats.push({ t: 'market' })

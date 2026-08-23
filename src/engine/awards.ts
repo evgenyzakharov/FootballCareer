@@ -26,6 +26,9 @@ export function seasonScore(season: CurrentSeason, club: Club): number {
     (rating > 0 ? (rating - 6.7) * 22 : -10) +
     season.tally.goals * 0.6 +
     season.tally.assists * 0.4 +
+    // Сухие матчи — это продуктивность вратаря. Без них величина сезона
+    // считалась только по голам, и голкипер не мог претендовать ни на что.
+    season.tally.cleanSheets * 0.5 +
     season.trophies.length * 6 +
     continental * 10 +
     (season.national.trophy ? 12 : 0) +
@@ -52,7 +55,8 @@ export function rollAwards(player: Player, club: Club, season: CurrentSeason, rn
   }
 
   if (player.position === 'GK' && season.tally.apps >= 20) {
-    const p = clamp((season.tally.cleanSheets - 12) / 14, 0, 0.55) * clamp(rating - 6.4, 0, 2)
+    // Множитель по оценке был слишком жёстким: при 6.9 он резал шанс вдвое.
+    const p = clamp((season.tally.cleanSheets - 10) / 16, 0, 0.55) * clamp(0.5 + (rating - 6.6), 0.2, 1.6)
     if (rng.chance(p)) won.push('best_gk')
   }
 

@@ -1,19 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { ack, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
-import type { CareerState } from '../src/engine/types'
+import type { CareerState, Position } from '../src/engine/types'
 import { Rng } from '../src/engine/rng'
 import { playerOvr } from '../src/engine/player'
 import { missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS } from '../src/engine/events'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
-function playCareer(seed: string, options: { renderAll?: boolean } = {}): CareerState {
+function playCareer(
+  seed: string,
+  options: { renderAll?: boolean; position?: Position; country?: string } = {},
+): CareerState {
   let state = setIdentity(newCareer(seed), {
     lastName: 'ТЕСТОВ',
     shirt: 10,
     foot: 'right',
-    countryCode: 'ITA',
-    position: 'CAM',
+    countryCode: options.country ?? 'ITA',
+    position: options.position ?? 'CAM',
   })
   const rng = new Rng(seed, 'player-choices', 0)
   let guard = 0
@@ -98,12 +101,39 @@ describe('движок карьеры', () => {
     }
   })
 
-  it('все тексты, встреченные за десять карьер, есть в обеих локалях', () => {
+  it('все тексты, встреченные за карьеры всех амплуа, есть в обеих локалях', () => {
     missingKeys.clear()
-    for (let i = 0; i < 10; i++) {
-      playCareer(`i18n-${i}`, { renderAll: true })
+    // Амплуа перебираем намеренно: у вратаря свои ситуации, и на одном CAM
+    // опечатка в их ключах не всплыла бы.
+    const positions: Position[] = ['GK', 'CB', 'LB', 'CDM', 'CM', 'CAM', 'RW', 'ST']
+    for (const [i, position] of positions.entries()) {
+      playCareer(`i18n-${position}`, { renderAll: true, position })
+      playCareer(`i18n-alt-${position}`, { renderAll: true, position, country: i % 2 ? 'BRA' : 'ENG' })
     }
     expect([...missingKeys]).toEqual([])
+  })
+
+  it('вратарь получает свои ситуации, а не чужие', () => {
+    const seen = new Set<string>()
+    for (let i = 0; i < 6; i++) {
+      const state = playCareer(`gk-${i}`, { position: 'GK', renderAll: true })
+      for (const item of state.feed) seen.add(item.text.key)
+    }
+    // Хотя бы одна вратарская карточка должна была выпасть за шесть карьер.
+    const gkKeys = [...seen].filter((key) => key.startsWith('ev.gk_') || key.startsWith('ev.tournament_moment_gk'))
+    expect(gkKeys.length).toBeGreaterThan(0)
+  })
+
+  it('полевые эпизоды не выпадают вратарю', () => {
+    for (let i = 0; i < 6; i++) {
+      const state = playCareer(`gk-excl-${i}`, { position: 'GK' })
+      const keys = state.feed.map((item) => item.text.key)
+      // Эти карточки описывают игрока с мячом в чужой штрафной.
+      expect(keys.some((k) => k.startsWith('ev.title_decider.'))).toBe(false)
+      expect(keys.some((k) => k.startsWith('ev.cup_final_penalties.'))).toBe(false)
+      expect(keys.some((k) => k.startsWith('ev.last_minute_chance.'))).toBe(false)
+      expect(keys.some((k) => k.startsWith('ev.tournament_moment.'))).toBe(false)
+    }
   })
 
   it('у каждого события уникальный ключ', () => {

@@ -51,6 +51,7 @@
         stages: Object.keys(seenStages).sort(),
         channels: Object.keys(seenChannels).sort(),
         distinctEvents: Object.keys(seenEvents).length,
+        allTitles: Object.keys(seenEvents),
         maxTimelineRows,
         midSnapshot: mid,
         feedItems: document.querySelectorAll('.feed__item').length,
@@ -90,6 +91,14 @@
       const name = document.getElementById('lastName')
       if (name) {
         setInput(name, 'ТЕСТОВ')
+        // ?pos=GK — прогон за вратаря: у него своя ветка ситуаций.
+        var wanted = (location.search.match(/pos=([A-Z]+)/) || [])[1]
+        if (wanted) {
+          var btns = document.querySelectorAll('.pos-btn')
+          for (var i = 0; i < btns.length; i++) {
+            if (btns[i].textContent.trim() === wanted) { btns[i].click(); clicks++; break }
+          }
+        }
         phase = 2
       }
       return setTimeout(tick, 25)

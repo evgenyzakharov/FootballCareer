@@ -8,6 +8,7 @@ import { LIFE_EVENTS } from './life'
 import { TRANSFER_EVENTS } from './transfer'
 import { NATIONAL_EVENTS } from './national'
 import { MATCH_EVENTS } from './match'
+import { GOALKEEPER_EVENTS } from './goalkeeper'
 import { STRUCTURAL_EVENTS } from './structural'
 
 export const ALL_EVENTS: EventDef[] = [
@@ -19,6 +20,7 @@ export const ALL_EVENTS: EventDef[] = [
   ...TRANSFER_EVENTS,
   ...NATIONAL_EVENTS,
   ...MATCH_EVENTS,
+  ...GOALKEEPER_EVENTS,
   ...STRUCTURAL_EVENTS,
 ]
 

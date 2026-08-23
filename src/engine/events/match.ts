@@ -6,7 +6,7 @@ import { clamp } from '../rng'
  * Ключевые матчи. Здесь единственное место, где бросок зависит от атрибутов
  * напрямую: выбор «пробить» проверяется по удару и характеру, а не по OVR.
  */
-function skillCheck(value: number, mental: number, pressure: number): number {
+export function skillCheck(value: number, mental: number, pressure: number): number {
   return clamp(0.2 + (value - 55) * 0.011 + (mental - 55) * 0.005 - pressure * 0.12, 0.05, 0.92)
 }
 
@@ -17,7 +17,8 @@ export const MATCH_EVENTS: EventDef[] = [
     stages: ['run_in'],
     once: false,
     weight: 10,
-    when: (c) => c.club !== null && c.role !== 'reserve',
+    // Вратарю этот эпизод читался бы бессмыслицей — у него свой, gk_last_line.
+    when: (c) => c.club !== null && c.role !== 'reserve' && c.player.position !== 'GK',
     build: (c) => ({
       bodyParams: { club: c.club?.name ?? '' },
       options: [
