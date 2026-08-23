@@ -261,13 +261,24 @@ input { font: inherit; color: inherit; }
   align-items: start;
 }
 
+/*
+ * Средняя ширина: две колонки. Карточка и панель игрока встают друг под другом
+ * в первой, история и лента занимают вторую на всю высоту. Если панель игрока
+ * растянуть на всю ширину под карточкой, рядом с короткой карточкой остаётся
+ * пустая дыра в пол-экрана — так и было до этой правки.
+ */
 @media (max-width: 1200px) {
   .career { grid-template-columns: minmax(0, 1fr) 320px; }
-  .career__left { grid-column: 1 / -1; }
+  .career__center { grid-column: 1; grid-row: 1; }
+  .career__left { grid-column: 1; grid-row: 2; }
+  .career__right { grid-column: 2; grid-row: 1 / span 2; }
 }
+/* Одна колонка: сначала решение, потом состояние, потом история. */
 @media (max-width: 860px) {
-  .career { grid-template-columns: minmax(0, 1fr); }
-  .career__left, .career__right { grid-column: auto; }
+  .career { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 10px; }
+  .career__center { grid-column: auto; grid-row: auto; order: 1; }
+  .career__left { grid-column: auto; grid-row: auto; order: 2; }
+  .career__right { grid-column: auto; grid-row: auto; order: 3; }
 }
 
 .panel {
@@ -483,3 +494,62 @@ input { font: inherit; color: inherit; }
 .big-stat__value { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
 .big-stat__label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); }
 .retired__cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+
+/* ─── Касание ──────────────────────────────────────────────────────────────
+ * Размер под палец зависит от способа ввода, а не от ширины экрана: планшет
+ * бывает шире ноутбука. 44px — общепринятый минимум для тапа.
+ */
+@media (pointer: coarse) {
+  .ghost-btn { min-height: 44px; padding: 8px 14px; }
+  .primary-btn { min-height: 48px; }
+  .seg button { min-height: 44px; }
+  .pos-btn { min-height: 44px; min-width: 56px; }
+  .country-list button { min-height: 44px; }
+  .text-input { min-height: 46px; }
+  .option { padding: 14px; }
+  /* На касании подсветка по hover не срабатывает — убираем ложные состояния. */
+  .option:hover { border-color: var(--line); background: var(--bg-raised); }
+  .ghost-btn:hover { border-color: var(--line); color: var(--text-dim); }
+}
+
+/* ─── Телефон ──────────────────────────────────────────────────────────────
+ * Проверяется скриптом: node scripts/cdp.mjs <url> 375 812 out.png
+ * Он же следит, чтобы ничего не вылезало за край и кнопки были не меньше 44px.
+ */
+@media (max-width: 640px) {
+  body { font-size: 15.5px; }
+
+  .topbar { padding: 8px 12px; gap: 8px; }
+  .topbar__brand { font-size: 14px; }
+
+  /* Дублируем размеры из блока pointer:coarse: телефон определяется надёжнее
+     по ширине, а не все среды сообщают тип ввода. */
+  .ghost-btn { min-height: 44px; padding: 8px 14px; }
+  .primary-btn { min-height: 48px; width: 100%; }
+  .seg button { min-height: 44px; }
+  .pos-btn { min-height: 44px; min-width: 56px; }
+  .country-list button { min-height: 44px; }
+  .text-input { min-height: 46px; }
+
+  /* Панель игрока: восемь полос и восемь навыков в два столбца вместо одного. */
+  .gauge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .panel { padding: 12px; margin-bottom: 10px; }
+  .card { padding: 16px; border-radius: 14px; }
+  .card__title { font-size: 19px; }
+
+  /* Списки не должны занимать больше половины экрана. */
+  .timeline { max-height: 46vh; }
+  .feed { max-height: 40vh; }
+  .country-list { max-height: 50vh; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+
+  .identity { padding: 18px 12px 32px; }
+  .identity__grid { gap: 14px; }
+  .identity__head h1 { font-size: 22px; }
+  .identity__actions { flex-direction: column-reverse; }
+
+  .intro { padding: 32px 16px; }
+  .intro__actions { flex-direction: column; }
+
+  .retired { padding: 20px 12px 36px; }
+  .footer-note { padding: 12px 12px 24px; }
+}

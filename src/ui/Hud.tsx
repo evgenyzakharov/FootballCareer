@@ -101,14 +101,18 @@ export function Hud({ state }: { state: CareerState }) {
       </section>
 
       <Panel titleKey="panel.gauges">
-        <Gauge labelKey="gauge.form" value={player.gauges.form} />
-        <Gauge labelKey="gauge.fitness" value={player.gauges.fitness} />
-        <Gauge labelKey="gauge.morale" value={player.gauges.morale} />
-        <Gauge labelKey="gauge.coachTrust" value={player.gauges.coachTrust} />
-        <Gauge labelKey="gauge.fanLove" value={player.gauges.fanLove} />
-        <BipolarGauge labelKey="gauge.mediaRep" value={player.gauges.mediaRep} />
-        <Gauge labelKey="gauge.lockerRoom" value={player.gauges.lockerRoom} />
-        <Gauge labelKey="gauge.fame" value={player.gauges.fame} />
+        {/* Обёртка нужна для мобильной раскладки: восемь полос в один столбец
+            занимают полэкрана, в два — вдвое меньше. */}
+        <div className="gauge-grid">
+          <Gauge labelKey="gauge.form" value={player.gauges.form} />
+          <Gauge labelKey="gauge.fitness" value={player.gauges.fitness} />
+          <Gauge labelKey="gauge.morale" value={player.gauges.morale} />
+          <Gauge labelKey="gauge.coachTrust" value={player.gauges.coachTrust} />
+          <Gauge labelKey="gauge.fanLove" value={player.gauges.fanLove} />
+          <BipolarGauge labelKey="gauge.mediaRep" value={player.gauges.mediaRep} />
+          <Gauge labelKey="gauge.lockerRoom" value={player.gauges.lockerRoom} />
+          <Gauge labelKey="gauge.fame" value={player.gauges.fame} />
+        </div>
       </Panel>
 
       <Panel titleKey="panel.attrs">

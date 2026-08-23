@@ -4,6 +4,11 @@
  * машине не используются, поэтому проверяем по DOM.
  */
 ;(function () {
+  // Сохранённая карьера из прошлого прогона подняла бы приложение сразу на
+  // экран карьеры, и драйвер ждал бы интро, которого нет. Классический скрипт
+  // выполняется до отложенного модуля React, поэтому чистим здесь.
+  try { localStorage.removeItem('football-career:state') } catch (e) { /* приватный режим */ }
+
   const errors = []
   window.addEventListener('error', (e) => errors.push('ERROR ' + e.message))
   window.addEventListener('unhandledrejection', (e) => errors.push('REJECTION ' + e.reason))
