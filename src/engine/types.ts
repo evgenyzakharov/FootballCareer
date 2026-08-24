@@ -166,6 +166,8 @@ export interface Effect_Relationship { t: 'relationship'; role: RelationRole; de
 export interface Effect_Schedule { t: 'schedule'; consequence: Consequence }
 export interface Effect_Retire { t: 'retire' }
 /** Расторгнуть контракт: игрок остаётся без клуба. */
+/** Множитель к зарплате по текущему контракту: 0.5 — урезать вдвое. */
+export interface Effect_Wage { t: 'wage'; mult: number }
 export interface Effect_Release { t: 'release' }
 export interface Effect_Nationality { t: 'nationality'; code: string }
 export interface Effect_Position { t: 'position'; position: Position }
@@ -181,7 +183,7 @@ export type Effect =
   | Effect_Trait | Effect_Flag | Effect_TrophyOdds | Effect_Transfer
   | Effect_Relationship | Effect_Schedule | Effect_Retire | Effect_Nationality
   | Effect_Position | Effect_Stat | Effect_Potential | Effect_Minutes | Effect_Release
-  | Effect_Objective
+  | Effect_Objective | Effect_Wage
 
 /**
  * Отложенное последствие. Именно оно превращает набор случайных событий

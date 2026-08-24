@@ -1,5 +1,5 @@
-import { H, flag, gauge, later, money, rel, trait } from './context'
-import type { EventDef, OptionDraft } from './context'
+import { H, flag, gauge, later, money, rel, trait, wageMult } from './context'
+import type { EventDef, EventResult, OptionDraft } from './context'
 import type { Effect } from '../types'
 import { getClub } from '../../data/clubs'
 import { getCountry } from '../../data/countries'
@@ -82,7 +82,7 @@ export const TRANSFER_EVENTS: EventDef[] = [
       }
       return { bodyParams: { club: c.club?.name ?? '' }, options }
     },
-    resolve: (c, id) => {
+    resolve: (c, id): EventResult => {
       if (id.startsWith(TO)) {
         const clubId = id.slice(TO.length)
         return {
@@ -94,9 +94,11 @@ export const TRANSFER_EVENTS: EventDef[] = [
         }
       }
       if (id === 'wage_cut') {
+        const cut = Math.round((c.state.contract?.wage ?? 0) * 0.5)
         return {
           outcome: 'wage_cut',
-          effects: [money(-Math.round((c.state.contract?.wage ?? 0) * 0.3)), gauge('lockerRoom', 16), gauge('fanLove', 14), trait('club_man')],
+          params: { wage: cut },
+          effects: [wageMult(0.5), gauge('lockerRoom', 16), gauge('fanLove', 14), trait('club_man')],
           headline: true,
           tone: 'good',
         }

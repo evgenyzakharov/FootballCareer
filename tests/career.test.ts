@@ -7,6 +7,7 @@ import { Rng } from '../src/engine/rng'
 import { playerOvr } from '../src/engine/player'
 import { missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS } from '../src/engine/events'
+import { findClub } from '../src/data/clubs'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
 function playCareer(
@@ -213,6 +214,53 @@ describe('движок карьеры', () => {
     state = applyEffects(state, [{ t: 'transfer', clubId: home, loan: false, wage: 2000, years: 3 }])
     expect(state.contract!.isLoan).toBe(false)
     expect(state.contract!.parentClubId).toBeNull()
+  })
+
+  it('урезание зарплаты меняет сам контракт, а не только кошелёк', () => {
+    // Раньше вариант «урезать себе зарплату» списывал разовую сумму, а в
+    // контракте и в панели игрока зарплата оставалась прежней.
+    let state = setIdentity(newCareer('wage-cut'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 10,
+      foot: 'right',
+      countryCode: 'ENG',
+      position: 'CAM',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+    const before = state.contract!.wage
+    expect(before).toBeGreaterThan(0)
+
+    state = applyEffects(state, [{ t: 'wage', mult: 0.5 }])
+    expect(state.contract!.wage).toBe(Math.round(before * 0.5))
+
+    // Без контракта эффект ничего не ломает.
+    const free = applyEffects({ ...state, contract: null }, [{ t: 'wage', mult: 0.5 }])
+    expect(free.contract).toBeNull()
+  })
+
+  it('в кризисе клуба вариант «урезать зарплату» режет контракт вдвое', () => {
+    let state = setIdentity(newCareer('crisis'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 10,
+      foot: 'right',
+      countryCode: 'ENG',
+      position: 'CAM',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+
+    const def = ALL_EVENTS.find((e) => e.key === 'club_crisis')!
+    const ctx = {
+      state,
+      player: state.player,
+      club: findClub(state.contract!.clubId),
+      ovr: currentOvr(state),
+      role: 'starter',
+      rng: new Rng('crisis', 'ev', 0),
+      stage: 'winter',
+      payload: {},
+    }
+    const result = def.resolve(ctx as never, 'wage_cut')
+    expect(result.effects).toContainEqual({ t: 'wage', mult: 0.5 })
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

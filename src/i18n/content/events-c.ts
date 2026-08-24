@@ -26,7 +26,10 @@ export const EVENTS_C: Content = {
   'ev.club_crisis.opt.wage_cut': { ru: 'Урезать себе зарплату', en: 'Take a pay cut' },
   'ev.club_crisis.res.escaped': { ru: 'Вы ушли в {club} до того, как всё рухнуло.', en: 'You left for {club} before it all collapsed.' },
   'ev.club_crisis.hl.escaped': { ru: 'Успел уйти из клуба в кризисе', en: 'Gets out of the crisis club in time' },
-  'ev.club_crisis.res.wage_cut': { ru: 'Вы отказались от части денег, чтобы клуб дожил до конца сезона.', en: 'You gave up part of your money so the club could finish the season.' },
+  'ev.club_crisis.res.wage_cut': {
+    ru: 'Вы урезали себе зарплату вдвое — до {wage} за сезон, — чтобы клуб дожил до конца.',
+    en: 'You halved your wage, down to {wage} a season, so the club could survive.',
+  },
   'ev.club_crisis.hl.wage_cut': { ru: 'Отказался от части зарплаты ради клуба', en: 'Gives up part of his wage for the club' },
   'ev.club_crisis.res.stay_fight': { ru: 'Вы остались тянуть сезон. Проще не стало.', en: 'You stayed to drag the season out. It did not get easier.' },
 

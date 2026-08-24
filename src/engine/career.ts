@@ -197,6 +197,12 @@ function applyEffect(state: CareerState, effect: Effect): CareerState {
             contract: { ...state.contract, objective: adjustObjective(state.contract.objective, effect.direction) },
           }
         : state
+    case 'wage':
+      // Меняем сам контракт, а не разовую выплату: иначе урезанная зарплата
+      // не видна ни в панели игрока, ни в следующих начислениях.
+      return state.contract
+        ? { ...state, contract: { ...state.contract, wage: Math.round(state.contract.wage * effect.mult) } }
+        : state
     case 'release':
       // Контракт расторгнут: сезон здесь не трогаем — он уже закрыт и записан
       // в историю, а новый соберётся в startSeason уже без клуба.
