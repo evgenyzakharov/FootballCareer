@@ -4,14 +4,14 @@ import { currentOvr, currentValue, squadStanding } from '../engine/career'
 import { averageRating } from '../engine/performance'
 import { findClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
-import { formatMoney } from '../i18n'
 import { BipolarGauge, Chip, Empty, Gauge, KeyValue, Panel, Stat } from './bits'
 import { ovrTier } from './format'
-import { useLocale, useT } from './locale'
+import { useLocale, useMoney, useT } from './locale'
 
 export function Hud({ state }: { state: CareerState }) {
   const t = useT()
   const locale = useLocale()
+  const money = useMoney()
   const player = state.player
   const ovr = currentOvr(state)
   const club = findClub(state.season?.clubId ?? state.contract?.clubId ?? null)
@@ -44,8 +44,8 @@ export function Hud({ state }: { state: CareerState }) {
 
         <div className="stat-row">
           <Stat labelKey="hud.age" value={player.age} />
-          <Stat labelKey="hud.value" value={formatMoney(currentValue(state), locale)} />
-          <Stat labelKey="hud.money" value={formatMoney(player.money, locale)} />
+          <Stat labelKey="hud.value" value={money(currentValue(state))} />
+          <Stat labelKey="hud.money" value={money(player.money)} />
         </div>
 
         {/* У вратаря продуктивность — это сухие матчи и пропущенные, а не голы. */}
@@ -99,7 +99,7 @@ export function Hud({ state }: { state: CareerState }) {
         )}
         {state.contract && (
           <>
-            <KeyValue labelKey="hud.wage" value={formatMoney(state.contract.wage, locale)} />
+            <KeyValue labelKey="hud.wage" value={money(state.contract.wage)} />
             <KeyValue
               labelKey="hud.contract"
               value={t({ key: 'hud.contract_years', params: { years: state.contract.yearsLeft } })}

@@ -1,4 +1,6 @@
 export type Locale = 'ru' | 'en'
+/** Валюта отображения. Движок всё считает в евро, это только показ. */
+export type Currency = 'EUR' | 'RUB'
 export type Localized = Record<Locale, string>
 
 /**

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { CareerState, Locale } from './engine/types'
+import type { CareerState, Currency, Locale } from './engine/types'
 import type { Identity } from './engine/player'
 import { ack, choose, newCareer, setIdentity } from './engine/career'
 import { clearState, loadLocale, loadState, saveLocale, saveState } from './engine/save'
 import { t } from './i18n'
-import { LocaleContext } from './ui/locale'
+import { CurrencyContext, LocaleContext } from './ui/locale'
 import { IdentityScreen } from './ui/Identity'
 import { Hud, HudSkills } from './ui/Hud'
 import { CardView, ResolutionView } from './ui/CardView'
@@ -29,7 +29,10 @@ export default function App() {
     saveLocale(locale)
   }, [locale])
 
-  const tr = useCallback((key: string) => t({ key }, locale), [locale])
+  // Россиянин считает деньги в рублях: суммы внутри всё те же, меняется показ.
+  const currency: Currency = state?.player.countryCode === 'RUS' ? 'RUB' : 'EUR'
+
+  const tr = useCallback((key: string) => t({ key }, locale, currency), [locale, currency])
 
   const reset = useCallback(() => {
     clearState()
@@ -44,6 +47,7 @@ export default function App() {
 
   return (
     <LocaleContext value={locale}>
+      <CurrencyContext value={currency}>
       <div className="app">
         <header className="topbar">
           <span className="topbar__brand">{tr('app.title')}</span>
@@ -117,6 +121,7 @@ export default function App() {
 
         <p className="footer-note">{tr('app.disclaimer')}</p>
       </div>
+      </CurrencyContext>
     </LocaleContext>
   )
 }

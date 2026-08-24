@@ -5,7 +5,7 @@ import { averageRating } from '../src/engine/performance'
 import { adjustObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
 import { playerOvr, squadLevel } from '../src/engine/player'
-import { missingKeys, t } from '../src/i18n'
+import { formatMoney, missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS } from '../src/engine/events'
 import { findClub, getClub } from '../src/data/clubs'
 import { leagueLift, rollLeaguePosition } from '../src/engine/competitions'
@@ -323,6 +323,15 @@ describe('движок карьеры', () => {
 
     // Без контракта продлевать нечего.
     expect(clubWantsToRenew({ ...state, contract: null }, 90, 'star')).toBe(false)
+  })
+
+  it('деньги показываются в рублях, когда игрок из России', () => {
+    // Курс — игровая константа, не настоящий: суммы движка всегда в евро.
+    expect(formatMoney(1_000_000, 'ru')).toBe('€1 млн')
+    expect(formatMoney(1_000_000, 'ru', 'RUB')).toBe('100 млн ₽')
+    expect(formatMoney(1_000_000, 'en', 'RUB')).toBe('100M ₽')
+    expect(formatMoney(-5_000, 'ru', 'RUB')).toBe('−500 тыс ₽')
+    expect(formatMoney(30, 'ru', 'RUB')).toBe('3 тыс ₽')
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

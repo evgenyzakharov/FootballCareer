@@ -1,9 +1,8 @@
 import type { CareerState } from '../engine/types'
 import { careerTotals } from '../engine/career'
-import { formatMoney } from '../i18n'
 import { Sidebar } from './Sidebar'
 import { Timeline } from './Timeline'
-import { useLocale, useT } from './locale'
+import { useMoney, useT } from './locale'
 
 function verdictKey(peak: number, trophies: number, awards: number): string {
   if (peak >= 86 && (trophies >= 8 || awards >= 2)) return 'retired.verdict_legend'
@@ -14,7 +13,7 @@ function verdictKey(peak: number, trophies: number, awards: number): string {
 
 export function Retired({ state, onRestart }: { state: CareerState; onRestart: () => void }) {
   const t = useT()
-  const locale = useLocale()
+  const money = useMoney()
   const totals = careerTotals(state)
   const peak = Math.max(0, ...state.history.map((h) => h.ovrEnd))
 
@@ -46,7 +45,7 @@ export function Retired({ state, onRestart }: { state: CareerState; onRestart: (
         )}
         <BigStat labelKey="hud.caps" value={totals.caps} />
         <BigStat labelKey="panel.trophies" value={totals.trophies} />
-        <BigStat labelKey="hud.money" value={formatMoney(state.player.money, locale)} />
+        <BigStat labelKey="hud.money" value={money(state.player.money)} />
       </div>
 
       <div className="retired__cols">
