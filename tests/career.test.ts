@@ -8,8 +8,9 @@ import { playerOvr, squadLevel } from '../src/engine/player'
 import { formatMoney, missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS } from '../src/engine/events'
 import { findClub, getClub } from '../src/data/clubs'
+import { getLeague } from '../src/data/leagues'
 import { leagueLift, rollLeaguePosition } from '../src/engine/competitions'
-import { clubWantsToRenew } from '../src/engine/offers'
+import { academyOffers, clubWantsToRenew } from '../src/engine/offers'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
 function playCareer(
@@ -384,6 +385,35 @@ describe('движок карьеры', () => {
       }
       expect(armed || seen).toBe(true)
     }
+  })
+
+  it('россиянина из академии зовут только во второй дивизион, остальных — как раньше', () => {
+    const offersFor = (code: string, seed: string) => {
+      const state = setIdentity(newCareer(seed), {
+        lastName: 'ТЕСТОВ', shirt: 10, foot: 'right', countryCode: code, position: 'CAM',
+      })
+      return academyOffers(state, new Rng(seed, 'academy', 0))
+    }
+
+    for (let i = 0; i < 40; i++) {
+      const rus = offersFor('RUS', `ac-rus-${i}`)
+      expect(rus.length).toBeGreaterThan(0)
+      for (const offer of rus) {
+        const league = getLeague(getClub(offer.clubId).leagueId)
+        expect(league.id, `сид ${i}: позвали в ${league.id}`).toBe('vtoraya-a')
+      }
+    }
+
+    // У страны без третьего дивизиона правило не срабатывает: там по-прежнему
+    // могут позвать и в высшую лигу.
+    const seenTop = new Set<string>()
+    for (let i = 0; i < 40; i++) {
+      for (const offer of offersFor('ENG', `ac-eng-${i}`)) {
+        const league = getLeague(getClub(offer.clubId).leagueId)
+        if (league.level === 1) seenTop.add(league.id)
+      }
+    }
+    expect(seenTop.size).toBeGreaterThan(0)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

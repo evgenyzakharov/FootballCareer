@@ -113,7 +113,13 @@ export function academyOffers(state: CareerState, rng: Rng): Offer[] {
   const homePool = homeLeague
     ? CLUBS.filter((c) => c.leagueId === homeLeague || getLeague(c.leagueId).country === country.code)
     : CLUBS.filter((c) => c.confederation === country.confederation)
-  const pool = homePool.length >= 6 ? homePool : CLUBS
+  const wide = homePool.length >= 6 ? homePool : CLUBS
+  // Чем глубже смоделирована пирамида страны, тем ниже начинают. Если у страны
+  // есть третий дивизион, из академии зовут только туда: путь наверх должен
+  // начинаться снизу, а не с предложения от чемпиона. Сегодня три уровня
+  // только у России, для остальных стран ничего не меняется.
+  const deepest = Math.max(...wide.map((c) => getLeague(c.leagueId).level))
+  const pool = deepest >= 3 ? wide.filter((c) => getLeague(c.leagueId).level === deepest) : wide
 
   const bands: Array<[min: number, max: number]> = [[5, 6], [3, 4], [0, 2]]
   const picked: Club[] = []
