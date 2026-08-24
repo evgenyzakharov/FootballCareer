@@ -87,7 +87,7 @@ export function rivalPressure(relationships: Relationship[], ovr: number): numbe
  * отношение к игроку: при своём тренере игрок теряет меньше.
  */
 export function managerSackChance(club: Club, trophiesWon: number, playerRating: number): number {
-  const expectation = club.tier * 0.14
+  const expectation = (club.tier - 1) * 0.14
   let p = 0.2 + expectation - trophiesWon * 0.22
   if (playerRating > 7.1) p -= 0.04
   return clamp(p, 0.05, 0.6)

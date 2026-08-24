@@ -124,7 +124,7 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   )
 
   // Сильная команда создаёт больше момента, слабая — меньше.
-  const teamFactor = 0.82 + club.tier * 0.055
+  const teamFactor = 0.82 + (club.tier - 1) * 0.055
   // Сильная лига — плотнее защита.
   const leagueFactor = 1.12 - league.strength * 0.03
   const formFactor = 0.72 + (player.gauges.form / 100) * 0.56
@@ -137,7 +137,7 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
 
   // Сухие матчи и пропущенные считаем связанно: в каждом «не сухом» матче
   // минимум один мяч. Иначе цифры противоречат друг другу.
-  const cleanRate = clamp(0.14 + club.tier * 0.038 + (ovr - 60) * 0.004, 0.02, 0.6)
+  const cleanRate = clamp(0.14 + (club.tier - 1) * 0.038 + (ovr - 60) * 0.004, 0.02, 0.6)
   const cleanSheets = player.position === 'GK' ? Math.min(apps, poisson(apps * cleanRate, rng)) : 0
   const conceded = player.position === 'GK' && apps > 0
     ? (apps - cleanSheets) + poisson((apps - cleanSheets) * 0.55, rng)

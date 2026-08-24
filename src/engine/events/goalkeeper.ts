@@ -252,9 +252,9 @@ export const GOALKEEPER_EVENTS: EventDef[] = [
     stages: ['winter'],
     once: false,
     weight: 7,
-    when: (c) => isGk(c.player.position) && c.player.age >= 32 && (c.club?.tier ?? 0) <= 3,
+    when: (c) => isGk(c.player.position) && c.player.age >= 32 && (c.club?.tier ?? 1) <= 4,
     build: (c) => {
-      const target = generateOffers(c.state, c.rng, { count: 1, minTier: 4 })[0]
+      const target = generateOffers(c.state, c.rng, { count: 1, minTier: 5 })[0]
       const options: OptionDraft[] = []
       if (target) {
         const club = getClub(target.clubId)

@@ -35,13 +35,13 @@ export function makeObjective(
     return { kind: 'apps', target: 10 + rank * 6, reward: 10, penalty: 8 }
   }
   if (position === 'GK' || position === 'CB' || position === 'CDM' || position === 'LB' || position === 'RB') {
-    return { kind: 'rating', target: 6.6 + tier * 0.06, reward: 12, penalty: 10 }
+    return { kind: 'rating', target: 6.6 + (tier - 1) * 0.06, reward: 12, penalty: 10 }
   }
   if (position === 'ST' || position === 'LW' || position === 'RW') {
-    const target = Math.max(6, Math.round((ovr - 50) * 0.42 + tier))
+    const target = Math.max(6, Math.round((ovr - 50) * 0.42 + tier - 1))
     return { kind: 'goals', target, reward: 14, penalty: 12 }
   }
-  const target = Math.max(4, Math.round((ovr - 52) * 0.28 + tier))
+  const target = Math.max(4, Math.round((ovr - 52) * 0.28 + tier - 1))
   return { kind: 'assists', target, reward: 12, penalty: 10 }
 }
 
@@ -109,7 +109,7 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
           return {
             id: `${TO}${clubId}`,
             labelParams: { club: club.name, league: getLeague(club.leagueId).name },
-            hints: club.tier >= 4 ? [H.growthBig, H.minutesDown] : club.tier >= 2 ? [H.growthUp, H.safe] : [H.minutesUp, H.growthUp],
+            hints: club.tier >= 5 ? [H.growthBig, H.minutesDown] : club.tier >= 3 ? [H.growthUp, H.safe] : [H.minutesUp, H.growthUp],
           }
         }),
       }
@@ -144,7 +144,7 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
             wage: o.wage,
             role: { key: `role.${o.expectedRole}` },
           },
-          hints: o.kind === 'loan' ? [H.minutesUp, H.growthUp] : club.tier > (c.club?.tier ?? 0) ? [H.titleOdds, H.minutesDown] : [H.minutesUp],
+          hints: o.kind === 'loan' ? [H.minutesUp, H.growthUp] : club.tier > (c.club?.tier ?? 1) ? [H.titleOdds, H.minutesDown] : [H.minutesUp],
         }
       })
       if (c.club) {
@@ -353,7 +353,7 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
     stages: ['winter'],
     once: false,
     weight: 7,
-    when: (c) => (c.club?.tier ?? 0) >= 3,
+    when: (c) => (c.club?.tier ?? 1) >= 4,
     build: (c) => ({ bodyParams: { club: c.club?.name ?? '' }, options: [
       { id: 'league', hints: [H.titleOdds, H.titleOddsDown] },
       { id: 'cup', hints: [H.titleOdds, H.titleOddsDown] },
@@ -371,7 +371,7 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
     stages: ['winter'],
     once: false,
     weight: 5,
-    when: (c) => c.ovr >= 70 && (c.state.contract?.wage ?? 0) < wageFor(c.ovr, c.player.age, c.club?.tier ?? 0) * 0.7,
+    when: (c) => c.ovr >= 70 && (c.state.contract?.wage ?? 0) < wageFor(c.ovr, c.player.age, c.club?.tier ?? 1) * 0.7,
     build: (c) => ({
       bodyParams: { fair: wageFor(c.ovr, c.player.age, c.club?.tier ?? 0), current: c.state.contract?.wage ?? 0 },
       options: [

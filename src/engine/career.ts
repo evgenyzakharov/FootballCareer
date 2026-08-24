@@ -544,7 +544,7 @@ function runBlock(state: CareerState): CareerState {
     { t: 'gauge', key: 'form', delta: result.formDelta },
     { t: 'gauge', key: 'coachTrust', delta: result.trustDelta },
     { t: 'gauge', key: 'fanLove', delta: result.fanDelta },
-    { t: 'gauge', key: 'fame', delta: round((result.goals + result.assists) * 0.35 + (club.tier - 2) * 0.5, 1) },
+    { t: 'gauge', key: 'fame', delta: round((result.goals + result.assists) * 0.35 + (club.tier - 3) * 0.5, 1) },
   ])
 
   // Роль пересчитывается по ходу сезона: провалил блок — потерял место.

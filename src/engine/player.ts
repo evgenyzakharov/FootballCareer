@@ -15,8 +15,10 @@ export interface Identity {
 
 /** Уровень состава, с которым игрок конкурирует за место. Игровая шкала. */
 export function squadLevel(tier: number): number {
-  const table = [58, 66, 72, 78, 83, 88]
-  return table[clamp(Math.round(tier), 0, 5)]
+  // Нижняя ступень 52 — под третьи дивизионы: без неё они по силе состава
+  // совпадали бы со вторыми, и падать игроку было бы некуда.
+  const table = [52, 58, 66, 72, 78, 83, 88]
+  return table[clamp(Math.round(tier), 0, 6)]
 }
 
 export function createPlayer(identity: Identity, clubTier: number, rng: Rng): Player {

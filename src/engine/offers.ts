@@ -29,7 +29,7 @@ export function expectedRole(ovr: number, tier: number): Role {
 
 export function wageFor(ovr: number, age: number, tier: number): number {
   const value = marketValue(ovr, age)
-  const raw = value * 0.14 * (0.65 + tier * 0.11)
+  const raw = value * 0.14 * (0.65 + (tier - 1) * 0.11)
   const wage = clamp(raw, 30_000, 45_000_000)
   const mag = 10 ** Math.max(3, Math.floor(Math.log10(wage)) - 1)
   return Math.round(wage / mag) * mag
@@ -61,8 +61,8 @@ function interest(club: Club, state: CareerState, ovr: number): number {
   if (current && club.id === current.id) return 0
   if (state.clubsPlayed.includes(club.id)) w *= 0.55
   if (player.age > 31 && club.confederation !== 'UEFA') w += 2.5
-  if (player.age > 33 && club.tier >= 4) w *= 0.4
-  if (player.age < 21 && club.tier >= 5) w *= 0.5
+  if (player.age > 33 && club.tier >= 5) w *= 0.4
+  if (player.age < 21 && club.tier >= 6) w *= 0.5
   if (player.gauges.mediaRep < -30) w *= 0.7
   return Math.max(0, w)
 }
@@ -71,7 +71,7 @@ function interest(club: Club, state: CareerState, ovr: number): number {
  *  строят разные вызовы, и условия не должны разъезжаться между ними. */
 export function contractYears(age: number, tier: number, loan: boolean): number {
   if (loan) return 1
-  return clamp(3 + (tier >= 4 ? 1 : 0) - (age > 31 ? 1 : 0) - (age > 34 ? 1 : 0), 1, 5)
+  return clamp(3 + (tier >= 5 ? 1 : 0) - (age > 31 ? 1 : 0) - (age > 34 ? 1 : 0), 1, 5)
 }
 
 function toOffer(club: Club, state: CareerState, ovr: number, kind: OfferKind, rng: Rng): Offer {
@@ -96,7 +96,7 @@ export function academyOffers(state: CareerState, rng: Rng): Offer[] {
     : CLUBS.filter((c) => c.confederation === country.confederation)
   const pool = homePool.length >= 6 ? homePool : CLUBS
 
-  const bands: Array<[min: number, max: number]> = [[4, 5], [2, 3], [0, 1]]
+  const bands: Array<[min: number, max: number]> = [[5, 6], [3, 4], [0, 2]]
   const picked: Club[] = []
   for (const [min, max] of bands) {
     const candidates = pool.filter((c) => c.tier >= min && c.tier <= max && !picked.includes(c))
@@ -107,7 +107,7 @@ export function academyOffers(state: CareerState, rng: Rng): Offer[] {
   return picked.map((club) => ({
     clubId: club.id,
     kind: 'academy' as OfferKind,
-    wage: 30_000 + club.tier * 8_000,
+    wage: 30_000 + (club.tier - 1) * 8_000,
     years: 3,
     expectedRole: 'reserve' as Role,
     fee: 0,
@@ -158,9 +158,9 @@ export function generateOffers(state: CareerState, rng: Rng, req: OfferRequest =
  */
 export function fallbackOffers(state: CareerState, rng: Rng, count = 2): Offer[] {
   const ovr = playerOvr(state.player)
-  const ceiling = Math.max(0, Math.floor((ovr - 52) / 8))
+  const ceiling = Math.max(0, Math.floor((ovr - 52) / 8)) + 1
   const pool = CLUBS.filter((c) => c.tier <= ceiling && c.id !== state.contract?.clubId)
-  const list = pool.length > 0 ? pool : CLUBS.filter((c) => c.tier === 0)
+  const list = pool.length > 0 ? pool : CLUBS.filter((c) => c.tier <= 1)
   // Своя страна и уже знакомые клубы охотнее берут игрока без вариантов.
   const weighted = list.map((club) => ({
     item: club,
@@ -185,6 +185,6 @@ export function loanOffers(state: CareerState, rng: Rng, count = 2): Offer[] {
     const gap = ovr - squadLevel(c.tier)
     return gap >= -2 && gap <= 18 && c.tier <= Math.max(0, parent.tier - 1)
   })
-  const list = pool.length > 0 ? pool : CLUBS.filter((c) => c.tier <= 1)
+  const list = pool.length > 0 ? pool : CLUBS.filter((c) => c.tier <= 2)
   return rng.sample(list, count).map((club) => toOffer(club, state, ovr, 'loan', rng))
 }

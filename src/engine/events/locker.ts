@@ -165,7 +165,7 @@ export const LOCKER_EVENTS: EventDef[] = [
     stages: ['winter'],
     once: false,
     weight: 5,
-    when: (c) => (c.club?.tier ?? 0) <= 3 && c.player.age >= 22,
+    when: (c) => (c.club?.tier ?? 1) <= 4 && c.player.age >= 22,
     build: () => ({ options: [
       { id: 'lead', hints: [H.lockerUp, H.trustDown] },
       { id: 'stay_out', hints: [H.safe, H.lockerDown] },

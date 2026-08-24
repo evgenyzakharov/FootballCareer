@@ -80,7 +80,7 @@ export const MEDICAL_EVENTS: EventDef[] = [
     stages: ['run_in'],
     once: false,
     weight: 5,
-    when: (c) => c.player.age >= 20 && (c.club?.tier ?? 0) >= 2,
+    when: (c) => c.player.age >= 20 && (c.club?.tier ?? 1) >= 3,
     build: (c) => ({
       bodyParams: { club: c.club?.name ?? '' },
       options: [

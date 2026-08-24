@@ -26,9 +26,9 @@ export const TRANSFER_EVENTS: EventDef[] = [
     stages: ['winter'],
     once: false,
     weight: 7,
-    when: (c) => c.ovr >= 74 && c.club !== null && c.club.tier <= 4 && c.player.age >= 20,
+    when: (c) => c.ovr >= 74 && c.club !== null && c.club.tier <= 5 && c.player.age >= 20,
     build: (c) => {
-      const offers = generateOffers(c.state, c.rng, { count: 1, minTier: Math.min(5, (c.club?.tier ?? 0) + 1) })
+      const offers = generateOffers(c.state, c.rng, { count: 1, minTier: Math.min(6, (c.club?.tier ?? 1) + 1) })
       const target = offers[0]
       if (!target) return { options: [{ id: 'stay', hints: [H.stayClub] }] }
       const club = getClub(target.clubId)
@@ -112,7 +112,7 @@ export const TRANSFER_EVENTS: EventDef[] = [
     weight: 8,
     when: (c) => (c.state.contract?.yearsLeft ?? 9) <= 1 && c.club !== null,
     build: (c) => ({
-      bodyParams: { club: c.club?.name ?? '', wage: wageFor(c.ovr, c.player.age, c.club?.tier ?? 0) },
+      bodyParams: { club: c.club?.name ?? '', wage: wageFor(c.ovr, c.player.age, c.club?.tier ?? 1) },
       options: [
         { id: 'sign', hints: [H.moneyUp, H.stayClub] },
         { id: 'push_more', hints: [H.gamble, H.moneyUp] },

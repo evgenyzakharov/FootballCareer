@@ -153,7 +153,7 @@ export const TRAINING_EVENTS: EventDef[] = [
     stages: ['autumn', 'spring'],
     once: false,
     weight: 5,
-    when: (c) => (c.club?.tier ?? 0) >= 3,
+    when: (c) => (c.club?.tier ?? 1) >= 4,
     build: () => ({ options: [
       { id: 'follow', hints: [H.fitnessUp, H.minutesDown] },
       { id: 'override', hints: [H.minutesUp, H.injuryRisk] },
