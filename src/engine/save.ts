@@ -1,8 +1,9 @@
-import type { CareerState, Locale } from './types'
+import type { CareerState, Currency, Locale } from './types'
 import { STATE_VERSION } from './career'
 
 const STATE_KEY = 'football-career:state'
 const LOCALE_KEY = 'football-career:locale'
+const CURRENCY_KEY = 'football-career:currency'
 
 function storage(): Storage | null {
   try {
@@ -130,4 +131,21 @@ export function saveLocale(locale: Locale): void {
 export function loadLocale(): Locale {
   const value = storage()?.getItem(LOCALE_KEY)
   return value === 'en' ? 'en' : 'ru'
+}
+
+export function saveCurrency(currency: Currency | null): void {
+  const store = storage()
+  if (!store) return
+  if (currency === null) store.removeItem(CURRENCY_KEY)
+  else store.setItem(CURRENCY_KEY, currency)
+}
+
+/**
+ * null — валюту не выбирали руками, её берут по гражданству игрока. Отличать
+ * это от явного выбора нужно, иначе россиянин, переключившийся на евро,
+ * возвращался бы на рубли при каждой перезагрузке.
+ */
+export function loadCurrency(): Currency | null {
+  const value = storage()?.getItem(CURRENCY_KEY)
+  return value === 'RUB' || value === 'EUR' ? value : null
 }

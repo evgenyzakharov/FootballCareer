@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { CareerState, Currency, Locale } from './engine/types'
 import type { Identity } from './engine/player'
 import { ack, choose, newCareer, setIdentity } from './engine/career'
-import { clearState, loadLocale, loadState, saveLocale, saveState } from './engine/save'
+import { clearState, loadCurrency, loadLocale, loadState, saveCurrency, saveLocale, saveState } from './engine/save'
 import { t } from './i18n'
 import { CurrencyContext, LocaleContext } from './ui/locale'
 import { IdentityScreen } from './ui/Identity'
@@ -20,6 +20,7 @@ export default function App() {
   const [locale, setLocale] = useState<Locale>(loadLocale)
   const [state, setState] = useState<CareerState | null>(loadState)
   const [seed, setSeed] = useState(randomSeed)
+  const [currencyPref, setCurrencyPref] = useState<Currency | null>(loadCurrency)
 
   useEffect(() => {
     if (state) saveState(state)
@@ -29,8 +30,14 @@ export default function App() {
     saveLocale(locale)
   }, [locale])
 
-  // Россиянин считает деньги в рублях: суммы внутри всё те же, меняется показ.
-  const currency: Currency = state?.player.countryCode === 'RUS' ? 'RUB' : 'EUR'
+  useEffect(() => {
+    saveCurrency(currencyPref)
+  }, [currencyPref])
+
+  // По умолчанию россиянин считает деньги в рублях, остальные — в евро; выбор
+  // в шапке перекрывает это. Суммы внутри всё те же, меняется только показ.
+  const autoCurrency: Currency = state?.player.countryCode === 'RUS' ? 'RUB' : 'EUR'
+  const currency: Currency = currencyPref ?? autoCurrency
 
   const tr = useCallback((key: string) => t({ key }, locale, currency), [locale, currency])
 
@@ -57,6 +64,14 @@ export default function App() {
               {tr('app.reset')}
             </button>
           )}
+          <button
+            type="button"
+            className="ghost-btn"
+            title={tr('app.currency_hint')}
+            onClick={() => setCurrencyPref(currency === 'RUB' ? 'EUR' : 'RUB')}
+          >
+            {currency === 'RUB' ? '\u20BD' : '\u20AC'}
+          </button>
           <button
             type="button"
             className="ghost-btn"

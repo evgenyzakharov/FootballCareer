@@ -75,6 +75,7 @@ export const UI: Content = {
   'hud.caps': { ru: 'За сборную', en: 'Caps' },
   'hud.role': { ru: 'Роль в клубе', en: 'Squad role' },
   'hud.contract': { ru: 'Контракт', en: 'Contract' },
+  'app.currency_hint': { ru: 'Валюта отображения. Курс условный, игровой.', en: 'Display currency. The rate is a game constant.' },
   'hud.contract_years': { ru: '{years} сез.', en: '{years} yr' },
   'hud.objective': { ru: 'Задача на сезон', en: 'Season objective' },
   'hud.objective_value': { ru: '{kind}: {target}', en: '{kind}: {target}' },
