@@ -34,6 +34,7 @@ const SEEDS: LeagueSeed[] = [
   ['ligue2', 'Лига 2', 'Ligue 2', 'FRA', 'UEFA', 2, 2, 18],
   ['rpl', 'РПЛ', 'Russian Premier League', 'RUS', 'UEFA', 1, 3, 16],
   ['pfl', 'Первая лига', 'Russian First League', 'RUS', 'UEFA', 2, 1, 18],
+  ['vtoraya-a', 'Вторая лига А', 'Russian Second League A', 'RUS', 'UEFA', 3, 1, 17],
   ['eredivisie', 'Эредивизи', 'Eredivisie', 'NED', 'UEFA', 1, 3, 18],
   ['primeira', 'Примейра', 'Primeira Liga', 'POR', 'UEFA', 1, 3, 18],
   ['superlig', 'Суперлига', 'Süper Lig', 'TUR', 'UEFA', 1, 3, 18],
