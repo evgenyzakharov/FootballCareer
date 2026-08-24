@@ -514,7 +514,7 @@ input { font: inherit; color: inherit; }
  * бывает шире ноутбука. 44px — общепринятый минимум для тапа.
  */
 @media (pointer: coarse) {
-  .ghost-btn { min-height: 44px; padding: 8px 14px; }
+  .ghost-btn { min-height: 44px; min-width: 44px; padding: 8px 14px; }
   .primary-btn { min-height: 48px; }
   .seg button { min-height: 44px; }
   .pos-btn { min-height: 44px; min-width: 56px; }
@@ -538,7 +538,7 @@ input { font: inherit; color: inherit; }
 
   /* Дублируем размеры из блока pointer:coarse: телефон определяется надёжнее
      по ширине, а не все среды сообщают тип ввода. */
-  .ghost-btn { min-height: 44px; padding: 8px 14px; }
+  .ghost-btn { min-height: 44px; min-width: 44px; padding: 8px 14px; }
   .primary-btn { min-height: 48px; width: 100%; }
   .seg button { min-height: 44px; }
   .pos-btn { min-height: 44px; min-width: 56px; }

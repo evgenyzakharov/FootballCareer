@@ -47,9 +47,12 @@
     const all = document.querySelectorAll('button, input')
     for (let i = 0; i < all.length; i++) {
       const r = all[i].getBoundingClientRect()
-      if (r.height === 0) continue
-      min = Math.min(min, Math.round(r.height))
-      if (r.height < 44) {
+      if (r.height === 0 || r.width === 0) continue
+      // Меряем меньшую сторону: кнопка 36x44 под палец не годится, а проверка
+      // по одной высоте такую пропускала.
+      const side = Math.min(r.width, r.height)
+      min = Math.min(min, Math.round(side))
+      if (side < 44) {
         small.push((all[i].className || all[i].tagName) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height))
       }
     }
