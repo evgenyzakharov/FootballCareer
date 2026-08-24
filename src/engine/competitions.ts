@@ -49,6 +49,24 @@ export function playerImpact(season: CurrentSeason, role: Role): number {
   return clamp(1 + ratingBonus + roleBonus, 0.7, 1.7)
 }
 
+/**
+ * Насколько игрок вытянул или утопил команду за сезон: −1 — провалил, 0 —
+ * отыграл ровно на свой уровень, +1 — вытащил. Отдельно от playerImpact:
+ * тот лишь домножает шанс на трофей, а место в таблице до этого от игры
+ * почти не зависело — оценка 7.3 и 6.6 давали одну и ту же позицию.
+ */
+export function leagueLift(season: CurrentSeason, role: Role): number {
+  const rating = averageRating(season.tally.ratingSum, season.tally.ratingCount)
+  if (rating <= 0 || season.tally.apps === 0) return 0
+  // Сыгранная доля сезона: четыре матча команду не тащат.
+  const played = clamp(season.tally.apps / 30, 0, 1)
+  // 6.8 — «отыграл на свой уровень», шаг 0.55 — заметная разница в оценке.
+  const quality = clamp((rating - 6.8) / 0.55, -2, 2)
+  // Запасной даже с высокой оценкой влияет на таблицу слабо.
+  const weight = 0.35 + roleRank(role) * 0.16
+  return quality * played * weight
+}
+
 export function rollClubTrophies(
   club: Club,
   season: CurrentSeason,
@@ -83,16 +101,17 @@ const TIER_SHARE = [0.92, 0.85, 0.7, 0.5, 0.32, 0.16, 0.06]
 export function rollLeaguePosition(
   club: Club,
   wonLeague: boolean,
-  impact: number,
+  lift: number,
   rng: Rng,
 ): number {
   if (wonLeague) return 1
   const teams = getLeague(club.leagueId).teams
   const share = TIER_SHARE[clamp(Math.round(club.tier), 0, 6)]
   const expected = clamp(Math.round(teams * share), 2, teams)
-  // Сильный сезон игрока подтягивает клуб вверх, провальный — вниз.
-  const shifted = expected - (impact - 1) * teams * 0.18
-  return clamp(Math.round(rng.around(shifted, teams * 0.14)), 2, teams)
+  // Сильный сезон игрока подтягивает клуб вверх, провальный — вниз. Разброс
+  // ниже вклада: иначе шум съедает разницу между отличным и слабым сезоном.
+  const shifted = expected - lift * teams * 0.32
+  return clamp(Math.round(rng.around(shifted, teams * 0.10)), 2, teams)
 }
 
 // ─── Сборная ────────────────────────────────────────────────────────────────

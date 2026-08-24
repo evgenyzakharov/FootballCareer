@@ -7,8 +7,8 @@ import { MAX_AGE, START_AGE, createPlayer, playerOvr, squadLevel } from './playe
 import type { Identity } from './player'
 import { BLOCK_MATCHES, averageRating, determineRole, simulateBlock } from './performance'
 import {
-  NATIONAL_TOURNAMENT, callUpChance, nationalTrophyChance, playerImpact, rollClubTrophies,
-  rollLeaguePosition, tournamentThisSeason,
+  NATIONAL_TOURNAMENT, callUpChance, leagueLift, nationalTrophyChance,
+  rollClubTrophies, rollLeaguePosition, tournamentThisSeason,
 } from './competitions'
 import { rollAwards } from './awards'
 import { Rng, clamp, round } from './rng'
@@ -639,7 +639,7 @@ function finishSeason(state: CareerState): CareerState {
   const leaguePos = rollLeaguePosition(
     club,
     trophies.includes(club.leagueId),
-    playerImpact(withResults, season.role),
+    leagueLift(withResults, season.role),
     rng,
   )
 

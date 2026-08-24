@@ -320,6 +320,7 @@ career__right    Timeline (история сезонов) + Sidebar (люди, �
 |---|---|
 | шансы на трофеи по тиру клуба | `engine/competitions.ts` → `ODDS` |
 | место в таблице по тиру | `engine/competitions.ts` → `TIER_SHARE`, число клубов в `data/leagues.ts` |
+| вклад игрока в место клуба | `engine/competitions.ts` → `leagueLift` и множитель в `rollLeaguePosition` |
 | вызовы в сборную, трофеи сборных | `engine/competitions.ts` → `callUpChance`, `nationalTrophyChance` |
 | пороги наград | `engine/awards.ts` → `seasonScore`, `rollAwards` |
 | темп роста и возрастные пики | `engine/attributes.ts` → `AGE_BANDS`, `PEAK_OFFSET`; `growthFactor` в `career.ts` |

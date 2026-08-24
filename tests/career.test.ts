@@ -7,7 +7,8 @@ import { Rng } from '../src/engine/rng'
 import { playerOvr } from '../src/engine/player'
 import { missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS } from '../src/engine/events'
-import { findClub } from '../src/data/clubs'
+import { findClub, getClub } from '../src/data/clubs'
+import { leagueLift, rollLeaguePosition } from '../src/engine/competitions'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
 function playCareer(
@@ -261,6 +262,35 @@ describe('движок карьеры', () => {
     }
     const result = def.resolve(ctx as never, 'wage_cut')
     expect(result.effects).toContainEqual({ t: 'wage', mult: 0.5 })
+  })
+
+  it('место клуба в таблице зависит от того, как игрок отыграл сезон', () => {
+    // Баг: место считалось от величины, которая почти не менялась, и сезон
+    // со средней оценкой 7.3 давал ту же позицию, что сезон на 6.6.
+    const club = getClub('spezia')
+    const season = (rating: number, apps: number) => ({
+      tally: { apps, goals: 0, assists: 0, cleanSheets: 0, goalsConceded: 0,
+        ratingSum: rating * apps, ratingCount: apps, yellow: 0, red: 0 },
+    })
+
+    const mean = (rating: number, apps: number) => {
+      let sum = 0
+      const runs = 400
+      for (let i = 0; i < runs; i++) {
+        const lift = leagueLift(season(rating, apps) as never, 'starter')
+        sum += rollLeaguePosition(club, false, lift, new Rng(`pos-${i}`, 'league', 0))
+      }
+      return sum / runs
+    }
+
+    const good = mean(7.4, 34)
+    const weak = mean(6.4, 34)
+    // Отличный сезон должен поднимать клуб заметно, а не на пол-места.
+    expect(good).toBeLessThan(weak - 3)
+
+    // Тот же уровень игры, но четыре матча за сезон — команду это не тащит.
+    const cameo = mean(7.4, 4)
+    expect(cameo).toBeGreaterThan(good + 2)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {
