@@ -210,7 +210,14 @@ function joinClub(state: CareerState, effect: Extract<Effect, { t: 'transfer' }>
   const club = getClub(effect.clubId)
   const rng = rngFor(state, `join:${club.id}`)
   const isSameClub = state.contract?.clubId === club.id
-  const parentClubId = effect.loan ? state.contract?.clubId ?? state.clubsPlayed[state.clubsPlayed.length - 1] ?? null : null
+  // Аренда из аренды: родительский клуб остаётся тем же. Брать клуб текущего
+  // контракта нельзя — у арендованного игрока он сам арендный, и вторая аренда
+  // «переподчиняла» игрока первому арендатору: по её итогам он возвращался не
+  // туда, откуда уехал.
+  const currentParent = state.contract?.isLoan ? state.contract.parentClubId : state.contract?.clubId
+  const parentClubId = effect.loan
+    ? currentParent ?? state.clubsPlayed[state.clubsPlayed.length - 1] ?? null
+    : null
 
   let next: CareerState = {
     ...state,

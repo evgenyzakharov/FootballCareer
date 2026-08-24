@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ack, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
+import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
 import type { CareerState, Objective, Position } from '../src/engine/types'
 import { averageRating } from '../src/engine/performance'
 import { adjustObjective } from '../src/engine/events/structural'
@@ -183,6 +183,36 @@ describe('движок карьеры', () => {
     const byGoals: Objective = { kind: 'goals', target: 12, reward: 14, penalty: 12 }
     expect(adjustObjective(byGoals, 'up').target).toBe(15)
     expect(adjustObjective(byGoals, 'down').target).toBe(10)
+  })
+
+  it('вторая аренда не переподчиняет игрока первому арендодателю', () => {
+    // Баг: родительский клуб брался из текущего контракта, а он у арендованного
+    // игрока — сам арендный. По итогам второй аренды предлагали вернуться
+    // в первый клуб-арендатор вместо того, откуда игрок уехал.
+    let state = setIdentity(newCareer('loan-chain'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 10,
+      foot: 'right',
+      countryCode: 'ENG',
+      position: 'CAM',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+    const home = state.contract!.clubId
+    expect(home).toBeTruthy()
+
+    state = applyEffects(state, [{ t: 'transfer', clubId: 'brighton', loan: true, wage: 1000, years: 1 }])
+    expect(state.contract!.isLoan).toBe(true)
+    expect(state.contract!.parentClubId).toBe(home)
+
+    state = applyEffects(state, [{ t: 'transfer', clubId: 'west-ham', loan: true, wage: 1000, years: 1 }])
+    expect(state.contract!.clubId).toBe('west-ham')
+    expect(state.contract!.parentClubId).toBe(home)
+    expect(state.season?.parentClubId ?? home).toBe(home)
+
+    // Возврат из аренды обнуляет родителя: контракт снова свой.
+    state = applyEffects(state, [{ t: 'transfer', clubId: home, loan: false, wage: 2000, years: 3 }])
+    expect(state.contract!.isLoan).toBe(false)
+    expect(state.contract!.parentClubId).toBeNull()
   })
 
   it('положение относительно состава считается от текущего клуба', () => {
