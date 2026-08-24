@@ -10,7 +10,7 @@ import { ALL_EVENTS } from '../src/engine/events'
 import { findClub, getClub } from '../src/data/clubs'
 import { getLeague } from '../src/data/leagues'
 import { leagueLift, rollLeaguePosition } from '../src/engine/competitions'
-import { academyOffers, clubWantsToRenew } from '../src/engine/offers'
+import { academyOffers, clubWantsToRenew, generateOffers } from '../src/engine/offers'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
 function playCareer(
@@ -414,6 +414,36 @@ describe('движок карьеры', () => {
       }
     }
     expect(seenTop.size).toBeGreaterThan(0)
+  })
+
+  it('в ранние годы чаще зовут клубы родной страны, чем позже', () => {
+    let state = setIdentity(newCareer('home-pull'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 10,
+      foot: 'right',
+      countryCode: 'RUS',
+      position: 'CAM',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+
+    const homeShare = (age: number): number => {
+      let home = 0
+      let total = 0
+      for (let i = 0; i < 200; i++) {
+        const aged: CareerState = { ...state, player: { ...state.player, age } }
+        for (const offer of generateOffers(aged, new Rng(`pull-${i}`, 'market', 0), { count: 2 })) {
+          total++
+          if (findClub(offer.clubId)!.country === 'RUS') home++
+        }
+      }
+      return total === 0 ? 0 : home / total
+    }
+
+    const young = homeShare(19)
+    const older = homeShare(28)
+    // Молодого чаще замечают дома: лестница снизу должна вести через свои
+    // дивизионы, а не сразу за рубеж.
+    expect(young).toBeGreaterThan(older + 0.15)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

@@ -57,7 +57,16 @@ function interest(club: Club, state: CareerState, ovr: number): number {
   if (player.banBlocks > 0) w *= 0.35
   w += player.gauges.fame * 0.06
   w += (league.strength - 3) * 0.6
-  if (club.country === player.countryCode) w += 2.2
+  // Родная страна тянет сильнее в начале карьеры: молодого чаще замечают дома,
+  // и лестница снизу должна вести через свои дивизионы, а не сразу за рубеж.
+  // С возрастом и именем вес возвращается к прежнему.
+  if (club.country === player.countryCode) {
+    w += 2.2
+    // Множитель, а не прибавка: зарубежных клубов в разы больше, и слагаемое
+    // тонет в их количестве при взвешенном выборе.
+    if (player.age <= 21) w *= 6
+    else if (player.age <= 24) w *= 2.6
+  }
   if (current && club.country === current.country) w += 1.2
   if (current && club.id === current.id) return 0
   if (state.clubsPlayed.includes(club.id)) w *= 0.55
