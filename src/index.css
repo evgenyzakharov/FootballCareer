@@ -262,12 +262,12 @@ input { font: inherit; color: inherit; }
 }
 
 /*
- * Карточка решения не прижата к верху: рядом с ней высокая панель игрока, и
- * приклеенная к потолку карточка читается как случайно всплывшая. Сдвиг только
- * в трёхколоночной раскладке — в остальных карточка идёт первой, и отступ
- * сверху превратился бы в пустую полосу над всей страницей.
+ * Центральная колонка: сверху навыки и черты, под ними карточка решения.
+ * Пустое место рядом с короткой карточкой всё равно простаивало, а левая
+ * колонка с этими двумя блоками не влезала в экран.
  */
-.career__center { padding-top: clamp(16px, 7vh, 72px); }
+.career__center { display: flex; flex-direction: column; gap: 16px; }
+.career__skills { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 
 /*
  * Средняя ширина: две колонки. Карточка и панель игрока встают друг под другом
@@ -277,14 +277,17 @@ input { font: inherit; color: inherit; }
  */
 @media (max-width: 1200px) {
   .career { grid-template-columns: minmax(0, 1fr) 320px; }
-  .career__center { grid-column: 1; grid-row: 1; padding-top: 0; }
+  .career__center { grid-column: 1; grid-row: 1; }
   .career__left { grid-column: 1; grid-row: 2; }
   .career__right { grid-column: 2; grid-row: 1 / span 2; }
 }
 /* Одна колонка: сначала решение, потом состояние, потом история. */
 @media (max-width: 860px) {
   .career { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 10px; }
-  .career__center { grid-column: auto; grid-row: auto; order: 1; }
+  .career__center { grid-column: auto; grid-row: auto; order: 1; gap: 10px; }
+  /* Навыки в один столбец занимают полэкрана, поэтому уходят под карточку:
+     решение должно быть первым, что видно без прокрутки. */
+  .career__skills { grid-template-columns: minmax(0, 1fr); gap: 10px; order: 1; }
   .career__left { grid-column: auto; grid-row: auto; order: 2; }
   .career__right { grid-column: auto; grid-row: auto; order: 3; }
 }

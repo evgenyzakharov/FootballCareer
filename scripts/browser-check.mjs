@@ -214,6 +214,7 @@ try {
     // Когда колонки складываются в одну, решение должно быть первым на экране.
     if (width <= 860) {
       check('карточка решения выше панели игрока', report.screens.career?.cardBeforeHud === true, `card@${report.screens.career?.cardTop} hud@${report.screens.career?.hudTop}`)
+      check('карточка решения выше навыков', report.screens.career?.cardBeforeSkills === true, `card@${report.screens.career?.cardTop} skills@${report.screens.career?.skillsTop}`)
     }
   }
 } finally {

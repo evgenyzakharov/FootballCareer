@@ -120,6 +120,37 @@ export function Hud({ state }: { state: CareerState }) {
         )}
       </section>
 
+      <Panel titleKey="panel.gauges">
+        {/* Обёртка нужна для мобильной раскладки: восемь полос в один столбец
+            занимают полэкрана, в два — вдвое меньше. */}
+        <div className="gauge-grid">
+          <Gauge labelKey="gauge.form" value={player.gauges.form} />
+          <Gauge labelKey="gauge.fitness" value={player.gauges.fitness} />
+          <Gauge labelKey="gauge.morale" value={player.gauges.morale} />
+          <Gauge labelKey="gauge.coachTrust" value={player.gauges.coachTrust} />
+          <Gauge labelKey="gauge.fanLove" value={player.gauges.fanLove} />
+          <BipolarGauge labelKey="gauge.mediaRep" value={player.gauges.mediaRep} />
+          <Gauge labelKey="gauge.lockerRoom" value={player.gauges.lockerRoom} />
+          <Gauge labelKey="gauge.fame" value={player.gauges.fame} />
+        </div>
+      </Panel>
+
+    </>
+  )
+}
+
+/**
+ * Навыки и черты живут отдельно от остальной панели игрока: в широкой
+ * раскладке они уходят в верхнюю строку центральной колонки. Левая колонка
+ * иначе не влезала в экран — состояние уезжало под сгиб.
+ */
+export function HudSkills({ state }: { state: CareerState }) {
+  const t = useT()
+  const player = state.player
+  const gk = isGoalkeeper(player.position)
+
+  return (
+    <>
       <Panel titleKey="panel.attrs">
         <div className="attr-grid">
           {ATTR_KEYS.filter((key) => (key === 'goalkeeping' ? gk : true)).map((key) => (
@@ -142,21 +173,6 @@ export function Hud({ state }: { state: CareerState }) {
           </div>
         )}
       </Panel>
-      <Panel titleKey="panel.gauges">
-        {/* Обёртка нужна для мобильной раскладки: восемь полос в один столбец
-            занимают полэкрана, в два — вдвое меньше. */}
-        <div className="gauge-grid">
-          <Gauge labelKey="gauge.form" value={player.gauges.form} />
-          <Gauge labelKey="gauge.fitness" value={player.gauges.fitness} />
-          <Gauge labelKey="gauge.morale" value={player.gauges.morale} />
-          <Gauge labelKey="gauge.coachTrust" value={player.gauges.coachTrust} />
-          <Gauge labelKey="gauge.fanLove" value={player.gauges.fanLove} />
-          <BipolarGauge labelKey="gauge.mediaRep" value={player.gauges.mediaRep} />
-          <Gauge labelKey="gauge.lockerRoom" value={player.gauges.lockerRoom} />
-          <Gauge labelKey="gauge.fame" value={player.gauges.fame} />
-        </div>
-      </Panel>
-
     </>
   )
 }

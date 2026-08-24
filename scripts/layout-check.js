@@ -97,6 +97,13 @@
       snapshot.cardBeforeHud = snapshot.cardTop !== null && snapshot.hudTop !== null
         ? snapshot.cardTop < snapshot.hudTop
         : null
+      // Навыки живут в той же колонке, что карточка, и проверка против профиля
+      // их не видит: карточка может оказаться ниже них и всё равно пройти.
+      const skills = document.querySelector('.career__skills')
+      snapshot.skillsTop = skills ? Math.round(skills.getBoundingClientRect().top + window.scrollY) : null
+      snapshot.cardBeforeSkills = snapshot.cardTop !== null && snapshot.skillsTop !== null
+        ? snapshot.cardTop < snapshot.skillsTop
+        : null
     }
     report.screens[name] = snapshot
   }

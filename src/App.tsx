@@ -6,7 +6,7 @@ import { clearState, loadLocale, loadState, saveLocale, saveState } from './engi
 import { t } from './i18n'
 import { LocaleContext } from './ui/locale'
 import { IdentityScreen } from './ui/Identity'
-import { Hud } from './ui/Hud'
+import { Hud, HudSkills } from './ui/Hud'
 import { CardView, ResolutionView } from './ui/CardView'
 import { Timeline } from './ui/Timeline'
 import { Sidebar } from './ui/Sidebar'
@@ -97,6 +97,9 @@ export default function App() {
               <Hud state={state} />
             </div>
             <div className="career__center">
+              <div className="career__skills">
+                <HudSkills state={state} />
+              </div>
               {state.resolution ? (
                 <ResolutionView resolution={state.resolution} onNext={() => setState(ack(state))} />
               ) : state.card ? (
