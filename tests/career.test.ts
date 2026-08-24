@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
-import type { CareerState, Objective, Position } from '../src/engine/types'
+import type { CareerState, Objective, Position, Role } from '../src/engine/types'
 import { averageRating } from '../src/engine/performance'
-import { adjustObjective } from '../src/engine/events/structural'
+import { adjustObjective, makeObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
 import { playerOvr, squadLevel } from '../src/engine/player'
 import { formatMoney, missingKeys, t } from '../src/i18n'
@@ -332,6 +332,58 @@ describe('движок карьеры', () => {
     expect(formatMoney(1_000_000, 'en', 'RUB')).toBe('100M ₽')
     expect(formatMoney(-5_000, 'ru', 'RUB')).toBe('−500 тыс ₽')
     expect(formatMoney(30, 'ru', 'RUB')).toBe('3 тыс ₽')
+  })
+
+  it('тренер не ставит задачу на число матчей и за провал спрашивает строже, чем награждает', () => {
+    // Состав выбирает тренер, поэтому обещать выход на поле игрок не может.
+    const roles: Role[] = ['reserve', 'bench', 'rotation', 'starter', 'star']
+    const positions = ['GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST']
+    for (const role of roles) {
+      for (const position of positions) {
+        for (let tier = 0; tier <= 6; tier++) {
+          const objective = makeObjective(position, role, tier, 70)
+          expect(objective.kind, `${position}/${role}/тир ${tier}`).not.toBe('apps')
+          expect(objective.penalty).toBeGreaterThan(objective.reward)
+        }
+      }
+    }
+  })
+
+  it('задача от тренера приходит в начале каждого сезона с клубом', () => {
+    for (const seed of ['obj-a', 'obj-b', 'obj-c']) {
+      let state = setIdentity(newCareer(seed), {
+        lastName: 'ТЕСТОВ',
+        shirt: 10,
+        foot: 'right',
+        countryCode: 'ITA',
+        position: 'CAM',
+      })
+      const picker = new Rng(seed, 'choices', 0)
+      let guard = 0
+      let armed = false
+      let seen = true
+      let age = state.player.age
+      let stage = state.stage
+
+      while (state.phase !== 'retired' && guard < 4000) {
+        guard++
+        const entered = state.stage === 'preseason' && (stage !== 'preseason' || state.player.age !== age)
+        if (entered) {
+          // Прошлую предсезонку закрываем: если контракт был, задача обязана была прийти.
+          expect(seen, `сид ${seed}, сезон ${age}: задачи не было`).toBe(true)
+          armed = state.contract !== null
+          seen = !armed
+        }
+        stage = state.stage
+        age = state.player.age
+
+        if (state.resolution) { state = ack(state); continue }
+        if (!state.card) break
+        if (state.card.title.key === 'ev.season_objective.title') seen = true
+        state = choose(state, state.card.options.length ? picker.pick(state.card.options).id : 'next')
+      }
+      expect(armed || seen).toBe(true)
+    }
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

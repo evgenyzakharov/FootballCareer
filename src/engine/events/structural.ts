@@ -31,18 +31,22 @@ export function makeObjective(
   ovr: number,
 ): Objective {
   const rank = roleRank(role as never)
+  // Задачу на число матчей не ставим: состав выбирает сам тренер, и обещать
+  // выход на поле игрок не может. С запасного спрашивают за то, как он играет,
+  // когда всё-таки выходит. Вид 'apps' в типе остаётся — он есть в старых
+  // сохранениях, и проверка обязана уметь его считать.
   if (rank <= 1) {
-    return { kind: 'apps', target: 10 + rank * 6, reward: 10, penalty: 8 }
+    return { kind: 'rating', target: 6.5 + (tier - 1) * 0.05, reward: 10, penalty: 16 }
   }
   if (position === 'GK' || position === 'CB' || position === 'CDM' || position === 'LB' || position === 'RB') {
-    return { kind: 'rating', target: 6.6 + (tier - 1) * 0.06, reward: 12, penalty: 10 }
+    return { kind: 'rating', target: 6.6 + (tier - 1) * 0.06, reward: 12, penalty: 20 }
   }
   if (position === 'ST' || position === 'LW' || position === 'RW') {
     const target = Math.max(6, Math.round((ovr - 50) * 0.42 + tier - 1))
-    return { kind: 'goals', target, reward: 14, penalty: 12 }
+    return { kind: 'goals', target, reward: 14, penalty: 24 }
   }
   const target = Math.max(4, Math.round((ovr - 52) * 0.28 + tier - 1))
-  return { kind: 'assists', target, reward: 12, penalty: 10 }
+  return { kind: 'assists', target, reward: 12, penalty: 20 }
 }
 
 /**

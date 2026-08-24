@@ -356,16 +356,20 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
 
   switch (stage) {
     case 'preseason': {
+      // Разговор с тренером открывает сезон: сначала новый тренер, если он
+      // сменился, потом задача — и только затем всё остальное, включая
+      // отложенные последствия прошлых сезонов.
+      const opening: Beat[] = []
       if ((next.flags.manager_changed ?? 0) > 0) {
-        beats.unshift({ t: 'event', key: 'new_manager' })
+        opening.push({ t: 'event', key: 'new_manager' })
         next = { ...next, flags: { ...next.flags, manager_changed: 0 } }
       }
       const objective = next.contract?.objective
       if (objective) {
-        beats.push({ t: 'event', key: 'season_objective', payload: { kind: objective.kind, target: objective.target } })
+        opening.push({ t: 'event', key: 'season_objective', payload: { kind: objective.kind, target: objective.target } })
       }
+      beats.unshift(...opening)
       beats.push({ t: 'random' })
-      if (rngFor(next, 'pre_extra').chance(0.5)) beats.push({ t: 'random' })
       break
     }
     case 'autumn': {
@@ -373,7 +377,7 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
         beats.push({ t: 'event', key: 'first_call_up' })
       }
       beats.push({ t: 'random' })
-      if (rngFor(next, 'aut_extra').chance(0.55)) beats.push({ t: 'random' })
+      if (rngFor(next, 'aut_extra').chance(0.3)) beats.push({ t: 'random' })
       const hit = rollInjury(next)
       if (hit) beats.push({ t: 'event', key: 'injury_hit', payload: hit })
       beats.push({ t: 'sim' })
@@ -381,7 +385,7 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
     }
     case 'winter': {
       beats.push({ t: 'random' })
-      if (rngFor(next, 'win_extra').chance(0.6)) beats.push({ t: 'random' })
+      if (rngFor(next, 'win_extra').chance(0.3)) beats.push({ t: 'random' })
       break
     }
     case 'spring': {
@@ -392,7 +396,9 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
       break
     }
     case 'run_in': {
-      beats.push({ t: 'random' })
+      // Концовку сезона оставляем разреженной: на неё и так приходятся отчёт
+      // о блоке и вся трансферная развязка.
+      if (rngFor(next, 'run_in_extra').chance(0.6)) beats.push({ t: 'random' })
       break
     }
     case 'review': {
