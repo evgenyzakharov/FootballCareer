@@ -33,6 +33,28 @@ export const EVENTS_C: Content = {
   'ev.club_crisis.hl.wage_cut': { ru: 'Отказался от части зарплаты ради клуба', en: 'Gives up part of his wage for the club' },
   'ev.club_crisis.res.stay_fight': { ru: 'Вы остались тянуть сезон. Проще не стало.', en: 'You stayed to drag the season out. It did not get easier.' },
 
+  // ─── contract_expired ─────────────────────────────────────────────────────
+  'ev.contract_expired.title': { ru: 'Контракт не продлили', en: 'The deal was not renewed' },
+  'ev.contract_expired.body': {
+    ru: '{club} не предложили новый контракт. Со следующего сезона вы свободный агент, и решать надо сейчас.',
+    en: '{club} did not offer a new deal. From next season you are a free agent, and the choice is now.',
+  },
+  'ev.contract_expired.opt.to': {
+    ru: '{club} — {league}, {wage}, контракт {years} сез.',
+    en: '{club} — {league}, {wage}, {years}-yr deal',
+  },
+  'ev.contract_expired.opt.retire': { ru: 'Завершить карьеру', en: 'Retire' },
+  'ev.contract_expired.opt.wait': { ru: 'Не спешить и ждать предложения', en: 'Wait for a better offer' },
+  'ev.contract_expired.res.signed': { ru: 'Новый клуб — {club}.', en: 'New club: {club}.' },
+  'ev.contract_expired.hl.signed': { ru: 'Перешёл свободным агентом', en: 'Moves on a free transfer' },
+  'ev.contract_expired.res.retire': { ru: 'Продлевать было нечего. Вы закончили.', en: 'There was nothing to renew. You finished.' },
+  'ev.contract_expired.hl.retire': { ru: 'Завершил карьеру без нового контракта', en: 'Retires without a new deal' },
+  'ev.contract_expired.res.wait': {
+    ru: 'Вы остались без клуба и ждёте. Телефон молчит дольше, чем хотелось бы.',
+    en: 'You are without a club and waiting. The phone stays quiet longer than you hoped.',
+  },
+  'ev.contract_expired.hl.wait': { ru: 'Остался без клуба', en: 'Left without a club' },
+
   // ─── contract_renewal ─────────────────────────────────────────────────────
   'ev.contract_renewal.title': { ru: 'Новый контракт', en: 'A new contract' },
   'ev.contract_renewal.body': {
@@ -336,7 +358,10 @@ export const EVENTS_C: Content = {
     ru: 'Сезон закончился. Вот что есть на столе.',
     en: 'The season is over. Here is what is on the table.',
   },
-  'ev.market_decision.opt.to': { ru: '{club} — {league}, {wage}, роль: {role}', en: '{club} — {league}, {wage}, role: {role}' },
+  'ev.market_decision.opt.to': {
+    ru: '{club} — {league}, {wage}, роль: {role}, контракт {years} сез.',
+    en: '{club} — {league}, {wage}, role: {role}, {years}-yr deal',
+  },
   'ev.market_decision.opt.loan': { ru: 'Аренда: {club} — {league}', en: 'Loan: {club} — {league}' },
   'ev.market_decision.opt.stay': { ru: 'Остаться в {club}', en: 'Stay at {club}' },
   'ev.market_decision.opt.retire': { ru: 'Завершить карьеру', en: 'Retire' },

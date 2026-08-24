@@ -143,6 +143,7 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
             league: getLeague(club.leagueId).name,
             wage: o.wage,
             role: { key: `role.${o.expectedRole}` },
+            years: o.years,
           },
           hints: o.kind === 'loan' ? [H.minutesUp, H.growthUp] : club.tier > (c.club?.tier ?? 1) ? [H.titleOdds, H.minutesDown] : [H.minutesUp],
         }
@@ -150,19 +151,24 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
       if (c.club) {
         options.push({
           id: 'stay',
-          labelParams: { club: c.club.name, league: getLeague(c.club.leagueId).name, wage: 0, role: { key: 'role.starter' } },
+          labelParams: { club: c.club.name, league: getLeague(c.club.leagueId).name, wage: 0, role: { key: 'role.starter' }, years: 0 },
           hints: [H.stayClub, H.fansUp],
         })
       }
       if (c.player.age >= 34) {
-        options.push({ id: 'retire', labelParams: { club: '', league: '', wage: 0, role: { key: 'role.starter' } }, hints: [H.safe] })
+        options.push({ id: 'retire', labelParams: { club: '', league: '', wage: 0, role: { key: 'role.starter' }, years: 0 }, hints: [H.safe] })
       }
       return { options }
     },
     resolve: (c, id) => {
       if (id === 'retire') return { outcome: 'retire', effects: [{ t: 'retire' }], headline: true, tone: 'neutral' }
       if (id === 'stay') {
-        return { outcome: 'stay', effects: [gauge('fanLove', 8), gauge('lockerRoom', 6)], tone: 'good' }
+        // Контракт истёк — «остаться» значит подписать новый, иначе игрок
+        // годами доигрывал бы на нулевом сроке и рынок открывался каждый год.
+        const expired = (c.state.contract?.yearsLeft ?? 0) <= 0
+        const effects = [gauge('fanLove', 8), gauge('lockerRoom', 6)]
+        if (expired && c.club) effects.unshift(move(c.club.id, c.ovr, c.player.age, false))
+        return { outcome: 'stay', effects, tone: 'good' }
       }
       const loan = id.startsWith(LOAN)
       const clubId = id.slice((loan ? LOAN : TO).length)
@@ -204,6 +210,54 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
         outcome: loan ? 'loaned_again' : 'returned',
         params: { club: getClub(clubId).name },
         effects: [move(clubId, c.ovr, c.player.age, loan), gauge('morale', loan ? 6 : 2)],
+        tone: 'neutral',
+      }
+    },
+  },
+  {
+    key: 'contract_expired',
+    channel: 'transfer',
+    stages: ['review'],
+    once: false,
+    weight: 0,
+    build: (c) => {
+      const offers = generateOffers(c.state, c.rng, { count: 2 })
+      const list = offers.length > 0 ? offers : fallbackOffers(c.state, c.rng, 2)
+      const options: OptionDraft[] = list.map((o) => {
+        const club = getClub(o.clubId)
+        return {
+          id: `${TO}${o.clubId}`,
+          labelParams: {
+            club: club.name,
+            league: getLeague(club.leagueId).name,
+            wage: o.wage,
+            years: o.years,
+          },
+          hints: [H.leaveClub],
+        }
+      })
+      if (c.player.age >= 32) options.push({ id: 'retire', hints: [H.safe] })
+      options.push({ id: 'wait', hints: [H.gamble, H.formDown] })
+      return { bodyParams: { club: c.club?.name ?? '' }, options }
+    },
+    resolve: (c, id) => {
+      if (id === 'retire') {
+        return { outcome: 'retire', effects: [{ t: 'retire' }], headline: true, tone: 'neutral' }
+      }
+      if (id === 'wait') {
+        return {
+          outcome: 'wait',
+          effects: [release(), gauge('morale', -10)],
+          headline: true,
+          tone: 'bad',
+        }
+      }
+      const clubId = id.slice(TO.length)
+      return {
+        outcome: 'signed',
+        params: { club: getClub(clubId).name },
+        effects: [move(clubId, c.ovr, c.player.age, false), gauge('morale', 4)],
+        headline: true,
         tone: 'neutral',
       }
     },

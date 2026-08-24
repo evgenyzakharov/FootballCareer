@@ -4,11 +4,12 @@ import type { CareerState, Objective, Position } from '../src/engine/types'
 import { averageRating } from '../src/engine/performance'
 import { adjustObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
-import { playerOvr } from '../src/engine/player'
+import { playerOvr, squadLevel } from '../src/engine/player'
 import { missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS } from '../src/engine/events'
 import { findClub, getClub } from '../src/data/clubs'
 import { leagueLift, rollLeaguePosition } from '../src/engine/competitions'
+import { clubWantsToRenew } from '../src/engine/offers'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
 function playCareer(
@@ -291,6 +292,37 @@ describe('движок карьеры', () => {
     // Тот же уровень игры, но четыре матча за сезон — команду это не тащит.
     const cameo = mean(7.4, 4)
     expect(cameo).toBeGreaterThan(good + 2)
+  })
+
+  it('клуб не продлевает контракт тем, кто не тянет на основу или потерял тренера', () => {
+    let state = setIdentity(newCareer('renew'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 10,
+      foot: 'right',
+      countryCode: 'ENG',
+      position: 'CAM',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+    // Считаем от уровня состава конкретного клуба: академия могла оказаться
+    // и слабой, и сильной, и «OVR + 6» в ней значит разное.
+    const level = squadLevel(findClub(state.contract!.clubId)!.tier)
+
+    const withGauges = (patch: Partial<CareerState['player']['gauges']>): CareerState => ({
+      ...state,
+      player: { ...state.player, gauges: { ...state.player.gauges, ...patch } },
+    })
+
+    // Основной игрок своего уровня, тренер и трибуны нормально — продлевают.
+    expect(clubWantsToRenew(withGauges({ coachTrust: 60, fanLove: 55 }), level + 2, 'starter')).toBe(true)
+
+    // Не проходит в состав и растерял доверие — не продлевают.
+    expect(clubWantsToRenew(withGauges({ coachTrust: 15, fanLove: 20 }), level - 12, 'reserve')).toBe(false)
+
+    // Тот же игрок основы, но тренер и трибуны против — тоже не продлевают.
+    expect(clubWantsToRenew(withGauges({ coachTrust: 0, fanLove: 0 }), level - 4, 'rotation')).toBe(false)
+
+    // Без контракта продлевать нечего.
+    expect(clubWantsToRenew({ ...state, contract: null }, 90, 'star')).toBe(false)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

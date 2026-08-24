@@ -19,7 +19,7 @@ import { buildCard, getEvent, pickEvent, resolveCard } from './events'
 import type { EventCtx } from './events'
 import { BLOCKS_OUT, INJURY_TYPES, injuryRisk } from './events/medical'
 import { adjustObjective, makeObjective } from './events/structural'
-import { academyOffers, generateOffers } from './offers'
+import { academyOffers, clubWantsToRenew, generateOffers } from './offers'
 import {
   createAgent, createJournalist, createManager, find, managerSackChance, relocate, styleFit,
 } from './relationships'
@@ -912,8 +912,15 @@ function openMarket(state: CareerState): CareerState {
   const wasLoan = state.contract?.isLoan ?? false
   const offers = generateOffers(state, rng, { count: 2, allowLoans: state.player.age <= 22 })
 
+  // Истёкший контракт продлевают не всегда: не тянешь на основу, потерял
+  // тренера или трибуны — клуб просто не предлагает новый.
+  const expired = state.contract !== null && state.contract.yearsLeft <= 0
+  const lastRole = state.history[state.history.length - 1]?.role ?? 'reserve'
+  const dropped = expired && !wasLoan && !clubWantsToRenew(state, playerOvr(state.player), lastRole)
+
   let key: string | null = 'market_decision'
   if (wasLoan) key = 'loan_return'
+  else if (dropped) key = 'contract_expired'
   else if (offers.length === 0) key = 'no_offers'
   else if (state.player.age >= 34 && rng.chance(0.5)) key = 'retirement_thoughts'
   else if (!marketIsOpen(state, rng)) key = null

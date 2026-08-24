@@ -4,6 +4,7 @@ import { getCountry } from '../data/countries'
 import { getLeague } from '../data/leagues'
 import { marketValue } from './attributes'
 import { playerOvr, squadLevel } from './player'
+import { roleRank } from './performance'
 import { Rng, clamp } from './rng'
 
 export type OfferKind = 'transfer' | 'loan' | 'stay' | 'academy' | 'free'
@@ -69,6 +70,24 @@ function interest(club: Club, state: CareerState, ovr: number): number {
 
 /** Длина контракта считается детерминированно: карточку выбора и её разбор
  *  строят разные вызовы, и условия не должны разъезжаться между ними. */
+/**
+ * Продлит ли клуб истекающий контракт. Решение детерминированное, а не
+ * бросок кубика: игрок должен видеть по своим показателям, к чему идёт дело.
+ * Считаем то же, на что смотрел бы спортивный директор: тянет ли игрок на
+ * основу этого состава, что о нём думает тренер, как относятся трибуны,
+ * какую роль он играл и не пора ли ему на пенсию.
+ */
+export function clubWantsToRenew(state: CareerState, ovr: number, role: Role): boolean {
+  const club = findClub(state.contract?.clubId ?? null)
+  if (!club) return false
+  let score = (ovr - squadLevel(club.tier)) * 0.9
+  score += (state.player.gauges.coachTrust - 45) * 0.35
+  score += (state.player.gauges.fanLove - 40) * 0.15
+  score += (roleRank(role) - 1) * 6
+  if (state.player.age > 33) score -= 12
+  return score > 0
+}
+
 export function contractYears(age: number, tier: number, loan: boolean): number {
   if (loan) return 1
   return clamp(3 + (tier >= 5 ? 1 : 0) - (age > 31 ? 1 : 0) - (age > 34 ? 1 : 0), 1, 5)
