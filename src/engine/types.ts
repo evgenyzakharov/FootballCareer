@@ -295,6 +295,9 @@ export interface SeasonTally {
 export interface NationalTally {
   caps: number
   goals: number
+  /** Вратарские матчи за сборную: у полевого игрока всегда нули. */
+  cleanSheets: number
+  goalsConceded: number
   tournament: string | null
   trophy: string | null
 }

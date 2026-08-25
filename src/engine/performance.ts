@@ -110,6 +110,17 @@ export interface BlockContext {
   blocksOut: number
 }
 
+/**
+ * Сухие матчи и пропущенные считаются связанно: в каждом «не сухом» матче
+ * минимум один мяч. Иначе цифры противоречат друг другу, а показываются они
+ * рядом. Формула одна на клуб и сборную — меняется только доля сухих.
+ */
+export function keeperRun(apps: number, cleanRate: number, rng: Rng): { cleanSheets: number; goalsConceded: number } {
+  const cleanSheets = Math.min(apps, poisson(apps * cleanRate, rng))
+  const goalsConceded = apps > 0 ? (apps - cleanSheets) + poisson((apps - cleanSheets) * 0.55, rng) : 0
+  return { cleanSheets, goalsConceded }
+}
+
 export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const { player, club, role } = ctx
   const ovr = playerOvr(player)
@@ -135,13 +146,10 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const goals = poisson(gExp, rng)
   const assists = poisson(aExp, rng)
 
-  // Сухие матчи и пропущенные считаем связанно: в каждом «не сухом» матче
-  // минимум один мяч. Иначе цифры противоречат друг другу.
   const cleanRate = clamp(0.14 + (club.tier - 1) * 0.038 + (ovr - 60) * 0.004, 0.02, 0.6)
-  const cleanSheets = player.position === 'GK' ? Math.min(apps, poisson(apps * cleanRate, rng)) : 0
-  const conceded = player.position === 'GK' && apps > 0
-    ? (apps - cleanSheets) + poisson((apps - cleanSheets) * 0.55, rng)
-    : 0
+  const { cleanSheets, goalsConceded: conceded } = player.position === 'GK'
+    ? keeperRun(apps, cleanRate, rng)
+    : { cleanSheets: 0, goalsConceded: 0 }
 
   // Оценка: база от разницы с уровнем состава, плюс вклад результативных действий.
   // База 6.6 — это «нормальный игрок основы»; ниже неё показатели начинают падать.

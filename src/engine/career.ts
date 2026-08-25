@@ -1,11 +1,11 @@
 import type {
   Attributes, Beat, Card, CareerState, Effect, NationalTally, Pace, Player, Role, SeasonRecord,
-  SeasonTally, Stage, Text,
+  Stage, Text,
 } from './types'
 import { ATTR_KEYS, attrAgeBand, isGoalkeeper, marketValue, overall } from './attributes'
 import { MAX_AGE, START_AGE, createPlayer, playerOvr, squadLevel } from './player'
 import type { Identity } from './player'
-import { BLOCK_MATCHES, averageRating, determineRole, simulateBlock } from './performance'
+import { BLOCK_MATCHES, averageRating, determineRole, keeperRun, simulateBlock } from './performance'
 import {
   NATIONAL_TOURNAMENT, callUpChance, leagueLift, nationalTrophyChance,
   rollClubTrophies, rollLeaguePosition, tournamentThisSeason,
@@ -29,7 +29,7 @@ import type { ManagerStyle } from './relationships'
  * Версия формы состояния. Растёт при любом несовместимом изменении схемы;
  * подъём версии обязан сопровождаться миграцией в `save.ts`.
  */
-export const STATE_VERSION = 5
+export const STATE_VERSION = 6
 
 const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'review']
 
@@ -275,7 +275,7 @@ function emptyTally() {
 }
 
 function emptyNational(): NationalTally {
-  return { caps: 0, goals: 0, tournament: null, trophy: null }
+  return { caps: 0, goals: 0, cleanSheets: 0, goalsConceded: 0, tournament: null, trophy: null }
 }
 
 /**
@@ -750,12 +750,16 @@ function finishSeason(state: CareerState): CareerState {
     eventKey: 'season_report',
     channel: 'board',
     title: { key: 'report.season.title', params: { age: season.age, club: club.name } },
+    // У вратаря голы и передачи всегда нули: строка о них ничего не говорит,
+    // а его собственные цифры уезжали в отдельную строку ниже.
     body: {
-      key: 'report.season.body',
+      key: state.player.position === 'GK' ? 'report.season.body_gk' : 'report.season.body',
       params: {
         apps: withResults.tally.apps,
         goals: withResults.tally.goals,
         assists: withResults.tally.assists,
+        clean: withResults.tally.cleanSheets,
+        conceded: withResults.tally.goalsConceded,
         rating: averageRating(withResults.tally.ratingSum, withResults.tally.ratingCount) || 0,
         ovr: ovrEnd,
         delta: ovrEnd - season.ovrStart,
@@ -764,7 +768,7 @@ function finishSeason(state: CareerState): CareerState {
     options: [],
     details: seasonDetails(
       trophies, awards, national, objective, objectiveMet, leaguePos, club.leagueId,
-      state.player.position === 'GK' ? withResults.tally : null,
+      state.player.position === 'GK',
     ),
   }
   return { ...next, card }
@@ -815,23 +819,25 @@ function seasonDetails(
   objectiveMet: boolean | null,
   leaguePos: number,
   leagueId: string,
-  gkTally: SeasonTally | null,
+  keeper: boolean,
 ): Text[] {
   const lines: Text[] = []
   lines.push({
     key: 'report.season.league_pos',
     params: { pos: leaguePos, league: getLeague(leagueId).name },
   })
-  if (gkTally) {
-    lines.push({
-      key: 'report.season.gk',
-      params: { clean: gkTally.cleanSheets, conceded: gkTally.goalsConceded },
-    })
-  }
   for (const t of trophies) lines.push({ key: 'report.season.trophy', params: { comp: { key: `comp.${t}` } } })
   for (const a of awards) lines.push({ key: 'report.season.award', params: { award: { key: `award.${a}` } } })
   if (national.caps > 0) {
-    lines.push({ key: 'report.season.national', params: { caps: national.caps, goals: national.goals } })
+    lines.push({
+      key: keeper ? 'report.season.national_gk' : 'report.season.national',
+      params: {
+        caps: national.caps,
+        goals: national.goals,
+        clean: national.cleanSheets,
+        conceded: national.goalsConceded,
+      },
+    })
   }
   if (national.trophy) {
     lines.push({ key: 'report.season.national_trophy', params: { comp: { key: `comp.${national.trophy}` } } })
@@ -887,12 +893,36 @@ function simulateNational(state: CareerState, rng: Rng): NationalTally {
   const goals = state.player.position === 'GK' ? 0 : Math.max(0, Math.round(caps * (playerOvr(state.player) - 60) * 0.008 * rng.around(1, 0.5)))
   const seasonIndex = state.player.age - START_AGE
   const kind = tournamentThisSeason(seasonIndex)
-  if (!kind) return { caps, goals, tournament: null, trophy: null }
+
+  // Вратарские матчи за сборную считаются той же связкой, что и клубные:
+  // раньше их не считали вовсе, и у вратаря сборная всегда стояла без
+  // пропущенных. Броски идут последними, чтобы не сдвигать остальную лотерею.
+  const withKeeper = (tally: NationalTally): NationalTally =>
+    state.player.position === 'GK'
+      ? { ...tally, ...keeperRun(tally.caps, nationalCleanRate(country.strength, playerOvr(state.player)), rng) }
+      : tally
+
+  if (!kind) return withKeeper({ caps, goals, cleanSheets: 0, goalsConceded: 0, tournament: null, trophy: null })
 
   const id = kind === 'world' ? 'world_cup' : NATIONAL_TOURNAMENT[country.confederation]
   const reach = clamp(country.tournamentReach / 5, 0.2, 1)
   const won = rng.chance(nationalTrophyChance(country.strength, kind) * (0.6 + reach))
-  return { caps: caps + rng.int(3, 7), goals, tournament: id, trophy: won ? id : null }
+  return withKeeper({
+    caps: caps + rng.int(3, 7),
+    goals,
+    cleanSheets: 0,
+    goalsConceded: 0,
+    tournament: id,
+    trophy: won ? id : null,
+  })
+}
+
+/**
+ * Доля сухих матчей за сборную. У клуба её задаёт тир, здесь — сила сборной по
+ * той же шкале влияния: разница между грандом и середняком примерно та же.
+ */
+function nationalCleanRate(strength: number, ovr: number): number {
+  return clamp(0.14 + (strength - 2) * 0.05 + (ovr - 60) * 0.004, 0.02, 0.6)
 }
 
 // ─── Развитие ───────────────────────────────────────────────────────────────

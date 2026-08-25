@@ -139,11 +139,12 @@ export const UI: Content = {
     ru: '{apps} матчей, {goals} голов, {assists} передач, оценка {rating}. OVR — {ovr} ({delta}).',
     en: '{apps} games, {goals} goals, {assists} assists, rating {rating}. OVR {ovr} ({delta}).',
   },
-  'report.season.league_pos': { ru: 'Место {pos} в «{league}»', en: 'Position {pos} in {league}' },
-  'report.season.gk': {
-    ru: 'Сухих матчей: {clean}, пропущено: {conceded}',
-    en: 'Clean sheets: {clean}, conceded: {conceded}',
+  'report.season.body_gk': {
+    ru: '{apps} матчей, {clean} сухих, пропущено {conceded}, оценка {rating}. OVR — {ovr} ({delta}).',
+    en: '{apps} matches, {clean} clean sheets, {conceded} conceded, rating {rating}. OVR {ovr} ({delta}).',
   },
+  'report.season.national_gk': { ru: 'Сборная: {caps} матчей, {clean} сухих, пропущено {conceded}', en: 'National team: {caps} caps, {clean} clean sheets, {conceded} conceded' },
+  'report.season.league_pos': { ru: 'Место {pos} в «{league}»', en: 'Position {pos} in {league}' },
   'report.season.trophy': { ru: 'Титул: {comp}', en: 'Title: {comp}' },
   'report.season.award': { ru: 'Награда: {award}', en: 'Award: {award}' },
   'report.season.national': { ru: 'Сборная: {caps} матчей, {goals} голов', en: 'National team: {caps} caps, {goals} goals' },

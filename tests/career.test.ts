@@ -589,6 +589,65 @@ describe('движок карьеры', () => {
     expect([...missingKeys]).toEqual([])
   })
 
+  it('вратарю считают сухие и пропущенные и в клубе, и в сборной', () => {
+    let capSeasons = 0
+    let concededSeasons = 0
+    for (const seed of ['gk-nat-1', 'gk-nat-2', 'gk-nat-3']) {
+      const state = playCareer(seed, { position: 'GK' })
+      for (const season of state.history) {
+        // Связка одна на клуб и сборную: в каждом «не сухом» матче минимум мяч.
+        expect(season.tally.cleanSheets).toBeLessThanOrEqual(season.tally.apps)
+        expect(season.tally.goalsConceded).toBeGreaterThanOrEqual(season.tally.apps - season.tally.cleanSheets)
+        if (season.national.caps === 0) continue
+        capSeasons++
+        expect(season.national.cleanSheets).toBeLessThanOrEqual(season.national.caps)
+        expect(season.national.goalsConceded).toBeGreaterThanOrEqual(season.national.caps - season.national.cleanSheets)
+        if (season.national.goalsConceded > 0) concededSeasons++
+      }
+    }
+    expect(capSeasons).toBeGreaterThan(0)
+    // Раньше сборная у вратаря всегда стояла без пропущенных.
+    expect(concededSeasons).toBeGreaterThan(capSeasons * 0.8)
+  })
+
+  it('полевому игроку вратарскую статистику не приписывают', () => {
+    for (const seed of ['fp-nat-1', 'fp-nat-2']) {
+      const state = playCareer(seed, { position: 'ST' })
+      for (const season of state.history) {
+        expect(season.tally.cleanSheets).toBe(0)
+        expect(season.tally.goalsConceded).toBe(0)
+        expect(season.national.cleanSheets).toBe(0)
+        expect(season.national.goalsConceded).toBe(0)
+      }
+    }
+  })
+
+  it('в отчёте о сезоне вратарь видит свои цифры, а не нули по голам', () => {
+    let gkReports = 0
+    let state = setIdentity(newCareer('gk-report'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 1,
+      foot: 'right',
+      countryCode: 'ITA',
+      position: 'GK',
+    })
+    const rng = new Rng('gk-report', 'player-choices', 0)
+    let guard = 0
+    while (state.phase !== 'retired' && guard < 4000) {
+      guard++
+      if (state.resolution) { state = ack(state); continue }
+      if (!state.card) break
+      if (state.card.eventKey === 'season_report' && state.card.title.key === 'report.season.title') {
+        // Голы и передачи у вратаря всегда нули: строка о них бессмысленна.
+        expect(state.card.body.key).toBe('report.season.body_gk')
+        gkReports++
+      }
+      const available = state.card.options.filter((o) => !o.disabled)
+      state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
+    }
+    expect(gkReports).toBeGreaterThan(3)
+  })
+
   it('положение относительно состава считается от текущего клуба', () => {
     // Без клуба сравнивать не с чем.
     expect(squadStanding(newCareer('standing'))).toBeNull()

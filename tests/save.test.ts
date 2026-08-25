@@ -121,6 +121,27 @@ describe('сохранение', () => {
     expect(loaded!.pace).toBe('busy')
   })
 
+  it('поднимает сохранение v5, заводя вратарскую статистику сборной', () => {
+    const state = sampleState()
+    const raw = { ...state, version: 5 } as unknown as Record<string, unknown>
+    raw.history = [
+      {
+        age: 20,
+        clubId: 'inter',
+        tally: { apps: 30, goals: 0, assists: 0, cleanSheets: 8, goalsConceded: 30 },
+        national: { caps: 6, goals: 0, tournament: null, trophy: null },
+      },
+    ]
+    data.set('football-career:state', JSON.stringify(raw))
+
+    const loaded = loadState()
+    expect(loaded!.version).toBe(STATE_VERSION)
+    // За прошлые сезоны этих чисел не существует — нули, а не выдумка.
+    expect(loaded!.history[0].national.cleanSheets).toBe(0)
+    expect(loaded!.history[0].national.goalsConceded).toBe(0)
+    expect(loaded!.history[0].national.caps).toBe(6)
+  })
+
   it('сохранение из будущего не принимается', () => {
     const state = sampleState()
     data.set('football-career:state', JSON.stringify({ ...state, version: STATE_VERSION + 5 }))

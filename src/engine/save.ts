@@ -63,6 +63,19 @@ const MIGRATIONS: Record<number, (state: RawState) => RawState> = {
   // v4 → v5. Появился выбор насыщенности сезона. Карьеры, начатые до него,
   // игрались с максимальным числом ситуаций — за ними его и оставляем.
   4: (state) => ({ ...state, pace: 'busy', version: 5 }),
+
+  // v5 → v6. Сборная стала считать вратарю сухие матчи и пропущенные. За
+  // прошлые сезоны этих чисел не существует — ставим нули, а не выдумываем.
+  5: (state) => {
+    const withKeeper = (season: Record<string, unknown>) => ({
+      ...season,
+      national: { cleanSheets: 0, goalsConceded: 0, ...(season.national as Record<string, unknown>) },
+    })
+    const history = Array.isArray(state.history)
+      ? (state.history as Array<Record<string, unknown>>).map(withKeeper)
+      : state.history
+    return { ...state, history, version: 6 }
+  },
 }
 
 /** Минимальная проверка формы: битый или чужой JSON не должен ронять игру. */
