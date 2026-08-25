@@ -424,8 +424,7 @@ input { font: inherit; color: inherit; }
 }
 .option:hover { border-color: var(--accent-dim); background: #1d242b; }
 .option:active { transform: translateY(1px); }
-.option__label { font-weight: 600; margin-bottom: 6px; }
-.option__hints { display: flex; flex-wrap: wrap; gap: 5px; }
+.option__label { font-weight: 600; }
 
 .resolution { border-left: 3px solid var(--accent); }
 .resolution__label {

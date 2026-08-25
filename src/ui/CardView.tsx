@@ -1,5 +1,4 @@
 import type { Card, Resolution } from '../engine/types'
-import { Chip } from './bits'
 import { useT } from './locale'
 
 export function ResolutionView({ resolution, onNext }: { resolution: Resolution; onNext: () => void }) {
@@ -41,15 +40,10 @@ export function CardView({ card, onChoose }: { card: Card; onChoose: (optionId: 
       ) : (
         <div className="options">
           {card.options.map((option) => (
+            // Подсказки об эффектах игроку не показываем: выбор должен
+            // делаться по ситуации, а не по подписи под кнопкой.
             <button key={option.id} type="button" className="option" onClick={() => onChoose(option.id)}>
               <div className="option__label">{t(option.label)}</div>
-              {option.hints.length > 0 && (
-                <div className="option__hints">
-                  {option.hints.map((hint, i) => (
-                    <Chip key={`${hint.text.key}-${i}`} tone={hint.tone}>{t(hint.text)}</Chip>
-                  ))}
-                </div>
-              )}
             </button>
           ))}
         </div>

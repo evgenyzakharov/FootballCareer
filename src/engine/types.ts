@@ -221,6 +221,11 @@ export interface OptionEffectHint {
 export interface CardOption {
   id: string
   label: Text
+  /**
+   * Ожидаемые последствия варианта. Интерфейс их не показывает — иначе выбор
+   * сводился бы к чтению подписей, — но они остаются в описаниях событий как
+   * заявленный замысел и проверяются тестом на полноту переводов.
+   */
   hints: OptionEffectHint[]
 }
 
