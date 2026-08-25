@@ -1,4 +1,4 @@
-import { H, attr, flag, gauge, injury, later, minutes, money, odds, trait } from './context'
+import { H, attr, flag, gauge, injury, later, minutes, money, odds, rel, trait } from './context'
 import type { EventDef } from './context'
 import type { Severity } from '../types'
 import { clamp } from '../rng'
@@ -198,4 +198,59 @@ export const MEDICAL_EVENTS: EventDef[] = [
       return { outcome: 'survived', effects: [gauge('coachTrust', 8), gauge('fitness', -6)], tone: 'good' }
     },
   },
+  {
+    key: 'painkiller_match',
+    channel: 'medical',
+    stages: ['spring', 'run_in'],
+    once: false,
+    weight: 5,
+    when: (c) => c.club !== null && (c.player.gauges.fitness < 62 || c.player.injuries.length > 0),
+    build: () => ({ options: [
+      { id: 'play', hints: [H.trustUp, H.injuryRiskHigh] },
+      { id: 'refuse', hints: [H.fitnessUp, H.trustDown] },
+      { id: 'own_doctor', cost: 150_000, hints: [H.moneyDown, H.safe] },
+    ] }),
+    resolve: (c, id) => {
+      if (id === 'play') {
+        return c.rng.chance(0.5)
+          ? { outcome: 'held', effects: [gauge('coachTrust', 12), gauge('fanLove', 9), gauge('form', 6), attr('mental', 1)], tone: 'good' }
+          : {
+              outcome: 'broke_down',
+              effects: [injury('muscle_strain', 2), gauge('morale', -12), gauge('fitness', -10)],
+              headline: true,
+              tone: 'bad',
+            }
+      }
+      if (id === 'own_doctor') {
+        return { outcome: 'own_doctor', effects: [money(-150_000), gauge('fitness', 12), gauge('coachTrust', 3)], tone: 'good' }
+      }
+      return { outcome: 'refuse', effects: [gauge('coachTrust', -13), rel('manager', -8), gauge('fitness', 10)], tone: 'neutral' }
+    },
+  },
+  {
+    key: 'sleep_trouble',
+    channel: 'medical',
+    stages: ['autumn', 'winter'],
+    once: false,
+    weight: 5,
+    when: (c) => c.player.age >= 19 && (c.player.gauges.form < 55 || c.player.gauges.morale < 50),
+    build: () => ({ options: [
+      { id: 'psychologist', cost: 80_000, hints: [H.moneyDown, H.moraleUp] },
+      { id: 'endure', hints: [H.formDown] },
+      { id: 'pills', hints: [H.formUp, H.consequenceLater] },
+    ] }),
+    resolve: (_c, id) => {
+      if (id === 'psychologist') {
+        return { outcome: 'psychologist', effects: [money(-80_000), attr('mental', 3), gauge('morale', 12), gauge('form', 6)], tone: 'good' }
+      }
+      if (id === 'pills') {
+        return {
+          outcome: 'pills',
+          effects: [gauge('form', 8), gauge('fitness', -5), flag('sleeping_pills'), later('sleep_trouble', 1, 'autumn')],
+          tone: 'neutral',
+        }
+      }
+      return { outcome: 'endure', effects: [gauge('form', -7), gauge('morale', -8), attr('mental', 1)], tone: 'bad' }
+    },
+  }
 ]

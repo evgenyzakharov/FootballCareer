@@ -1,4 +1,4 @@
-import { H, attr, flag, gauge, later, minutes, rel, trait } from './context'
+import { H, attr, flag, gauge, later, minutes, potential, rel, trait } from './context'
 import type { EventDef } from './context'
 import { COUNTRIES, getCountry } from '../../data/countries'
 import { NATIONAL_TOURNAMENT } from '../competitions'
@@ -192,4 +192,54 @@ export const NATIONAL_EVENTS: EventDef[] = [
         ? { outcome: 'work', effects: [attr('mental', 5), gauge('morale', 16), gauge('form', 10), trait('redeemed')], tone: 'good' }
         : { outcome: 'hide', effects: [gauge('morale', -12), minutes(0.75), gauge('mediaRep', -8)], tone: 'bad' },
   },
+  {
+    key: 'youth_tournament',
+    channel: 'national',
+    stages: ['run_in'],
+    once: true,
+    weight: 6,
+    when: (c) => c.player.age <= 21 && c.club !== null,
+    build: () => ({ options: [
+      { id: 'go', hints: [H.fameUp, H.fitnessDown] },
+      { id: 'stay', hints: [H.trustUp, H.minutesUp] },
+    ] }),
+    resolve: (_c, id) =>
+      id === 'go'
+        ? { outcome: 'go', effects: [gauge('fame', 10), attr('mental', 2), gauge('fitness', -12), potential(1)], tone: 'good' }
+        : { outcome: 'stay', effects: [gauge('coachTrust', 10), minutes(1.15), gauge('fitness', 5)], tone: 'good' },
+  },
+  {
+    key: 'olympics',
+    channel: 'national',
+    stages: ['run_in'],
+    once: true,
+    weight: 12,
+    when: (c) => c.player.age <= 25 && (c.state.flags.national_established ?? 0) > 0,
+    build: () => ({ options: [
+      { id: 'go', hints: [H.fameUp, H.fitnessDown] },
+      { id: 'club_first', hints: [H.trustUp, H.consequenceLater] },
+      { id: 'let_club_decide', hints: [H.gamble] },
+    ] }),
+    resolve: (c, id) => {
+      if (id === 'go' || (id === 'let_club_decide' && c.player.gauges.coachTrust >= 55)) {
+        return c.rng.chance(0.35)
+          ? {
+              outcome: 'medal',
+              effects: [gauge('fame', 20), gauge('morale', 14), gauge('fitness', -14), rel('nationalCoach', 12)],
+              headline: true,
+              tone: 'good',
+            }
+          : { outcome: 'no_medal', effects: [gauge('fame', 8), gauge('fitness', -14), attr('mental', 2)], tone: 'neutral' }
+      }
+      if (id === 'club_first') {
+        return {
+          outcome: 'club_first',
+          // Федерация помнит отказы: вызов следующей зимой придётся заслужить.
+          effects: [gauge('coachTrust', 12), rel('manager', 10), rel('nationalCoach', -14), later('national_snub', 1, 'winter')],
+          tone: 'neutral',
+        }
+      }
+      return { outcome: 'club_said_no', effects: [gauge('coachTrust', 6), gauge('morale', -6), rel('nationalCoach', -8)], tone: 'neutral' }
+    },
+  }
 ]

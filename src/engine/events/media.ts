@@ -203,4 +203,70 @@ export const MEDIA_EVENTS: EventDef[] = [
       return { outcome: 'skip', effects: [gauge('mediaRep', -6)], tone: 'neutral' }
     },
   },
+  {
+    key: 'hostile_stands',
+    channel: 'media',
+    stages: ['autumn', 'spring'],
+    once: false,
+    weight: 4,
+    when: (c) => c.club !== null && c.role !== 'reserve' && c.player.age >= 18,
+    build: () => ({ options: [
+      { id: 'leave_pitch', hints: [H.mediaUp, H.trustDown] },
+      { id: 'speak_after', hints: [H.mediaUp, H.fameUp] },
+      { id: 'play_on', hints: [H.moraleDown, H.growthUp] },
+    ] }),
+    resolve: (_c, id) => {
+      if (id === 'leave_pitch') {
+        return {
+          outcome: 'leave_pitch',
+          effects: [gauge('mediaRep', 14), gauge('fanLove', 6), gauge('coachTrust', -6), gauge('morale', -8)],
+          headline: true,
+          tone: 'neutral',
+        }
+      }
+      if (id === 'speak_after') {
+        return { outcome: 'speak_after', effects: [gauge('mediaRep', 18), gauge('fame', 8), gauge('morale', 4)], headline: true, tone: 'good' }
+      }
+      return { outcome: 'play_on', effects: [gauge('morale', -12), gauge('form', -6), attr('mental', 3)], tone: 'bad' }
+    },
+  },
+  {
+    key: 'betting_ad',
+    channel: 'media',
+    stages: ['winter'],
+    once: false,
+    weight: 5,
+    when: (c) => c.player.gauges.fame >= 30,
+    build: (c) => ({
+      bodyParams: { amount: Math.round(c.player.gauges.fame * 40_000) },
+      options: [
+        { id: 'sign', hints: [H.moneyUp, H.mediaDown] },
+        { id: 'refuse', hints: [H.mediaUp] },
+      ],
+    }),
+    resolve: (c, id) =>
+      id === 'sign'
+        ? {
+            outcome: 'sign',
+            effects: [money(Math.round(c.player.gauges.fame * 40_000)), gauge('mediaRep', -14), gauge('fanLove', -8)],
+            tone: 'neutral',
+          }
+        : { outcome: 'refuse', effects: [gauge('mediaRep', 10), gauge('morale', 5)], tone: 'good' },
+  },
+  {
+    key: 'tv_show',
+    channel: 'media',
+    stages: ['preseason', 'winter'],
+    once: false,
+    weight: 5,
+    when: (c) => c.player.gauges.fame >= 25,
+    build: () => ({ options: [
+      { id: 'go', hints: [H.fameUp, H.trustDown] },
+      { id: 'decline', hints: [H.trustUp] },
+    ] }),
+    resolve: (_c, id) =>
+      id === 'go'
+        ? { outcome: 'go', effects: [gauge('fame', 14), money(150_000), gauge('coachTrust', -8), gauge('fitness', -6)], tone: 'neutral' }
+        : { outcome: 'decline', effects: [gauge('coachTrust', 6), gauge('fame', -2), gauge('form', 3)], tone: 'neutral' },
+  }
 ]

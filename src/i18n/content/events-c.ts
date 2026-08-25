@@ -475,4 +475,104 @@ export const EVENTS_C: Content = {
   'ev.wage_dispute.res.strike_lost': { ru: 'Клуб оштрафовал вас и посадил на скамейку.', en: 'The club fined you and sat you on the bench.' },
   'ev.wage_dispute.hl.strike_lost': { ru: 'Отказ тренироваться закончился штрафом', en: 'Refusal to train ends in a fine' },
   'ev.wage_dispute.res.wait': { ru: 'Вы подождали. Иногда это лучший ход.', en: 'You waited. Sometimes that is the best move.' },
+
+  // ─── former_club_goal ─────────────────────────────────────────────────────
+  'ev.former_club_goal.title': { ru: 'Гол бывшему клубу', en: 'A goal against your old club' },
+  'ev.former_club_goal.body': {
+    ru: 'Мяч в воротах «{club}». Тот самый сектор, перед которым вы праздновали раньше, сейчас молчит.',
+    en: 'The ball is in the {club} net. The end you used to celebrate in front of has gone quiet.',
+  },
+  'ev.former_club_goal.opt.celebrate': { ru: 'Праздновать', en: 'Celebrate it' },
+  'ev.former_club_goal.opt.apologise': { ru: 'Извиниться жестом', en: 'Raise a hand in apology' },
+  'ev.former_club_goal.opt.stay_calm': { ru: 'Сдержаться', en: 'Show nothing' },
+  'ev.former_club_goal.res.celebrate': { ru: 'Вы отпраздновали от души. Свои приняли вас окончательно, бывшие — вычеркнули.', en: 'You celebrated with everything you had. Your new fans took you in for good; the old ones crossed you out.' },
+  'ev.former_club_goal.hl.celebrate': { ru: 'Отпраздновал гол бывшему клубу', en: 'Celebrates against his old club' },
+  'ev.former_club_goal.res.apologise': { ru: 'Поднятая рука сказала больше, чем интервью. Уважение вернулось с обеих сторон.', en: 'The raised hand said more than an interview could. Respect came back from both sides.' },
+  'ev.former_club_goal.res.stay_calm': { ru: 'Вы просто вернулись на свою половину. Внутри всё было иначе.', en: 'You simply jogged back to your half. Inside it was another story.' },
+
+  // ─── rough_tackle ─────────────────────────────────────────────────────────
+  'ev.rough_tackle.title': { ru: 'По вам проехались', en: 'They went through you' },
+  'ev.rough_tackle.body': {
+    ru: 'Подкат был не про мяч, и все это видели. Судья показал жёлтую и побежал дальше.',
+    en: 'That tackle was not about the ball, and everyone saw it. The referee showed yellow and ran on.',
+  },
+  'ev.rough_tackle.opt.retaliate': { ru: 'Ответить тем же', en: 'Answer in kind' },
+  'ev.rough_tackle.opt.answer_with_goal': { ru: 'Ответить голом', en: 'Answer with a goal' },
+  'ev.rough_tackle.opt.walk_away': { ru: 'Уйти от конфликта', en: 'Walk away from it' },
+  'ev.rough_tackle.res.sent_off': { ru: 'Ответили — и ушли в раздевалку раньше всех.', en: 'You answered, and you were down the tunnel before anyone else.' },
+  'ev.rough_tackle.hl.sent_off': { ru: 'Удалён за ответную грубость', en: 'Sent off for retaliating' },
+  'ev.rough_tackle.res.evened': { ru: 'Счёт сравняли без карточки. Команда это оценила, судья — почти заметил.', en: 'You settled it without a card. The team appreciated it; the referee almost noticed.' },
+  'ev.rough_tackle.res.answered': { ru: 'Через двадцать минут вы забили и посмотрели ровно в одну сторону.', en: 'Twenty minutes later you scored and looked in exactly one direction.' },
+  'ev.rough_tackle.hl.answered': { ru: 'Ответил на грубость голом', en: 'Answers the rough stuff with a goal' },
+  'ev.rough_tackle.res.silent': { ru: 'Матч доиграли, а ответить так и не вышло.', en: 'The game ran out before your answer did.' },
+  'ev.rough_tackle.res.walk_away': { ru: 'Вы отвернулись и пошли играть. Не все в раздевалке поняли.', en: 'You turned away and got on with it. Not everyone in the dressing room understood.' },
+
+  // ─── new_owner ────────────────────────────────────────────────────────────
+  'ev.new_owner.title': { ru: 'Клуб сменил владельца', en: 'The club has a new owner' },
+  'ev.new_owner.body': {
+    ru: 'Сделку объявили в июле. Что будет с составом, не знает пока никто, включая тренера.',
+    en: 'The deal was announced in July. Nobody knows what happens to the squad yet, the manager included.',
+  },
+  'ev.new_owner.opt.wait': { ru: 'Подождать и посмотреть', en: 'Wait and see' },
+  'ev.new_owner.opt.demand_guarantees': { ru: 'Пойти за гарантиями', en: 'Go and ask for guarantees' },
+  'ev.new_owner.opt.look_for_exit': { ru: 'Начать искать выход', en: 'Start looking for a way out' },
+  'ev.new_owner.res.guaranteed': { ru: 'Вам сказали прямо: вы в планах. И слово сдержали.', en: 'They told you straight: you are in the plans. And they kept their word.' },
+  'ev.new_owner.res.rebuffed': { ru: 'Вас выслушали и записали в неудобные.', en: 'They heard you out and filed you under difficult.' },
+  'ev.new_owner.res.look_for_exit': { ru: 'Агент понял всё с полуслова.', en: 'Your agent understood before you finished the sentence.' },
+  'ev.new_owner.res.wait': { ru: 'Вы никуда не пошли. К зиме стало понятнее.', en: 'You went nowhere. By winter it was clearer anyway.' },
+
+  // ─── winter_loan ──────────────────────────────────────────────────────────
+  'ev.winter_loan.title': { ru: 'Аренда зимой', en: 'A loan in the winter window' },
+  'ev.winter_loan.body': {
+    ru: 'Полсезона вы смотрите футбол со скамейки. Агент говорит: есть вариант доиграть год в другом месте.',
+    en: 'You have watched half a season from the bench. Your agent says there is somewhere to finish the year.',
+  },
+  'ev.winter_loan.opt.to': { ru: 'В аренду в «{club}»', en: 'Loan to {club}' },
+  'ev.winter_loan.opt.fight': { ru: 'Остаться и бороться', en: 'Stay and fight for the shirt' },
+  'ev.winter_loan.opt.ultimatum': { ru: 'Поставить клубу ультиматум', en: 'Give the club an ultimatum' },
+  'ev.winter_loan.res.loaned': { ru: 'Вы уехали в «{club}» доигрывать сезон. Играть — это уже много.', en: 'You went to {club} to finish the season. Playing at all is a lot.' },
+  'ev.winter_loan.hl.loaned': { ru: 'Ушёл в аренду зимой', en: 'Leaves on loan in January' },
+  'ev.winter_loan.res.earned_place': { ru: 'К марту вы вернулись в состав и больше из него не выпадали.', en: 'By March you were back in the side and stayed there.' },
+  'ev.winter_loan.res.sat_out': { ru: 'Вы остались и досидели сезон до конца.', en: 'You stayed, and you sat out the rest of the season.' },
+  'ev.winter_loan.res.ultimatum': { ru: 'Ультиматум подействовал на состав и на отношения — по-разному.', en: 'The ultimatum worked on the team sheet and on the relationship — differently.' },
+
+  // ─── testimonial ──────────────────────────────────────────────────────────
+  'ev.testimonial.title': { ru: 'Матч в вашу честь', en: 'A testimonial in your name' },
+  'ev.testimonial.body': {
+    ru: '«{club}» предлагает провести прощальный матч: полный стадион, ветераны, сбор на благотворительность.',
+    en: '{club} want to stage a testimonial: a full house, the old boys, the gate going to charity.',
+  },
+  'ev.testimonial.opt.hold': { ru: 'Провести', en: 'Hold it' },
+  'ev.testimonial.opt.decline': { ru: 'Отказаться', en: 'Decline' },
+  'ev.testimonial.opt.postpone': { ru: 'Отложить на год', en: 'Put it off a year' },
+  'ev.testimonial.res.hold': { ru: 'Стадион был полон, и половина трибун знала вас дольше, чем вы их.', en: 'The ground was full, and half of it had known you longer than you had known them.' },
+  'ev.testimonial.hl.hold': { ru: 'Провёл прощальный матч', en: 'Plays his testimonial' },
+  'ev.testimonial.res.postpone': { ru: 'Вы попросили подождать год. Трибуны прочитали это как обещание.', en: 'You asked them to wait a year. The stands read it as a promise.' },
+  'ev.testimonial.res.decline': { ru: 'Вы отказались от прощания. Прощаться вы вообще не любите.', en: 'You turned down the farewell. You were never any good at farewells.' },
+
+  // ─── youth_tournament ─────────────────────────────────────────────────────
+  'ev.youth_tournament.title': { ru: 'Молодёжный турнир', en: 'The youth tournament' },
+  'ev.youth_tournament.body': {
+    ru: 'Молодёжная сборная зовёт на летний турнир. Клуб в это время начинает подготовку к сезону.',
+    en: 'The youth national team wants you for the summer tournament. The club starts preseason in the same weeks.',
+  },
+  'ev.youth_tournament.opt.go': { ru: 'Ехать', en: 'Go' },
+  'ev.youth_tournament.opt.stay': { ru: 'Остаться готовиться с клубом', en: 'Stay for preseason' },
+  'ev.youth_tournament.res.go': { ru: 'Турнир вы отыграли, а на сбор приехали пустым.', en: 'You played the tournament and turned up to preseason empty.' },
+  'ev.youth_tournament.res.stay': { ru: 'Всё лето на базе. Тренер начал сезон, зная про вас всё.', en: 'A whole summer at the training ground. The manager started the season knowing everything about you.' },
+
+  // ─── olympics ─────────────────────────────────────────────────────────────
+  'ev.olympics.title': { ru: 'Олимпиада', en: 'The Olympics' },
+  'ev.olympics.body': {
+    ru: 'Вас включили в олимпийскую заявку. Турнир идёт поверх календаря, и клуб уже написал письмо в федерацию.',
+    en: 'You are in the Olympic squad. The tournament sits on top of the calendar, and the club has already written to the federation.',
+  },
+  'ev.olympics.opt.go': { ru: 'Ехать', en: 'Go' },
+  'ev.olympics.opt.club_first': { ru: 'Отказаться в пользу клуба', en: 'Turn it down for the club' },
+  'ev.olympics.opt.let_club_decide': { ru: 'Пусть решает клуб', en: 'Let the club decide' },
+  'ev.olympics.res.medal': { ru: 'Медаль. Такое в биографии остаётся навсегда.', en: 'A medal. That stays in the biography for good.' },
+  'ev.olympics.hl.medal': { ru: 'Выиграл олимпийскую медаль', en: 'Wins an Olympic medal' },
+  'ev.olympics.res.no_medal': { ru: 'До медали не дошли, но турнир такого уровня даром не проходит.', en: 'No medal, but a tournament at that level never goes to waste.' },
+  'ev.olympics.res.club_first': { ru: 'Клуб выдохнул. В федерации отказ записали.', en: 'The club exhaled. The federation wrote the refusal down.' },
+  'ev.olympics.res.club_said_no': { ru: 'Клуб решил за вас, и решение было предсказуемым.', en: 'The club decided for you, and the decision was predictable.' },
 }

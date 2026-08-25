@@ -1,4 +1,4 @@
-import { H, flag, gauge, later, money, rel, trait, wageMult } from './context'
+import { H, attr, flag, gauge, later, minutes, money, rel, trait, wageMult } from './context'
 import type { EventDef, EventResult, OptionDraft } from './context'
 import type { Effect } from '../types'
 import { getClub } from '../../data/clubs'
@@ -311,4 +311,99 @@ export const TRANSFER_EVENTS: EventDef[] = [
       return { outcome: 'stayed', effects: [gauge('morale', -16), flag('force_home_move', -1), flag('broken_promise')], tone: 'bad' }
     },
   },
+  {
+    key: 'new_owner',
+    channel: 'board',
+    stages: ['preseason'],
+    once: false,
+    weight: 5,
+    when: (c) => c.club !== null && c.player.age >= 19,
+    build: () => ({ options: [
+      { id: 'wait', hints: [H.safe] },
+      { id: 'demand_guarantees', hints: [H.gamble, H.minutesUp] },
+      { id: 'look_for_exit', hints: [H.leaveClub] },
+    ] }),
+    resolve: (c, id) => {
+      if (id === 'demand_guarantees') {
+        return c.rng.chance(0.5)
+          ? { outcome: 'guaranteed', effects: [gauge('coachTrust', 8), minutes(1.25), gauge('morale', 8)], tone: 'good' }
+          : { outcome: 'rebuffed', effects: [gauge('coachTrust', -12), flag('difficult'), gauge('morale', -6)], tone: 'bad' }
+      }
+      if (id === 'look_for_exit') {
+        return { outcome: 'look_for_exit', effects: [flag('wants_out'), gauge('lockerRoom', -4), rel('agent', 8)], tone: 'neutral' }
+      }
+      return { outcome: 'wait', effects: [gauge('morale', 3)], tone: 'neutral' }
+    },
+  },
+  {
+    key: 'winter_loan',
+    channel: 'transfer',
+    stages: ['winter'],
+    once: false,
+    weight: 6,
+    when: (c) => c.club !== null && c.player.age <= 30 && (c.role === 'reserve' || c.role === 'bench'),
+    build: (c) => {
+      const target = generateOffers(c.state, c.rng, { count: 1 })[0]
+      const options: OptionDraft[] = []
+      if (target) {
+        const club = getClub(target.clubId)
+        options.push({ id: `${TO}${club.id}`, labelParams: { club: club.name }, hints: [H.minutesUp, H.leaveClub] })
+      }
+      options.push({ id: 'fight', hints: [H.gamble, H.stayClub] })
+      options.push({ id: 'ultimatum', hints: [H.trustDown, H.minutesUp] })
+      return { options }
+    },
+    resolve: (c, id) => {
+      if (id.startsWith(TO)) {
+        const clubId = id.slice(TO.length)
+        const club = getClub(clubId)
+        return {
+          outcome: 'loaned',
+          params: { club: club.name },
+          // Аренда на остаток сезона: год возвращения считает сам движок.
+          effects: [
+            { t: 'transfer', clubId, loan: true, wage: wageFor(c.ovr, c.player.age, club.tier), years: 1 },
+            minutes(1.4),
+            gauge('morale', 8),
+          ],
+          headline: true,
+          tone: 'good',
+        }
+      }
+      if (id === 'ultimatum') {
+        return { outcome: 'ultimatum', effects: [gauge('coachTrust', -14), minutes(1.2), rel('manager', -12)], tone: 'neutral' }
+      }
+      return c.rng.chance(0.45)
+        ? { outcome: 'earned_place', effects: [gauge('coachTrust', 12), minutes(1.3), attr('mental', 2)], tone: 'good' }
+        : { outcome: 'sat_out', effects: [gauge('morale', -10), minutes(0.8)], tone: 'bad' }
+    },
+  },
+  {
+    key: 'testimonial',
+    channel: 'board',
+    stages: ['run_in'],
+    once: true,
+    weight: 12,
+    when: (c) =>
+      c.player.age >= 30 &&
+      c.club !== null &&
+      c.state.history.filter((h) => h.clubId === c.club?.id).length >= 3,
+    build: (c) => ({ bodyParams: { club: c.club?.name ?? '' }, options: [
+      { id: 'hold', hints: [H.moneyUp, H.fansUp] },
+      { id: 'decline', hints: [H.moraleUp] },
+      { id: 'postpone', hints: [H.safe] },
+    ] }),
+    resolve: (_c, id) => {
+      if (id === 'hold') {
+        return {
+          outcome: 'hold',
+          effects: [money(600_000), gauge('fanLove', 16), gauge('fame', 10), trait('club_man')],
+          headline: true,
+          tone: 'good',
+        }
+      }
+      if (id === 'postpone') return { outcome: 'postpone', effects: [gauge('fanLove', 6), gauge('morale', 6)], tone: 'neutral' }
+      return { outcome: 'decline', effects: [gauge('morale', 8), gauge('mediaRep', 6)], tone: 'neutral' }
+    },
+  }
 ]

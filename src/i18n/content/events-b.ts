@@ -288,4 +288,83 @@ export const EVENTS_B: Content = {
   'ev.agent_scam.res.fine': { ru: 'Всё оказалось чисто, и агент нашёл вам ещё денег.', en: 'It was all clean, and the agent found you more money.' },
   'ev.agent_scam.res.robbed': { ru: 'Половина заработанного ушла в никуда вместе с доверием.', en: 'Half of what you earned vanished, and your trust with it.' },
   'ev.agent_scam.hl.robbed': { ru: 'Агент вывел половину заработанного', en: 'Agent siphons off half the earnings' },
+
+  // ─── hostile_stands ───────────────────────────────────────────────────────
+  'ev.hostile_stands.title': { ru: 'Трибуны переходят черту', en: 'The stands cross a line' },
+  'ev.hostile_stands.body': {
+    ru: 'С сектора в ваш адрес летят оскорбления. Судья остановил матч и включил объявление по стадиону. Игра ждёт вас.',
+    en: 'Abuse is coming at you from one end. The referee has stopped the match and put out a stadium announcement. The game is waiting on you.',
+  },
+  'ev.hostile_stands.opt.leave_pitch': { ru: 'Уйти с поля', en: 'Walk off the pitch' },
+  'ev.hostile_stands.opt.speak_after': { ru: 'Доиграть и высказаться после матча', en: 'Finish the game, speak afterwards' },
+  'ev.hostile_stands.opt.play_on': { ru: 'Молча доиграть', en: 'Play on in silence' },
+  'ev.hostile_stands.res.leave_pitch': { ru: 'Вы ушли в подтрибунку, и следом за вами ушла вся команда. Разбирались уже без вас.', en: 'You walked down the tunnel, and the whole team followed. The inquiry went on without you.' },
+  'ev.hostile_stands.hl.leave_pitch': { ru: 'Ушёл с поля после оскорблений с трибун', en: 'Walks off after abuse from the stands' },
+  'ev.hostile_stands.res.speak_after': { ru: 'Вы доиграли, а на пресс-конференции сказали ровно то, что думали. Это разошлось дальше матча.', en: 'You finished the game and said exactly what you thought at the press conference. It travelled further than the result.' },
+  'ev.hostile_stands.hl.speak_after': { ru: 'Высказался об оскорблениях с трибун', en: 'Speaks out about abuse from the stands' },
+  'ev.hostile_stands.res.play_on': { ru: 'Вы доиграли молча. Матч закончился, а вечер — нет.', en: 'You played on in silence. The match ended; the evening did not.' },
+
+  // ─── betting_ad ───────────────────────────────────────────────────────────
+  'ev.betting_ad.title': { ru: 'Реклама букмекера', en: 'A betting sponsor' },
+  'ev.betting_ad.body': {
+    ru: 'Контора предлагает {amount} за то, чтобы ваше лицо было на их баннерах весь сезон.',
+    en: 'A bookmaker offers {amount} to put your face on their boards for the whole season.',
+  },
+  'ev.betting_ad.opt.sign': { ru: 'Подписать', en: 'Sign it' },
+  'ev.betting_ad.opt.refuse': { ru: 'Отказаться', en: 'Turn it down' },
+  'ev.betting_ad.res.sign': { ru: 'Деньги пришли. Вопросы о них — тоже, и не только от журналистов.', en: 'The money came in. So did the questions, and not only from journalists.' },
+  'ev.betting_ad.res.refuse': { ru: 'Вы отказались без объяснений. Объяснять и не пришлось.', en: 'You turned it down without explaining. You did not have to.' },
+
+  // ─── tv_show ──────────────────────────────────────────────────────────────
+  'ev.tv_show.title': { ru: 'Приглашение на шоу', en: 'An invitation to a TV show' },
+  'ev.tv_show.body': {
+    ru: 'Популярное шоу зовёт вас на съёмки. Неделя в студии вместо недели на поле.',
+    en: 'A popular show wants you on set. A week in the studio instead of a week on the grass.',
+  },
+  'ev.tv_show.opt.go': { ru: 'Поехать', en: 'Go' },
+  'ev.tv_show.opt.decline': { ru: 'Отказаться', en: 'Decline' },
+  'ev.tv_show.res.go': { ru: 'Вас узнали те, кто футбол не смотрит. Тренер посмотрел выпуск молча.', en: 'People who never watch football now know your face. The manager watched the episode in silence.' },
+  'ev.tv_show.res.decline': { ru: 'Вы остались на базе. Тренер отметил это вслух.', en: 'You stayed at the training ground. The manager said so out loud.' },
+
+  // ─── language_barrier ─────────────────────────────────────────────────────
+  'ev.language_barrier.title': { ru: 'Чужой язык', en: 'A language you do not speak' },
+  'ev.language_barrier.body': {
+    ru: 'Полгода в {country}, а разбор игры вы понимаете через слово. В раздевалке шутят, и вы смеётесь с задержкой.',
+    en: 'Six months in {country} and you still catch every other word of the video analysis. The dressing room jokes, and you laugh a beat late.',
+  },
+  'ev.language_barrier.opt.learn': { ru: 'Учить всерьёз', en: 'Learn it properly' },
+  'ev.language_barrier.opt.interpreter': { ru: 'Нанять переводчика', en: 'Hire an interpreter' },
+  'ev.language_barrier.opt.football_only': { ru: 'Обойтись футболом', en: 'Let football do the talking' },
+  'ev.language_barrier.res.learn': { ru: 'К весне вы отвечали на пресс-конференции без переводчика. Команда это заметила первой.', en: 'By spring you were answering press questions unaided. The squad noticed before anyone else.' },
+  'ev.language_barrier.res.interpreter': { ru: 'С переводчиком удобно. И одиноко.', en: 'The interpreter makes things easy. And lonely.' },
+  'ev.language_barrier.res.football_only': { ru: 'На поле вас понимали. За его пределами — не очень.', en: 'On the pitch they understood you. Off it, less so.' },
+
+  // ─── parent_illness ───────────────────────────────────────────────────────
+  'ev.parent_illness.title': { ru: 'Дома заболел близкий', en: 'Someone at home is ill' },
+  'ev.parent_illness.body': {
+    ru: 'Позвонили из дома. Всё серьёзно, а вы за тысячи километров, и в субботу матч.',
+    en: 'A call from home. It is serious, you are thousands of kilometres away, and there is a match on Saturday.',
+  },
+  'ev.parent_illness.opt.go_home': { ru: 'Уехать домой', en: 'Fly home' },
+  'ev.parent_illness.opt.pay_treatment': { ru: 'Оплатить лечение и остаться', en: 'Pay for the treatment and stay' },
+  'ev.parent_illness.opt.bring_family': { ru: 'Перевезти семью к себе', en: 'Bring the family to you' },
+  'ev.parent_illness.res.go_home': { ru: 'Вы улетели на две недели. В клубе поняли не все, дома — все.', en: 'You flew home for two weeks. Not everyone at the club understood. Everyone at home did.' },
+  'ev.parent_illness.res.pay_treatment': { ru: 'Вы оплатили лучшую клинику и остались в расположении. Легче не стало.', en: 'You paid for the best clinic and stayed with the squad. It did not make things lighter.' },
+  'ev.parent_illness.res.bring_family': { ru: 'Теперь они рядом. Впервые за долгое время вы спите спокойно.', en: 'They are close now. For the first time in a long while you sleep through the night.' },
+
+  // ─── driving_ban ──────────────────────────────────────────────────────────
+  'ev.driving_ban.title': { ru: 'Права', en: 'Your licence' },
+  'ev.driving_ban.body': {
+    ru: 'Вас остановили далеко за разрешённой скоростью. Фотография машины уже гуляет по сети.',
+    en: 'You were pulled over well over the limit. A photo of the car is already going around.',
+  },
+  'ev.driving_ban.opt.admit': { ru: 'Признать и извиниться', en: 'Own it and apologise' },
+  'ev.driving_ban.opt.lawyers': { ru: 'Нанять юристов', en: 'Hire lawyers' },
+  'ev.driving_ban.opt.silence': { ru: 'Ничего не комментировать', en: 'Say nothing at all' },
+  'ev.driving_ban.res.admit': { ru: 'Штраф, короткое извинение, забыли через неделю.', en: 'A fine, a short apology, forgotten in a week.' },
+  'ev.driving_ban.res.cleared': { ru: 'Юристы нашли изъян в протоколе. Дело закрыли тихо.', en: 'The lawyers found a flaw in the paperwork. The case closed quietly.' },
+  'ev.driving_ban.res.convicted': { ru: 'Юристы не помогли, а попытка отбиться попала в заголовки.', en: 'The lawyers did not help, and the attempt to fight it made the headlines.' },
+  'ev.driving_ban.hl.convicted': { ru: 'Проиграл дело о превышении скорости', en: 'Loses the speeding case' },
+  'ev.driving_ban.res.silence': { ru: 'Молчание журналисты заполнили сами.', en: 'The journalists filled your silence themselves.' },
+  'ev.driving_ban.hl.silence': { ru: 'Отмолчался после скандала с превышением', en: 'Stays silent after the speeding row' },
 }

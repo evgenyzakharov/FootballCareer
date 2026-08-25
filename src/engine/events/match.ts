@@ -1,6 +1,8 @@
 import { H, attr, flag, gauge, injury, money, odds, rel, suspend, trait } from './context'
 import type { EventDef } from './context'
+import type { Effect } from '../types'
 import { clamp } from '../rng'
+import { getClub } from '../../data/clubs'
 
 /**
  * Ключевые матчи. Здесь единственное место, где бросок зависит от атрибутов
@@ -235,4 +237,56 @@ export const MATCH_EVENTS: EventDef[] = [
       return { outcome: 'hold', effects: [gauge('coachTrust', 4)], tone: 'neutral' }
     },
   },
+  {
+    key: 'former_club_goal',
+    channel: 'match',
+    stages: ['autumn', 'spring'],
+    once: false,
+    weight: 6,
+    when: (c) => c.state.clubsPlayed.length >= 2 && c.club !== null && c.role !== 'reserve' && c.player.position !== 'GK',
+    build: (c) => ({
+      bodyParams: { club: getClub(c.state.clubsPlayed[c.state.clubsPlayed.length - 2]).name },
+      options: [
+        { id: 'celebrate', hints: [H.fansUp, H.mediaDown] },
+        { id: 'apologise', hints: [H.mediaUp] },
+        { id: 'stay_calm', hints: [H.safe] },
+      ],
+    }),
+    resolve: (_c, id) => {
+      const scored: Effect = { t: 'stat', key: 'goals', delta: 1 }
+      if (id === 'celebrate') {
+        return { outcome: 'celebrate', effects: [scored, gauge('fanLove', 13), gauge('fame', 8), gauge('mediaRep', -6)], headline: true, tone: 'neutral' }
+      }
+      if (id === 'apologise') {
+        return { outcome: 'apologise', effects: [scored, gauge('mediaRep', 11), gauge('lockerRoom', 4), gauge('fanLove', -4)], tone: 'good' }
+      }
+      return { outcome: 'stay_calm', effects: [scored, attr('mental', 2), gauge('morale', 5)], tone: 'neutral' }
+    },
+  },
+  {
+    key: 'rough_tackle',
+    channel: 'match',
+    stages: ['autumn', 'winter', 'spring'],
+    once: false,
+    weight: 6,
+    when: (c) => c.player.position !== 'GK' && c.role !== 'reserve',
+    build: () => ({ options: [
+      { id: 'retaliate', hints: [H.banRisk, H.lockerUp] },
+      { id: 'answer_with_goal', hints: [H.gamble, H.fansUp] },
+      { id: 'walk_away', hints: [H.growthUp, H.lockerDown] },
+    ] }),
+    resolve: (c, id) => {
+      if (id === 'retaliate') {
+        return c.rng.chance(0.45)
+          ? { outcome: 'sent_off', effects: [suspend(2), gauge('coachTrust', -12), gauge('fanLove', -8)], headline: true, tone: 'bad' }
+          : { outcome: 'evened', effects: [gauge('lockerRoom', 8), attr('physical', 1), gauge('mediaRep', -4)], tone: 'neutral' }
+      }
+      if (id === 'answer_with_goal') {
+        return c.rng.chance(0.5)
+          ? { outcome: 'answered', effects: [{ t: 'stat', key: 'goals', delta: 1 }, gauge('form', 10), gauge('fanLove', 10)], headline: true, tone: 'good' }
+          : { outcome: 'silent', effects: [gauge('form', -5), gauge('morale', -4)], tone: 'bad' }
+      }
+      return { outcome: 'walk_away', effects: [attr('mental', 2), gauge('mediaRep', 6), gauge('lockerRoom', -5)], tone: 'neutral' }
+    },
+  }
 ]

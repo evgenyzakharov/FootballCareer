@@ -268,4 +268,30 @@ export const TRAINING_EVENTS: EventDef[] = [
         : { outcome: 'balance', effects: [attr(key, 1), gauge('morale', 8)], tone: 'good' }
     },
   },
+  {
+    key: 'set_piece_duty',
+    channel: 'training',
+    stages: ['preseason', 'autumn'],
+    once: false,
+    weight: 6,
+    when: (c) => c.club !== null && c.player.position !== 'GK' && c.role !== 'reserve',
+    build: () => ({ options: [
+      { id: 'take', hints: [H.growthUp, H.fameUp] },
+      { id: 'give', hints: [H.lockerUp] },
+      { id: 'share', hints: [H.safe] },
+    ] }),
+    resolve: (c, id) => {
+      if (id === 'take') {
+        return c.rng.chance(0.55)
+          ? {
+              outcome: 'sharp',
+              effects: [attr('shooting', 2), { t: 'stat', key: 'goals', delta: c.rng.int(1, 3) }, gauge('fame', 6), gauge('coachTrust', 5)],
+              tone: 'good',
+            }
+          : { outcome: 'wasteful', effects: [attr('shooting', 1), gauge('fanLove', -6), gauge('coachTrust', -4)], tone: 'bad' }
+      }
+      if (id === 'give') return { outcome: 'give', effects: [gauge('lockerRoom', 9), gauge('coachTrust', -3)], tone: 'neutral' }
+      return { outcome: 'share', effects: [attr('shooting', 1), gauge('lockerRoom', 4)], tone: 'neutral' }
+    },
+  }
 ]

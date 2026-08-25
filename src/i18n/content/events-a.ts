@@ -325,4 +325,88 @@ export const EVENTS_A: Content = {
   'ev.new_manager.res.insist_ok': { ru: 'Тренер согласился попробовать по-вашему — и это сработало.', en: 'The manager agreed to try it your way — and it worked.' },
   'ev.new_manager.res.insist_bad': { ru: 'Тренер услышал вас и посадил на скамейку.', en: 'The manager heard you out and put you on the bench.' },
   'ev.new_manager.res.seek_exit': { ru: 'Вы дали агенту зелёный свет.', en: 'You gave your agent the green light.' },
+
+  // ─── set_piece_duty ───────────────────────────────────────────────────────
+  'ev.set_piece_duty.title': { ru: 'Стандарты бесхозные', en: 'Nobody owns the set pieces' },
+  'ev.set_piece_duty.body': {
+    ru: 'Штатный исполнитель ушёл, и на первой же тренировке мяч у штрафной кладут перед вами. Все смотрят.',
+    en: 'The regular taker has gone, and at the first session the ball is set down in front of you. Everyone is watching.',
+  },
+  'ev.set_piece_duty.opt.take': { ru: 'Забрать стандарты себе', en: 'Take them yourself' },
+  'ev.set_piece_duty.opt.give': { ru: 'Отдать партнёру', en: 'Hand them to a teammate' },
+  'ev.set_piece_duty.opt.share': { ru: 'Делить по ситуации', en: 'Share them by situation' },
+  'ev.set_piece_duty.res.sharp': { ru: 'Рука набита: пара мячей за сезон залетает прямо со стандарта.', en: 'Your strike is grooved: a couple go straight in from set pieces.' },
+  'ev.set_piece_duty.res.wasteful': { ru: 'Сезон мимо: трибуны начинали вздыхать, едва вы ставили мяч.', en: 'A season of misses: the stands sighed the moment you placed the ball.' },
+  'ev.set_piece_duty.res.give': { ru: 'Партнёр оценил жест, раздевалка запомнила.', en: 'Your teammate appreciated it, and the dressing room noticed.' },
+  'ev.set_piece_duty.res.share': { ru: 'Договорились по ситуации. Работает без надрыва.', en: 'You split them by situation. It works, quietly.' },
+
+  // ─── painkiller_match ─────────────────────────────────────────────────────
+  'ev.painkiller_match.title': { ru: 'Укол перед матчем', en: 'An injection before kickoff' },
+  'ev.painkiller_match.body': {
+    ru: 'Врач говорит прямо: выйти можно, но только на обезболивающем. Матч из тех, что решают сезон.',
+    en: 'The doctor is blunt: you can play, but only on painkillers. This is one of the games that decide a season.',
+  },
+  'ev.painkiller_match.opt.play': { ru: 'Играть на уколе', en: 'Take the injection' },
+  'ev.painkiller_match.opt.refuse': { ru: 'Отказаться', en: 'Refuse' },
+  'ev.painkiller_match.opt.own_doctor': { ru: 'Позвать своего врача', en: 'Call in your own doctor' },
+  'ev.painkiller_match.res.held': { ru: 'Выдержали и доиграли. В клубе это запомнили надолго.', en: 'You held up and finished the game. The club remembered it for a long time.' },
+  'ev.painkiller_match.res.broke_down': { ru: 'На середине второго тайма нога перестала слушаться совсем.', en: 'Midway through the second half the leg gave out entirely.' },
+  'ev.painkiller_match.hl.broke_down': { ru: 'Сломался, выйдя на уколе', en: 'Breaks down after playing injected' },
+  'ev.painkiller_match.res.own_doctor': { ru: 'Свой специалист собрал вас без химии. Дороже, зато честно перед телом.', en: 'Your own specialist put you back together without chemistry. Pricier, but honest to your body.' },
+  'ev.painkiller_match.res.refuse': { ru: 'Вы не вышли. Тренер сказал ровно одну фразу и больше к теме не возвращался.', en: 'You did not play. The manager said one sentence and never raised it again.' },
+
+  // ─── sleep_trouble ────────────────────────────────────────────────────────
+  'ev.sleep_trouble.title': { ru: 'Не спится перед матчами', en: 'No sleep before matches' },
+  'ev.sleep_trouble.body': {
+    ru: 'Третью неделю вы засыпаете под утро и просыпаетесь разбитым. На разминке это уже видно.',
+    en: 'For three weeks you fall asleep at dawn and wake up wrecked. It already shows in the warm-up.',
+  },
+  'ev.sleep_trouble.opt.psychologist': { ru: 'Пойти к спортивному психологу', en: 'See a sports psychologist' },
+  'ev.sleep_trouble.opt.endure': { ru: 'Перетерпеть', en: 'Ride it out' },
+  'ev.sleep_trouble.opt.pills': { ru: 'Начать со снотворного', en: 'Start on sleeping pills' },
+  'ev.sleep_trouble.res.psychologist': { ru: 'Несколько разговоров — и голова наконец выключается вечером.', en: 'A few conversations, and your head finally switches off at night.' },
+  'ev.sleep_trouble.res.pills': { ru: 'Спать вы стали. Только каждый раз нужно чуть больше, чем в прошлый.', en: 'You sleep now. Just needing a little more each time than the time before.' },
+  'ev.sleep_trouble.res.endure': { ru: 'Терпели до зимы. Терпение обошлось дороже, чем казалось.', en: 'You gritted it out until winter. It cost more than it looked like it would.' },
+
+  // ─── best_friend_sold ─────────────────────────────────────────────────────
+  'ev.best_friend_sold.title': { ru: 'Друга продают', en: 'Your closest teammate is being sold' },
+  'ev.best_friend_sold.body': {
+    ru: 'Самого близкого человека в команде выставили на трансфер. Он узнал об этом из новостей.',
+    en: 'The closest person to you in the squad has been listed. He found out from the news.',
+  },
+  'ev.best_friend_sold.opt.talk_to_board': { ru: 'Пойти к руководству', en: 'Go to the board' },
+  'ev.best_friend_sold.opt.stay_quiet': { ru: 'Промолчать', en: 'Say nothing' },
+  'ev.best_friend_sold.opt.ask_to_follow': { ru: 'Проситься следом', en: 'Ask to follow him out' },
+  'ev.best_friend_sold.res.talk_to_board': { ru: 'Команда увидела, что за своих здесь заступаются. Наверху — что вы лезете не в своё дело.', en: 'The squad saw someone stand up for a teammate. Upstairs they saw you overstepping.' },
+  'ev.best_friend_sold.res.stay_quiet': { ru: 'Он уехал, не попрощавшись. Осадок остался на месяцы.', en: 'He left without a goodbye. The taste stayed for months.' },
+  'ev.best_friend_sold.res.ask_to_follow': { ru: 'Агент получил задачу: искать выход и вам тоже.', en: 'Your agent has his instructions: find you a way out too.' },
+
+  // ─── shirt_number_ten ─────────────────────────────────────────────────────
+  'ev.shirt_number_ten.title': { ru: 'Освободилась десятка', en: 'The number ten is free' },
+  'ev.shirt_number_ten.body': {
+    ru: 'Номер, который в этом клубе значит больше, чем номер, лежит без хозяина. Спрашивают вас.',
+    en: 'The shirt that means more than a number at this club has no owner. They are asking you.',
+  },
+  'ev.shirt_number_ten.opt.take': { ru: 'Взять десятку', en: 'Take the ten' },
+  'ev.shirt_number_ten.opt.keep': { ru: 'Остаться со своим номером', en: 'Keep your own number' },
+  'ev.shirt_number_ten.opt.give_away': { ru: 'Отдать молодому', en: 'Give it to the youngster' },
+  'ev.shirt_number_ten.res.take': { ru: 'Десятка ваша. Теперь каждый матч будут мерить по ней.', en: 'The ten is yours. From now on every game gets measured against it.' },
+  'ev.shirt_number_ten.hl.take': { ru: 'Получил десятый номер', en: 'Takes the number ten' },
+  'ev.shirt_number_ten.res.give_away': { ru: 'Парень не поверил своим ушам. Раздевалка — тоже.', en: 'The kid could not believe it. Neither could the dressing room.' },
+  'ev.shirt_number_ten.res.keep': { ru: 'Свой номер вы носите не первый год. Пусть так и остаётся.', en: 'You have worn your number for years. Let it stay that way.' },
+
+  // ─── reserve_demotion ─────────────────────────────────────────────────────
+  'ev.reserve_demotion.title': { ru: 'Тренируйся с дублем', en: 'Train with the reserves' },
+  'ev.reserve_demotion.body': {
+    ru: 'Вас отправили к дублю. Формулировка мягкая, смысл прозрачный: в планах на сезон вас нет.',
+    en: 'You have been sent down to the reserves. The wording is gentle; the meaning is not: you are not in the plans.',
+  },
+  'ev.reserve_demotion.opt.work_back': { ru: 'Пахать и вернуться', en: 'Work your way back' },
+  'ev.reserve_demotion.opt.go_public': { ru: 'Высказаться публично', en: 'Say it publicly' },
+  'ev.reserve_demotion.opt.ask_loan': { ru: 'Проситься в аренду', en: 'Ask for a loan' },
+  'ev.reserve_demotion.res.won_back': { ru: 'Через два месяца вас вернули. Никто не спорил.', en: 'Two months later you were back. Nobody argued.' },
+  'ev.reserve_demotion.res.still_out': { ru: 'Работали как проклятый, но дверь так и не открылась.', en: 'You worked like mad, and the door still did not open.' },
+  'ev.reserve_demotion.res.go_public': { ru: 'Слова разошлись по заголовкам. Дверь закрылась плотнее.', en: 'Your words made the headlines. The door shut tighter.' },
+  'ev.reserve_demotion.hl.go_public': { ru: 'Публично поспорил с тренером', en: 'Goes public against the manager' },
+  'ev.reserve_demotion.res.ask_loan': { ru: 'Агент начал искать вариант с игровым временем.', en: 'Your agent started looking for somewhere you would actually play.' },
 }

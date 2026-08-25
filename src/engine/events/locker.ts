@@ -1,4 +1,4 @@
-import { H, attr, flag, gauge, minutes, money, rel, trait } from './context'
+import { H, attr, flag, gauge, later, minutes, money, rel, trait } from './context'
 import type { EventDef } from './context'
 import { find } from '../relationships'
 
@@ -210,4 +210,76 @@ export const LOCKER_EVENTS: EventDef[] = [
       return { outcome: 'seek_exit', effects: [flag('wants_out'), gauge('coachTrust', -10), rel('agent', 8)], tone: 'neutral' }
     },
   },
+  {
+    key: 'best_friend_sold',
+    channel: 'locker',
+    stages: ['winter'],
+    once: false,
+    weight: 5,
+    when: (c) => c.club !== null && c.player.age >= 20 && c.state.history.length >= 1,
+    build: () => ({ options: [
+      { id: 'talk_to_board', hints: [H.lockerUp, H.trustDown] },
+      { id: 'stay_quiet', hints: [H.moraleDown] },
+      { id: 'ask_to_follow', hints: [H.leaveClub] },
+    ] }),
+    resolve: (_c, id) => {
+      if (id === 'talk_to_board') {
+        return { outcome: 'talk_to_board', effects: [gauge('lockerRoom', 11), gauge('coachTrust', -8), gauge('mediaRep', -4)], tone: 'neutral' }
+      }
+      if (id === 'ask_to_follow') {
+        return { outcome: 'ask_to_follow', effects: [flag('wants_out'), gauge('morale', 5), gauge('coachTrust', -6)], tone: 'neutral' }
+      }
+      return { outcome: 'stay_quiet', effects: [gauge('morale', -11), gauge('form', -4)], tone: 'bad' }
+    },
+  },
+  {
+    key: 'shirt_number_ten',
+    channel: 'locker',
+    stages: ['preseason'],
+    once: true,
+    weight: 5,
+    when: (c) => c.club !== null && c.role !== 'reserve' && c.player.position !== 'GK' && c.player.age >= 18,
+    build: () => ({ options: [
+      { id: 'take', hints: [H.fameUp, H.consequenceLater] },
+      { id: 'keep', hints: [H.safe] },
+      { id: 'give_away', hints: [H.lockerUp] },
+    ] }),
+    resolve: (_c, id) => {
+      if (id === 'take') {
+        return {
+          outcome: 'take',
+          // Символ обязывает: с десяткой спрос трибун другой, и это аукнется.
+          effects: [gauge('fame', 12), gauge('fanLove', 8), flag('number_ten'), later('fan_backlash', 1, 'autumn')],
+          headline: true,
+          tone: 'neutral',
+        }
+      }
+      if (id === 'give_away') return { outcome: 'give_away', effects: [gauge('lockerRoom', 12), trait('mentor')], tone: 'good' }
+      return { outcome: 'keep', effects: [gauge('morale', 6)], tone: 'neutral' }
+    },
+  },
+  {
+    key: 'reserve_demotion',
+    channel: 'locker',
+    stages: ['autumn', 'winter'],
+    once: false,
+    weight: 5,
+    when: (c) => c.club !== null && c.player.gauges.coachTrust < 35 && (c.role === 'reserve' || c.role === 'bench'),
+    build: () => ({ options: [
+      { id: 'work_back', hints: [H.growthUp, H.gamble] },
+      { id: 'go_public', hints: [H.mediaDown, H.fansUp] },
+      { id: 'ask_loan', hints: [H.leaveClub, H.minutesUp] },
+    ] }),
+    resolve: (c, id) => {
+      if (id === 'work_back') {
+        return c.rng.chance(0.5)
+          ? { outcome: 'won_back', effects: [attr('physical', 2), attr('mental', 2), gauge('coachTrust', 15), minutes(1.3), trait('grinder')], tone: 'good' }
+          : { outcome: 'still_out', effects: [attr('physical', 2), gauge('coachTrust', 4), gauge('morale', -8)], tone: 'neutral' }
+      }
+      if (id === 'go_public') {
+        return { outcome: 'go_public', effects: [gauge('mediaRep', -12), gauge('coachTrust', -10), gauge('fanLove', 5)], headline: true, tone: 'bad' }
+      }
+      return { outcome: 'ask_loan', effects: [flag('wants_out'), gauge('coachTrust', -4), rel('agent', 8)], tone: 'neutral' }
+    },
+  }
 ]

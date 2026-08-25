@@ -6,7 +6,7 @@ import { adjustObjective, makeObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
 import { playerOvr, squadLevel } from '../src/engine/player'
 import { formatMoney, missingKeys, t } from '../src/i18n'
-import { ALL_EVENTS, buildCard, getEvent } from '../src/engine/events'
+import { ALL_EVENTS, buildCard, getEvent, resolveCard } from '../src/engine/events'
 import { findClub, getClub } from '../src/data/clubs'
 import { getLeague } from '../src/data/leagues'
 import { leagueLift, rollLeaguePosition } from '../src/engine/competitions'
@@ -524,6 +524,69 @@ describe('движок карьеры', () => {
     // Даже прямой вызов не должен пропускать оплату несуществующими деньгами.
     const broke: CareerState = { ...state, player: { ...state.player, money: 0 }, card: poor }
     expect(choose(broke, 'send_money')).toBe(broke)
+  })
+
+  it('у каждого события переведены заголовок, варианты и все исходы', () => {
+    // Прогон карьеры трогает только те события, которые ему выпали. Редкие так
+    // и остались бы без проверки текстов, поэтому здесь разыгрывается каждое.
+    let state = playCareer('all-events-state')
+    // Берём момент из середины карьеры: клубов уже несколько, контракт есть.
+    state = {
+      ...state,
+      phase: 'season',
+      player: { ...state.player, age: 33, money: 20_000_000, gauges: { ...state.player.gauges, fame: 60 } },
+      contract: state.contract ?? {
+        clubId: 'inter', wage: 4_000_000, yearsLeft: 2, isLoan: false, parentClubId: null, objective: null,
+      },
+      clubsPlayed: state.clubsPlayed.length >= 2 ? state.clubsPlayed : ['venezia', 'inter'],
+      flags: { ...state.flags, national_established: 1 },
+    }
+
+    missingKeys.clear()
+    const failures: string[] = []
+    for (const def of ALL_EVENTS) {
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const ctx = {
+          state,
+          player: state.player,
+          club: findClub(state.contract?.clubId ?? null),
+          ovr: playerOvr(state.player),
+          role: 'starter' as Role,
+          rng: new Rng('all-events', `${def.key}-${attempt}`, attempt),
+          stage: def.stages[0],
+          // Задача сезона читает kind как вид задачи, медицина — как вид травмы.
+          payload: (def.key === 'season_objective'
+            ? { kind: 'goals', target: 12 }
+            : { kind: 'muscle_strain', severity: 2, tournament: 'world_cup' }) as Record<string, string | number>,
+        }
+        let card
+        try {
+          card = buildCard(def, ctx)
+        } catch (e) {
+          failures.push(`${def.key}: build упал — ${String(e)}`)
+          break
+        }
+        for (const locale of ['ru', 'en'] as const) {
+          t(card.title, locale)
+          t(card.body, locale)
+          for (const option of card.options) t(option.label, locale)
+        }
+        for (const option of card.options) {
+          try {
+            const resolution = resolveCard(def, ctx, option.id)
+            for (const locale of ['ru', 'en'] as const) {
+              t(resolution.text, locale)
+              if (resolution.headline) t(resolution.headline, locale)
+            }
+          } catch (e) {
+            failures.push(`${def.key}/${option.id}: resolve упал — ${String(e)}`)
+          }
+        }
+      }
+    }
+
+    expect(failures).toEqual([])
+    expect([...missingKeys]).toEqual([])
   })
 
   it('положение относительно состава считается от текущего клуба', () => {
