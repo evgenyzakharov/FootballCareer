@@ -43,7 +43,7 @@ export const MEDICAL_EVENTS: EventDef[] = [
       options: [
         { id: 'rush', hints: [H.minutesUp, H.injuryRiskHigh] },
         { id: 'protocol', hints: [H.safe, H.minutesDown] },
-        { id: 'specialist', hints: [H.moneyDown, H.fitnessUp] },
+        { id: 'specialist', cost: 250_000, hints: [H.moneyDown, H.fitnessUp] },
       ],
     }),
     resolve: (c, id) => {
@@ -119,7 +119,7 @@ export const MEDICAL_EVENTS: EventDef[] = [
     once: false,
     weight: 0,
     build: () => ({ options: [
-      { id: 'abroad', hints: [H.moneyDown, H.fitnessUp] },
+      { id: 'abroad', cost: 600_000, hints: [H.moneyDown, H.fitnessUp] },
       { id: 'club', hints: [H.safe] },
       { id: 'conservative', hints: [H.gamble, H.minutesUp] },
     ] }),

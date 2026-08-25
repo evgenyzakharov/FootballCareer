@@ -227,6 +227,8 @@ export interface CardOption {
    * заявленный замысел и проверяются тестом на полноту переводов.
    */
   hints: OptionEffectHint[]
+  /** Вариант виден, но выбрать его нельзя: не хватает заработанного. */
+  disabled: boolean
 }
 
 export type CardKind = 'decision' | 'report'

@@ -325,7 +325,7 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
           hints: [H.minutesUp, H.moneyDown],
         })
       }
-      options.push({ id: 'keep_fit', hints: [H.fitnessUp, H.moneyDown] })
+      options.push({ id: 'keep_fit', cost: 120_000, hints: [H.fitnessUp, H.moneyDown] })
       options.push({ id: 'badges', hints: [H.growthUp, H.formDown] })
       return { options }
     },

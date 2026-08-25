@@ -83,7 +83,7 @@ export const TRAINING_EVENTS: EventDef[] = [
     weight: 6,
     when: (c) => c.player.money > 40_000,
     build: () => ({ bodyParams: { cost: 60_000 }, options: [
-      { id: 'hire', hints: [H.growthBig, H.moneyDown, H.gamble] },
+      { id: 'hire', cost: 60_000, hints: [H.growthBig, H.moneyDown, H.gamble] },
       { id: 'decline', hints: [H.noEffect] },
     ] }),
     resolve: (c, id) => {

@@ -159,7 +159,7 @@ export const TRANSFER_EVENTS: EventDef[] = [
     weight: 5,
     when: (c) => c.ovr >= 72 && c.player.age <= 28,
     build: () => ({ options: [
-      { id: 'insert', hints: [H.moneyDown, H.consequenceLater] },
+      { id: 'insert', cost: 200_000, hints: [H.moneyDown, H.consequenceLater] },
       { id: 'no_clause', hints: [H.moneyUp, H.stayClub] },
     ] }),
     resolve: (_c, id) =>

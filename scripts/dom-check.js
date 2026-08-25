@@ -140,11 +140,10 @@
           timelineRows: document.querySelectorAll('.timeline tbody tr').length,
           sampleTitles: Object.keys(seenEvents).slice(0, 6),
           sampleOptions: Array.prototype.map.call(card.querySelectorAll('.option__label'), function (n) { return n.textContent }),
-          sampleHints: Array.prototype.map.call(card.querySelectorAll('.option .chip'), function (n) { return n.textContent }),
         }
       }
 
-      const option = card.querySelector('.options .option')
+      const option = card.querySelector('.options .option:not([disabled])')
       const next = card.querySelector('.primary-btn')
       if (option) {
         cards++

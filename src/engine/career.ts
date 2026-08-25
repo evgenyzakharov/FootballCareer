@@ -1013,6 +1013,11 @@ export function choose(state: CareerState, optionId: string): CareerState {
     return pump(afterCard({ ...state, card: null }))
   }
 
+  // Недоступный вариант интерфейс не даёт нажать, но состояние обязано быть
+  // защищено и от чужого вызова: иначе игрок заплатил бы несуществующими
+  // деньгами.
+  if (card.options.some((o) => o.id === optionId && o.disabled)) return state
+
   const def = getEvent(card.eventKey)
   const payloadFromCard = payloadOf(card)
   const ctx = ctxFor({ ...state, step: state.step + 1 }, payloadFromCard)

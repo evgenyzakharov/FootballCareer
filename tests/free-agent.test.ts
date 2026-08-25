@@ -20,9 +20,11 @@ function start(seed: string): CareerState {
  */
 function stayClubless(state: CareerState): string {
   const card = state.card!
+  // Недоступные варианты игрок нажать не может — значит, и здесь их не берём.
+  const available = card.options.filter((o) => !o.disabled)
   const idle = card.eventKey === 'free_agent_year' || card.eventKey === 'trial_offer'
-  const options = idle ? card.options.filter((o) => !o.id.startsWith('to:')) : card.options
-  const list = options.length > 0 ? options : card.options
+  const options = idle ? available.filter((o) => !o.id.startsWith('to:')) : available
+  const list = options.length > 0 ? options : available
   return list.length > 0 ? list[0].id : 'next'
 }
 
@@ -31,7 +33,7 @@ function advanceUntil(
   state: CareerState,
   done: (s: CareerState) => boolean,
   limit = 400,
-  pick: (s: CareerState) => string = (s) => (s.card!.options[0]?.id ?? 'next'),
+  pick: (s: CareerState) => string = (s) => (s.card!.options.find((o) => !o.disabled)?.id ?? 'next'),
 ): CareerState {
   let current = state
   let guard = 0

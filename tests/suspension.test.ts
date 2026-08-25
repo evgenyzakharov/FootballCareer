@@ -23,7 +23,7 @@ function advanceUntil(state: CareerState, done: (s: CareerState) => boolean, lim
       continue
     }
     if (!current.card) throw new Error(`stuck: stage=${current.stage} phase=${current.phase}`)
-    current = choose(current, current.card.options[0]?.id ?? 'next')
+    current = choose(current, current.card.options.find((o) => !o.disabled)?.id ?? 'next')
   }
   return current
 }

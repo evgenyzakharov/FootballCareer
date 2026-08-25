@@ -162,7 +162,7 @@
         measure('career')
         return finish()
       }
-      const option = card.querySelector('.options .option')
+      const option = card.querySelector('.options .option:not([disabled])')
       const next = card.querySelector('.primary-btn')
       if (option) { cards++; option.click() } else if (next) { next.click() }
       return setTimeout(tick, 20)

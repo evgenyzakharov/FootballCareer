@@ -44,6 +44,7 @@ export const UI: Content = {
 
   // ─── Карточка решения ─────────────────────────────────────────────────────
   'card.next': { ru: 'Дальше', en: 'Next' },
+  'card.no_money': { ru: 'Не хватает заработанного', en: 'You have not earned enough' },
   'card.result': { ru: 'Что вышло', en: 'What happened' },
   'card.stage': { ru: 'Этап', en: 'Stage' },
 

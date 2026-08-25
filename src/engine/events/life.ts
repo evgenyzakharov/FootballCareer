@@ -68,7 +68,7 @@ export const LIFE_EVENTS: EventDef[] = [
     weight: 6,
     when: (c) => c.club !== null && c.club.country !== c.player.countryCode && c.player.age >= 22,
     build: (c) => ({ bodyParams: { home: getCountry(c.player.countryCode).nameAcc }, options: [
-      { id: 'bring_them', hints: [H.moraleUp, H.moneyDown] },
+      { id: 'bring_them', cost: 400_000, hints: [H.moraleUp, H.moneyDown] },
       { id: 'promise_return', hints: [H.moraleUp, H.consequenceLater] },
       { id: 'refuse', hints: [H.moraleDown, H.formUp] },
     ] }),
@@ -124,7 +124,7 @@ export const LIFE_EVENTS: EventDef[] = [
     once: false,
     weight: 0,
     build: () => ({ options: [
-      { id: 'sell_assets', hints: [H.moneyDown, H.safe] },
+      { id: 'sell_assets', cost: 600_000, hints: [H.moneyDown, H.safe] },
       { id: 'borrow', hints: [H.consequenceLater] },
       { id: 'go_public', hints: [H.mediaDown, H.fansUp] },
     ] }),
@@ -186,7 +186,7 @@ export const LIFE_EVENTS: EventDef[] = [
     weight: 4,
     when: (c) => c.player.money > 8_000_000 && c.player.gauges.fame >= 45,
     build: () => ({ options: [
-      { id: 'found', hints: [H.moneyDown, H.fansUp, H.mediaUp] },
+      { id: 'found', cost: 3_000_000, hints: [H.moneyDown, H.fansUp, H.mediaUp] },
       { id: 'skip', hints: [H.noEffect] },
     ] }),
     resolve: (_c, id) =>
@@ -203,7 +203,7 @@ export const LIFE_EVENTS: EventDef[] = [
     when: (c) => c.player.money > 4_000_000,
     build: () => ({ options: [
       { id: 'trust', hints: [H.gamble, H.moneyUp] },
-      { id: 'audit', hints: [H.safe] },
+      { id: 'audit', cost: 50_000, hints: [H.safe] },
     ] }),
     resolve: (c, id) => {
       if (id === 'audit') return { outcome: 'audit', effects: [money(-50_000), rel('agent', -10), gauge('morale', 4)], tone: 'neutral' }

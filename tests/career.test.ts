@@ -6,7 +6,7 @@ import { adjustObjective, makeObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
 import { playerOvr, squadLevel } from '../src/engine/player'
 import { formatMoney, missingKeys, t } from '../src/i18n'
-import { ALL_EVENTS } from '../src/engine/events'
+import { ALL_EVENTS, buildCard, getEvent } from '../src/engine/events'
 import { findClub, getClub } from '../src/data/clubs'
 import { getLeague } from '../src/data/leagues'
 import { leagueLift, rollLeaguePosition } from '../src/engine/competitions'
@@ -38,7 +38,11 @@ function playCareer(
       throw new Error(`stuck: phase=${state.phase} stage=${state.stage} queue=${state.queue.length}`)
     }
     const card = state.card
-    const optionId = card.options.length > 0 ? rng.pick(card.options).id : 'next'
+    // Недоступные варианты нажать нельзя — прогон обязан вести себя как игрок.
+    const available = card.options.filter((o) => !o.disabled)
+    // Карточка, у которой нечего выбрать, заперла бы карьеру наглухо.
+    if (card.options.length > 0) expect(available.length).toBeGreaterThan(0)
+    const optionId = available.length > 0 ? rng.pick(available).id : 'next'
     state = choose(state, optionId)
   }
   expect(guard).toBeLessThan(4000)
@@ -381,7 +385,8 @@ describe('движок карьеры', () => {
         if (state.resolution) { state = ack(state); continue }
         if (!state.card) break
         if (state.card.title.key === 'ev.season_objective.title') seen = true
-        state = choose(state, state.card.options.length ? picker.pick(state.card.options).id : 'next')
+        const available = state.card.options.filter((o) => !o.disabled)
+        state = choose(state, available.length > 0 ? picker.pick(available).id : 'next')
       }
       expect(armed || seen).toBe(true)
     }
@@ -466,7 +471,7 @@ describe('движок карьеры', () => {
           if (state.resolution) { state = ack(state); continue }
           if (!state.card) break
           cards++
-          const options = state.card.options
+          const options = state.card.options.filter((o) => !o.disabled)
           state = choose(state, options.length > 0 ? rng.pick(options).id : 'next')
         }
         seasons += state.history.length
@@ -480,6 +485,45 @@ describe('движок карьеры', () => {
     // Ступени обязаны быть различимы: иначе выбор на старте ничего не значит.
     expect(normal).toBeGreaterThan(calm + 0.6)
     expect(busy).toBeGreaterThan(normal + 0.6)
+  })
+
+  it('вариант дороже заработанного показывается недоступным и не выбирается', () => {
+    let state = setIdentity(newCareer('cost-gate'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 10,
+      foot: 'right',
+      countryCode: 'ITA',
+      position: 'CAM',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+
+    const cardWith = (money: number) =>
+      buildCard(getEvent('charity_visit'), {
+        state,
+        player: { ...state.player, money },
+        club: findClub(state.contract?.clubId ?? null),
+        ovr: playerOvr(state.player),
+        role: 'starter',
+        rng: new Rng('cost-gate', 'event', 0),
+        stage: 'winter',
+        payload: {},
+      })
+
+    // Поездка стоит 80 тысяч, перевод — 250: при пустом счёте недоступны обе.
+    const poor = cardWith(0)
+    expect(poor.options.find((o) => o.id === 'go')!.disabled).toBe(true)
+    expect(poor.options.find((o) => o.id === 'send_money')!.disabled).toBe(true)
+    expect(poor.options.find((o) => o.id === 'skip')!.disabled).toBe(false)
+
+    const middling = cardWith(100_000)
+    expect(middling.options.find((o) => o.id === 'go')!.disabled).toBe(false)
+    expect(middling.options.find((o) => o.id === 'send_money')!.disabled).toBe(true)
+
+    expect(cardWith(1_000_000).options.every((o) => !o.disabled)).toBe(true)
+
+    // Даже прямой вызов не должен пропускать оплату несуществующими деньгами.
+    const broke: CareerState = { ...state, player: { ...state.player, money: 0 }, card: poor }
+    expect(choose(broke, 'send_money')).toBe(broke)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

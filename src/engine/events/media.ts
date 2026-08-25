@@ -146,7 +146,7 @@ export const MEDIA_EVENTS: EventDef[] = [
     build: () => ({ options: [
       { id: 'apologise', hints: [H.mediaUp, H.moraleDown] },
       { id: 'joke', hints: [H.fansUp, H.trustDown] },
-      { id: 'lawyers', hints: [H.moneyDown, H.mediaUp] },
+      { id: 'lawyers', cost: 200_000, hints: [H.moneyDown, H.mediaUp] },
     ] }),
     resolve: (_c, id) => {
       if (id === 'apologise') return { outcome: 'apologise', effects: [gauge('mediaRep', 10), gauge('morale', -6), gauge('coachTrust', 4)], tone: 'neutral' }
@@ -179,7 +179,7 @@ export const MEDIA_EVENTS: EventDef[] = [
     weight: 0,
     build: () => ({ options: [
       { id: 'own_channel', hints: [H.fameUp, H.mediaDown] },
-      { id: 'make_peace', hints: [H.mediaUp, H.moneyDown] },
+      { id: 'make_peace', cost: 100_000, hints: [H.mediaUp, H.moneyDown] },
     ] }),
     resolve: (_c, id) =>
       id === 'own_channel'
@@ -193,8 +193,8 @@ export const MEDIA_EVENTS: EventDef[] = [
     once: false,
     weight: 5,
     build: () => ({ options: [
-      { id: 'go', hints: [H.fansUp, H.mediaUp, H.moneyDown] },
-      { id: 'send_money', hints: [H.moneyDown, H.safe] },
+      { id: 'go', cost: 80_000, hints: [H.fansUp, H.mediaUp, H.moneyDown] },
+      { id: 'send_money', cost: 250_000, hints: [H.moneyDown, H.safe] },
       { id: 'skip', hints: [H.noEffect] },
     ] }),
     resolve: (_c, id) => {

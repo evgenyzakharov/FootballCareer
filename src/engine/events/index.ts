@@ -44,6 +44,11 @@ function optionTextKey(optionId: string): string {
 
 export function buildCard(def: EventDef, ctx: EventCtx): Card {
   const draft = def.build(ctx)
+  const affordable = (cost: number | undefined) => cost === undefined || cost <= ctx.player.money
+  // Если по карману нет ни одного варианта, карточка стала бы тупиком — тогда
+  // не запираем ничего. У событий так быть не должно (это проверяет тест), но
+  // насос обязан выжить и при ошибке в описании.
+  const anyAffordable = draft.options.some((o) => affordable(o.cost))
   return {
     id: `${def.key}@${ctx.player.age}:${ctx.stage}`,
     kind: 'decision',
@@ -56,6 +61,7 @@ export function buildCard(def: EventDef, ctx: EventCtx): Card {
       id: o.id,
       label: { key: `ev.${def.key}.opt.${optionTextKey(o.id)}`, params: o.labelParams },
       hints: o.hints ?? [],
+      disabled: anyAffordable && !affordable(o.cost),
     })),
     payload: ctx.payload,
   }

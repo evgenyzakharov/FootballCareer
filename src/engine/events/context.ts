@@ -20,6 +20,13 @@ export interface OptionDraft {
   id: string
   hints?: OptionEffectHint[]
   labelParams?: Record<string, TextParam>
+  /**
+   * Во сколько обойдётся вариант, в евро. Если заработано меньше, вариант
+   * показывается недоступным: предлагать то, чем игрок расплатиться не может,
+   * игра не должна. Ставится там, где цена известна заранее и одинакова при
+   * любом исходе — случайные потери деньгами сюда не относятся.
+   */
+  cost?: number
 }
 
 export interface EventDraft {

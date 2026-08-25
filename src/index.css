@@ -422,8 +422,10 @@ input { font: inherit; color: inherit; }
   padding: 12px 14px;
   transition: border-color .15s, background .15s, transform .1s;
 }
-.option:hover { border-color: var(--accent-dim); background: #1d242b; }
-.option:active { transform: translateY(1px); }
+.option:hover:not([disabled]) { border-color: var(--accent-dim); background: #1d242b; }
+.option:active:not([disabled]) { transform: translateY(1px); }
+.option[disabled] { opacity: .45; cursor: not-allowed; }
+.option__note { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
 .option__label { font-weight: 600; }
 
 .resolution { border-left: 3px solid var(--accent); }

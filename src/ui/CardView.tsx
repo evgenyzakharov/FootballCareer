@@ -42,8 +42,15 @@ export function CardView({ card, onChoose }: { card: Card; onChoose: (optionId: 
           {card.options.map((option) => (
             // Подсказки об эффектах игроку не показываем: выбор должен
             // делаться по ситуации, а не по подписи под кнопкой.
-            <button key={option.id} type="button" className="option" onClick={() => onChoose(option.id)}>
+            <button
+              key={option.id}
+              type="button"
+              className="option"
+              disabled={option.disabled}
+              onClick={() => onChoose(option.id)}
+            >
               <div className="option__label">{t(option.label)}</div>
+              {option.disabled && <div className="option__note">{t({ key: 'card.no_money' })}</div>}
             </button>
           ))}
         </div>

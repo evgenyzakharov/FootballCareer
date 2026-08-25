@@ -33,7 +33,7 @@ function play(seed: string): CareerState {
       continue
     }
     if (!state.card) throw new Error('stuck')
-    const options = state.card.options
+    const options = state.card.options.filter((o) => !o.disabled)
     state = choose(state, options.length > 0 ? choices.pick(options).id : 'next')
   }
   return state
