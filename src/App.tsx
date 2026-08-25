@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { CareerState, Currency, Locale } from './engine/types'
+import type { CareerState, Currency, Locale, Pace } from './engine/types'
 import type { Identity } from './engine/player'
 import { ack, choose, newCareer, setIdentity } from './engine/career'
 import { clearState, loadCurrency, loadLocale, loadState, saveCurrency, saveLocale, saveState } from './engine/save'
@@ -104,8 +104,8 @@ export default function App() {
           <IdentityScreen
             initialSeed={state.seed}
             onBack={reset}
-            onConfirm={(identity: Identity, chosenSeed: string) =>
-              setState(setIdentity({ ...state, seed: chosenSeed }, identity))
+            onConfirm={(identity: Identity, chosenSeed: string, pace: Pace) =>
+              setState(setIdentity({ ...state, seed: chosenSeed, pace }, identity))
             }
           />
         )}

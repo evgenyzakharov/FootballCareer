@@ -18,7 +18,7 @@ export const UI: Content = {
 
   // ─── Идентичность ─────────────────────────────────────────────────────────
   'identity.title': { ru: 'Кто вы', en: 'Who you are' },
-  'identity.subtitle': { ru: 'Фамилия, номер, нога, страна и позиция. Дальше всё решают ваши выборы.', en: 'Surname, number, foot, country and position. Everything after that is your choices.' },
+  'identity.subtitle': { ru: 'Фамилия, номер, нога, страна, позиция и насыщенность сезона. Дальше всё решают ваши выборы.', en: 'Surname, number, foot, country, position and season density. Everything after that is your choices.' },
   'identity.lastName': { ru: 'Фамилия', en: 'Last name' },
   'identity.lastName_placeholder': { ru: 'ФАМИЛИЯ', en: 'LAST NAME' },
   'identity.number': { ru: 'Номер', en: 'Number' },
@@ -28,6 +28,11 @@ export const UI: Content = {
   'identity.nationality': { ru: 'Страна', en: 'Nationality' },
   'identity.search': { ru: 'Поиск страны', en: 'Search country' },
   'identity.position': { ru: 'Позиция', en: 'Position' },
+  'identity.pace': { ru: 'Насыщенность сезона', en: 'Season density' },
+  'identity.pace_hint': { ru: 'Сколько ситуаций выпадает между матчами. Выбирается один раз и на всю карьеру.', en: 'How many situations come up between matches. Picked once, for the whole career.' },
+  'identity.pace_calm': { ru: 'Спокойная', en: 'Calm' },
+  'identity.pace_normal': { ru: 'Обычная', en: 'Normal' },
+  'identity.pace_busy': { ru: 'Насыщенная', en: 'Busy' },
   'identity.confirm': { ru: 'Подтвердить', en: 'Confirm' },
   'identity.random': { ru: 'Случайно', en: 'Randomise' },
   'identity.seed': { ru: 'Сид карьеры', en: 'Career seed' },

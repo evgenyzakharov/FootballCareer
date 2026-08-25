@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { Foot, Position } from '../engine/types'
+import type { Foot, Pace, Position } from '../engine/types'
 import type { Identity } from '../engine/player'
 import { COUNTRIES } from '../data/countries'
 import { useLocale, useT } from './locale'
@@ -14,8 +14,10 @@ const ROWS: Position[][] = [
   ['GK'],
 ]
 
+const PACES: Pace[] = ['calm', 'normal', 'busy']
+
 interface Props {
-  onConfirm: (identity: Identity, seed: string) => void
+  onConfirm: (identity: Identity, seed: string, pace: Pace) => void
   onBack: () => void
   initialSeed: string
 }
@@ -30,6 +32,7 @@ export function IdentityScreen({ onConfirm, onBack, initialSeed }: Props) {
   const [position, setPosition] = useState<Position>('CAM')
   const [query, setQuery] = useState('')
   const [seed, setSeed] = useState(initialSeed)
+  const [pace, setPace] = useState<Pace>('busy')
 
   const countries = useMemo(() => {
     const sorted = [...COUNTRIES].sort((a, b) => a.name[locale].localeCompare(b.name[locale], locale))
@@ -91,11 +94,21 @@ export function IdentityScreen({ onConfirm, onBack, initialSeed }: Props) {
           </div>
 
           <div className="field">
+            <span className="field__label">{t({ key: 'identity.pace' })}</span>
+            <div className="seg">
+              {PACES.map((value) => (
+                <button key={value} type="button" data-on={pace === value} onClick={() => setPace(value)}>
+                  {t({ key: `identity.pace_${value}` })}
+                </button>
+              ))}
+            </div>
+            <p className="field__hint">{t({ key: 'identity.pace_hint' })}</p>
+          </div>
+
+          <div className="field">
             <label className="field__label" htmlFor="seed">{t({ key: 'identity.seed' })}</label>
             <input id="seed" className="text-input" value={seed} onChange={(e) => setSeed(e.target.value)} />
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '6px 0 0' }}>
-              {t({ key: 'identity.seed_hint' })}
-            </p>
+            <p className="field__hint">{t({ key: 'identity.seed_hint' })}</p>
           </div>
         </div>
 
@@ -154,6 +167,7 @@ export function IdentityScreen({ onConfirm, onBack, initialSeed }: Props) {
             onConfirm(
               { lastName: trimmed, shirt: shirtNumber, foot, countryCode: country, position },
               seed.trim(),
+              pace,
             )
           }
         >

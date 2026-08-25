@@ -59,6 +59,10 @@ const MIGRATIONS: Record<number, (state: RawState) => RawState> = {
     const season = state.season ? withTally(state.season as Record<string, unknown>) : state.season
     return { ...state, startYear: state.startYear ?? 2026, history, season, version: 4 }
   },
+
+  // v4 → v5. Появился выбор насыщенности сезона. Карьеры, начатые до него,
+  // игрались с максимальным числом ситуаций — за ними его и оставляем.
+  4: (state) => ({ ...state, pace: 'busy', version: 5 }),
 }
 
 /** Минимальная проверка формы: битый или чужой JSON не должен ронять игру. */

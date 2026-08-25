@@ -1,5 +1,5 @@
 import type {
-  Attributes, Beat, Card, CareerState, Effect, NationalTally, Player, Role, SeasonRecord,
+  Attributes, Beat, Card, CareerState, Effect, NationalTally, Pace, Player, Role, SeasonRecord,
   SeasonTally, Stage, Text,
 } from './types'
 import { ATTR_KEYS, attrAgeBand, isGoalkeeper, marketValue, overall } from './attributes'
@@ -29,7 +29,7 @@ import type { ManagerStyle } from './relationships'
  * Версия формы состояния. Растёт при любом несовместимом изменении схемы;
  * подъём версии обязан сопровождаться миграцией в `save.ts`.
  */
-export const STATE_VERSION = 4
+export const STATE_VERSION = 5
 
 const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'review']
 
@@ -39,13 +39,14 @@ const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'r
  * Год первого сезона передаётся извне: движку нельзя знать сегодняшнюю дату,
  * иначе карьера перестанет быть воспроизводимой по одному сиду.
  */
-export function newCareer(seed: string, startYear = 2026): CareerState {
+export function newCareer(seed: string, startYear = 2026, pace: Pace = 'busy'): CareerState {
   return {
     version: STATE_VERSION,
     seed,
     startYear,
     step: 0,
     phase: 'identity',
+    pace,
     player: {
       lastName: '', shirt: 10, foot: 'right', countryCode: 'ITA', position: 'CAM',
       age: START_AGE,
@@ -332,6 +333,50 @@ function rivalPressureFor(state: CareerState): number {
 
 // ─── Наполнение этапов битами ───────────────────────────────────────────────
 
+/** Этапы, на которых вообще бывают случайные ситуации. */
+type PacedStage = Exclude<Stage, 'review'>
+
+/**
+ * Сколько случайных ситуаций даёт каждый этап при выбранной насыщенности:
+ * пара «шанс — метка потока RNG». Шанс 1 означает «обязательно», и тогда
+ * бросок не делается вовсе — метка у такого слота не используется.
+ *
+ * 'busy' повторяет баланс, который был до появления выбора: у его слотов те же
+ * метки, что и у прежних бросков, поэтому старые карьеры по тому же сиду
+ * разыгрываются ровно так же.
+ */
+const PACE: Record<Pace, Record<PacedStage, Array<[number, string]>>> = {
+  calm: {
+    preseason: [[0.5, 'pre_main']],
+    autumn: [[0.7, 'aut_main']],
+    winter: [[0.35, 'win_main']],
+    spring: [[0.7, 'spr_main']],
+    run_in: [[0.2, 'run_in_extra']],
+  },
+  normal: {
+    preseason: [[1, '']],
+    autumn: [[1, '']],
+    winter: [[0.6, 'win_main']],
+    spring: [[1, '']],
+    run_in: [[0.35, 'run_in_extra']],
+  },
+  busy: {
+    preseason: [[1, '']],
+    autumn: [[1, ''], [0.3, 'aut_extra']],
+    winter: [[1, ''], [0.3, 'win_extra']],
+    spring: [[1, '']],
+    run_in: [[0.6, 'run_in_extra']],
+  },
+}
+
+function randomBeats(state: CareerState, stage: PacedStage): Beat[] {
+  const beats: Beat[] = []
+  for (const [chance, label] of PACE[state.pace][stage]) {
+    if (chance >= 1 || rngFor(state, label).chance(chance)) beats.push({ t: 'random' })
+  }
+  return beats
+}
+
 function dueConsequences(state: CareerState, stage: Stage): Beat[] {
   return state.consequences
     .filter((c) => c.dueAge <= state.player.age && c.stage === stage)
@@ -369,27 +414,25 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
         opening.push({ t: 'event', key: 'season_objective', payload: { kind: objective.kind, target: objective.target } })
       }
       beats.unshift(...opening)
-      beats.push({ t: 'random' })
+      beats.push(...randomBeats(next, 'preseason'))
       break
     }
     case 'autumn': {
       if ((next.flags.national_established ?? 0) === 0 && shouldCallUp(next)) {
         beats.push({ t: 'event', key: 'first_call_up' })
       }
-      beats.push({ t: 'random' })
-      if (rngFor(next, 'aut_extra').chance(0.3)) beats.push({ t: 'random' })
+      beats.push(...randomBeats(next, 'autumn'))
       const hit = rollInjury(next)
       if (hit) beats.push({ t: 'event', key: 'injury_hit', payload: hit })
       beats.push({ t: 'sim' })
       break
     }
     case 'winter': {
-      beats.push({ t: 'random' })
-      if (rngFor(next, 'win_extra').chance(0.3)) beats.push({ t: 'random' })
+      beats.push(...randomBeats(next, 'winter'))
       break
     }
     case 'spring': {
-      beats.push({ t: 'random' })
+      beats.push(...randomBeats(next, 'spring'))
       const hit = rollInjury(next)
       if (hit) beats.push({ t: 'event', key: 'injury_hit', payload: hit })
       beats.push({ t: 'sim' })
@@ -398,7 +441,7 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
     case 'run_in': {
       // Концовку сезона оставляем разреженной: на неё и так приходятся отчёт
       // о блоке и вся трансферная развязка.
-      if (rngFor(next, 'run_in_extra').chance(0.6)) beats.push({ t: 'random' })
+      beats.push(...randomBeats(next, 'run_in'))
       break
     }
     case 'review': {

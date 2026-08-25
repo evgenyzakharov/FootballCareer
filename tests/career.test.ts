@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
-import type { CareerState, Objective, Position, Role } from '../src/engine/types'
+import type { CareerState, Objective, Pace, Position, Role } from '../src/engine/types'
 import { averageRating } from '../src/engine/performance'
 import { adjustObjective, makeObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
@@ -444,6 +444,42 @@ describe('движок карьеры', () => {
     // Молодого чаще замечают дома: лестница снизу должна вести через свои
     // дивизионы, а не сразу за рубеж.
     expect(young).toBeGreaterThan(older + 0.15)
+  })
+
+  it('выбор насыщенности меняет число карточек за сезон', () => {
+    const density = (pace: Pace): number => {
+      let cards = 0
+      let seasons = 0
+      for (let i = 0; i < 12; i++) {
+        const seed = `pace-${i}`
+        let state = setIdentity(newCareer(seed, 2026, pace), {
+          lastName: 'ТЕСТОВ',
+          shirt: 10,
+          foot: 'right',
+          countryCode: 'ITA',
+          position: 'CAM',
+        })
+        const rng = new Rng(seed, 'player-choices', 0)
+        let guard = 0
+        while (state.phase !== 'retired' && guard < 4000) {
+          guard++
+          if (state.resolution) { state = ack(state); continue }
+          if (!state.card) break
+          cards++
+          const options = state.card.options
+          state = choose(state, options.length > 0 ? rng.pick(options).id : 'next')
+        }
+        seasons += state.history.length
+      }
+      return cards / seasons
+    }
+
+    const calm = density('calm')
+    const normal = density('normal')
+    const busy = density('busy')
+    // Ступени обязаны быть различимы: иначе выбор на старте ничего не значит.
+    expect(normal).toBeGreaterThan(calm + 0.6)
+    expect(busy).toBeGreaterThan(normal + 0.6)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

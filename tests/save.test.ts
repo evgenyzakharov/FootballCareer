@@ -109,6 +109,18 @@ describe('сохранение', () => {
     expect(loaded!.history[0].tally.goalsConceded).toBe(0)
   })
 
+  it('поднимает сохранение v4, проставляя прежнюю насыщенность сезона', () => {
+    const state = sampleState()
+    const raw = { ...state, version: 4 } as unknown as Record<string, unknown>
+    delete raw.pace
+    data.set('football-career:state', JSON.stringify(raw))
+
+    const loaded = loadState()
+    expect(loaded!.version).toBe(STATE_VERSION)
+    // До выбора карьеры игрались по максимуму — его и сохраняем.
+    expect(loaded!.pace).toBe('busy')
+  })
+
   it('сохранение из будущего не принимается', () => {
     const state = sampleState()
     data.set('football-career:state', JSON.stringify({ ...state, version: STATE_VERSION + 5 }))

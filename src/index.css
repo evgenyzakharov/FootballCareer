@@ -161,6 +161,8 @@ input { font: inherit; color: inherit; }
 }
 .text-input:focus { border-color: var(--accent-dim); }
 
+.field__hint { font-size: 11px; color: var(--text-faint); margin: 6px 0 0; }
+
 .seg { display: flex; background: var(--bg-input); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
 .seg button {
   flex: 1;

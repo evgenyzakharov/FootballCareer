@@ -152,6 +152,12 @@ export interface Relationship {
 }
 
 export type Stage = 'preseason' | 'autumn' | 'winter' | 'spring' | 'run_in' | 'review'
+/**
+ * Насыщенность сезона: сколько случайных ситуаций выпадает на этапы.
+ * Выбирается один раз при создании карьеры и дальше не меняется — иначе
+ * карьера перестала бы воспроизводиться по сиду.
+ */
+export type Pace = 'calm' | 'normal' | 'busy'
 
 export type CompetitionKind = 'league' | 'cup' | 'continental' | 'continental2' | 'club_world_cup'
 
@@ -335,6 +341,8 @@ export interface CareerState {
   /** Счётчик обращений к RNG: делает карьеру воспроизводимой по (seed, step). */
   step: number
   phase: Phase
+  /** Насыщенность сезона: выбор игрока на старте карьеры. */
+  pace: Pace
   player: Player
   contract: Contract | null
   season: CurrentSeason | null
