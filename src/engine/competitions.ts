@@ -126,13 +126,41 @@ export const NATIONAL_TOURNAMENT: Record<Confederation, string> = {
 }
 
 /**
- * Календарь больших турниров привязан к возрасту игрока через год рождения,
- * поэтому у каждой карьеры своя сетка — как в жизни.
+ * Сетка континентальных турниров по конфедерациям — по реальному календарю.
+ * Год здесь тот, на лето которого приходится турнир, то есть год окончания
+ * сезона: сезон 2027/28 отдаёт 2028.
  */
-export function tournamentThisSeason(seasonIndex: number): 'world' | 'continental' | null {
-  const mod = seasonIndex % 4
-  if (mod === 0) return 'world'
-  if (mod === 2) return 'continental'
+const CONTINENTAL_YEARS: Record<Confederation, (year: number) => boolean> = {
+  // Евро и Кубок Америки с 2024-го идут в одни и те же годы: 2028, 2032…
+  UEFA: (y) => y % 4 === 0,
+  CONMEBOL: (y) => y % 4 === 0,
+  // Золотой кубок — раз в два года по нечётным: 2025, 2027, 2029…
+  CONCACAF: (y) => y % 2 === 1,
+  // Кубок Азии: 2027, 2031…
+  AFC: (y) => y % 4 === 3,
+  // КАН тоже нечётный: 2025, 2027, 2029…
+  CAF: (y) => y % 2 === 1,
+  // Кубок наций ОФК подстраивают под отбор к мундиалю; берём годы Евро.
+  OFC: (y) => y % 4 === 0,
+}
+
+/** Годы чемпионата мира: 2026, 2030, 2034… */
+export function isWorldCupYear(year: number): boolean {
+  return year % 4 === 2
+}
+
+/**
+ * Какой большой турнир игрок застаёт этим летом. Календарь привязан к реальным
+ * годам, а не к возрасту: мундиаль идёт в 2026, 2030, 2034, континентальный —
+ * по сетке своей конфедерации. Чемпионат мира старше: если бы годы совпали,
+ * едут на него.
+ */
+export function tournamentThisSeason(
+  seasonEndYear: number,
+  confederation: Confederation,
+): 'world' | 'continental' | null {
+  if (isWorldCupYear(seasonEndYear)) return 'world'
+  if (CONTINENTAL_YEARS[confederation](seasonEndYear)) return 'continental'
   return null
 }
 

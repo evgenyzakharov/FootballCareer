@@ -33,6 +33,15 @@ export const STATE_VERSION = 6
 
 const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'review']
 
+/**
+ * Календарный год, на лето которого приходится конец сезона: карьера, начатая
+ * в 2026-м, в 16 лет играет сезон 2026/27 и заканчивает его в 2027-м. По этому
+ * году и разложены большие турниры сборных.
+ */
+export function seasonEndYear(state: CareerState): number {
+  return state.startYear + (state.player.age - START_AGE) + 1
+}
+
 // ─── Инициализация ──────────────────────────────────────────────────────────
 
 /**
@@ -445,10 +454,9 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
       break
     }
     case 'review': {
-      const seasonIndex = next.player.age - START_AGE
-      const tournament = tournamentThisSeason(seasonIndex)
+      const country = getCountry(next.player.countryCode)
+      const tournament = tournamentThisSeason(seasonEndYear(next), country.confederation)
       if (tournament && (next.flags.national_established ?? 0) > 0 && (next.flags.national_retired ?? 0) === 0) {
-        const country = getCountry(next.player.countryCode)
         const id = tournament === 'world' ? 'world_cup' : NATIONAL_TOURNAMENT[country.confederation]
         // Решающий момент турнира вратарь переживает с другой стороны точки.
         const key = next.player.position === 'GK' ? 'tournament_moment_gk' : 'tournament_moment'
@@ -903,8 +911,7 @@ function simulateNational(state: CareerState, rng: Rng): NationalTally {
 
   const caps = rng.int(4, 10)
   const goals = state.player.position === 'GK' ? 0 : Math.max(0, Math.round(caps * (playerOvr(state.player) - 60) * 0.008 * rng.around(1, 0.5)))
-  const seasonIndex = state.player.age - START_AGE
-  const kind = tournamentThisSeason(seasonIndex)
+  const kind = tournamentThisSeason(seasonEndYear(state), country.confederation)
 
   // Вратарские матчи за сборную считаются той же связкой, что и клубные:
   // раньше их не считали вовсе, и у вратаря сборная всегда стояла без

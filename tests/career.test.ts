@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
-import type { CareerState, Objective, Pace, Position, Role } from '../src/engine/types'
+import type { CareerState, Confederation, Objective, Pace, Position, Role } from '../src/engine/types'
 import { averageRating } from '../src/engine/performance'
 import { adjustObjective, makeObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
@@ -9,7 +9,7 @@ import { formatMoney, missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS, buildCard, getEvent, resolveCard } from '../src/engine/events'
 import { findClub, getClub } from '../src/data/clubs'
 import { getLeague } from '../src/data/leagues'
-import { leagueLift, rollLeaguePosition } from '../src/engine/competitions'
+import { NATIONAL_TOURNAMENT, leagueLift, rollLeaguePosition, tournamentThisSeason } from '../src/engine/competitions'
 import { academyOffers, clubWantsToRenew, generateOffers } from '../src/engine/offers'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
@@ -646,6 +646,53 @@ describe('движок карьеры', () => {
       state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
     }
     expect(gkReports).toBeGreaterThan(3)
+  })
+
+  it('большие турниры идут по реальному календарю, а не по возрасту игрока', () => {
+    // Мундиаль: 2026, 2030, 2034…
+    for (const year of [2026, 2030, 2034, 2038]) {
+      expect(tournamentThisSeason(year, 'UEFA')).toBe('world')
+      expect(tournamentThisSeason(year, 'CAF')).toBe('world')
+    }
+    // Евро и Кубок Америки идут в одни и те же годы: 2028, 2032…
+    for (const year of [2028, 2032]) {
+      expect(tournamentThisSeason(year, 'UEFA')).toBe('continental')
+      expect(tournamentThisSeason(year, 'CONMEBOL')).toBe('continental')
+    }
+    // Кубок Азии: 2027, 2031…
+    expect(tournamentThisSeason(2027, 'AFC')).toBe('continental')
+    expect(tournamentThisSeason(2028, 'AFC')).toBeNull()
+    // КАН и Золотой кубок — раз в два года по нечётным.
+    expect(tournamentThisSeason(2025, 'CAF')).toBe('continental')
+    expect(tournamentThisSeason(2029, 'CONCACAF')).toBe('continental')
+    expect(tournamentThisSeason(2028, 'CAF')).toBeNull()
+    // Год без единого турнира существует у каждой конфедерации.
+    expect(tournamentThisSeason(2029, 'UEFA')).toBeNull()
+  })
+
+  it('в карьере турнир сборной выпадает только в свой год', () => {
+    let tournaments = 0
+    for (const seed of ['cal-1', 'cal-2', 'cal-3']) {
+      for (const country of ['ITA', 'BRA', 'NGA']) {
+        const state = playCareer(`${seed}-${country}`, { country })
+        for (const season of state.history) {
+          const id = season.national.tournament
+          if (!id) continue
+          tournaments++
+          // Сезон 2026/27 заканчивается летом 2027-го — турнир идёт в нём.
+          const year = state.startYear + (season.age - 16) + 1
+          if (id === 'world_cup') {
+            expect(year % 4).toBe(2)
+            continue
+          }
+          const conf = (Object.keys(NATIONAL_TOURNAMENT) as Confederation[])
+            .find((c) => NATIONAL_TOURNAMENT[c] === id)
+          expect(conf).toBeDefined()
+          expect(tournamentThisSeason(year, conf!)).toBe('continental')
+        }
+      }
+    }
+    expect(tournaments).toBeGreaterThan(0)
   })
 
   it('в отчёте об отрезке вратарь видит сухие и пропущенные', () => {
