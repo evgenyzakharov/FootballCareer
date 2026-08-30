@@ -362,8 +362,18 @@ export const EVENTS_C: Content = {
     ru: '{club} — {league}, {wage}, роль: {role}, контракт {years} сез.',
     en: '{club} — {league}, {wage}, role: {role}, {years}-yr deal',
   },
-  'ev.market_decision.opt.loan': { ru: 'Аренда: {club} — {league}', en: 'Loan: {club} — {league}' },
-  'ev.market_decision.opt.stay': { ru: 'Остаться в {club}', en: 'Stay at {club}' },
+  'ev.market_decision.opt.loan': {
+    ru: 'Аренда: {club} — {league}, {wage}, {years} сез.',
+    en: 'Loan: {club} — {league}, {wage}, {years} yr(s)',
+  },
+  'ev.market_decision.opt.stay': {
+    ru: 'Остаться в {club}: {wage}, контракт ещё {years} сез.',
+    en: 'Stay at {club}: {wage}, {years} yr(s) left on the deal',
+  },
+  'ev.market_decision.opt.stay_new': {
+    ru: 'Продлить с {club}: {wage}, новый контракт {years} сез.',
+    en: 'Renew with {club}: {wage}, new {years}-yr deal',
+  },
   'ev.market_decision.opt.retire': { ru: 'Завершить карьеру', en: 'Retire' },
   'ev.market_decision.res.stay': { ru: 'Вы остались. Трибуны это ценят.', en: 'You stayed. The stands value that.' },
   'ev.market_decision.res.transferred': { ru: 'Новый клуб — {club}.', en: 'New club: {club}.' },
@@ -379,8 +389,14 @@ export const EVENTS_C: Content = {
     ru: 'Вы возвращаетесь в {club}. Можно бороться за место там, можно уехать ещё раз.',
     en: 'You are going back to {club}. Fight for a place there, or go out again.',
   },
-  'ev.loan_return.opt.to': { ru: 'Вернуться в {club}', en: 'Return to {club}' },
-  'ev.loan_return.opt.loan': { ru: 'Новая аренда: {club} — {league}', en: 'New loan: {club} — {league}' },
+  'ev.loan_return.opt.to': {
+    ru: 'Вернуться в {club}: {wage}, контракт {years} сез.',
+    en: 'Return to {club}: {wage}, {years}-yr deal',
+  },
+  'ev.loan_return.opt.loan': {
+    ru: 'Новая аренда: {club} — {league}, {wage}, {years} сез.',
+    en: 'New loan: {club} — {league}, {wage}, {years} yr(s)',
+  },
   'ev.loan_return.res.returned': { ru: 'Вы вернулись в {club} и начинаете с нуля.', en: 'You are back at {club}, starting from scratch.' },
   'ev.loan_return.res.loaned_again': { ru: 'Ещё одна аренда: {club}.', en: 'Another loan: {club}.' },
 
@@ -390,7 +406,10 @@ export const EVENTS_C: Content = {
     ru: 'Телефон молчит. Клубы вашего уровня закрыли состав, остались варианты пониже.',
     en: 'The phone is silent. Clubs at your level are done; what is left is a level down.',
   },
-  'ev.no_offers.opt.to': { ru: 'Уровнем ниже: {club} — {league}', en: 'A level down: {club} — {league}' },
+  'ev.no_offers.opt.to': {
+    ru: 'Уровнем ниже: {club} — {league}, {wage}, контракт {years} сез.',
+    en: 'A level down: {club} — {league}, {wage}, {years}-yr deal',
+  },
   'ev.no_offers.opt.retire': { ru: 'Завершить карьеру', en: 'Retire' },
   'ev.no_offers.opt.train_alone': { ru: 'Остаться без клуба и ждать', en: 'Go without a club and wait' },
   'ev.no_offers.res.retire': { ru: 'Вы закончили. Без прощального матча.', en: 'You are done. No farewell game.' },

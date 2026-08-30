@@ -1170,6 +1170,70 @@ describe('движок карьеры', () => {
     expect(banned.fitnessDelta).toBeCloseTo(injured.fitnessDelta, 1)
   })
 
+  it('вариант «остаться» показывает условия, на которых игрок останется', () => {
+    // Раньше подпись была просто «Остаться в клубе»: сколько платят и на
+    // сколько лет — выяснялось уже после нажатия.
+    const seen = new Map<string, string>()
+    for (let i = 0; i < 40 && seen.size < 2; i++) {
+      let state = setIdentity(newCareer(`terms-${i}`), {
+        lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CM',
+      })
+      const rng = new Rng(`terms-${i}`, 'choices', 0)
+      let guard = 0
+      while (state.phase !== 'retired' && guard < 3000) {
+        guard++
+        if (state.resolution) { state = ack(state); continue }
+        if (!state.card) break
+        if (state.card.eventKey === 'market_decision') {
+          const stay = state.card.options.find((o) => o.id === 'stay' || o.id === 'stay_new')
+          if (stay) {
+            const label = t(stay.label, 'ru')
+            seen.set(stay.id, label)
+            // И зарплата, и срок обязаны стоять в подписи.
+            expect(label).toMatch(/€|₽/)
+            expect(label).toMatch(/сез\./)
+            expect(stay.label.params?.wage).toBeGreaterThan(0)
+          }
+        }
+        const available = state.card.options.filter((o) => !o.disabled)
+        state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
+      }
+    }
+    // Обе ветки: и продление истёкшего контракта, и остаток действующего.
+    expect(seen.has('stay')).toBe(true)
+    expect(seen.has('stay_new')).toBe(true)
+  })
+
+  it('продление показывает ровно тот контракт, который будет подписан', () => {
+    // Подпись под кнопкой и сам контракт считаются одним кодом — иначе в
+    // карточке одна зарплата, а в контракте другая.
+    for (let i = 0; i < 40; i++) {
+      let state = setIdentity(newCareer(`deal-${i}`), {
+        lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CM',
+      })
+      const rng = new Rng(`deal-${i}`, 'choices', 0)
+      let guard = 0
+      while (state.phase !== 'retired' && guard < 3000) {
+        guard++
+        if (state.resolution) { state = ack(state); continue }
+        if (!state.card) break
+        const renew = state.card.eventKey === 'market_decision'
+          ? state.card.options.find((o) => o.id === 'stay_new')
+          : undefined
+        if (renew) {
+          const promised = renew.label.params as { wage: number; years: number }
+          state = ack(choose(state, renew.id))
+          expect(state.contract?.wage).toBe(promised.wage)
+          expect(state.contract?.yearsLeft).toBe(promised.years)
+          return
+        }
+        const available = state.card.options.filter((o) => !o.disabled)
+        state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
+      }
+    }
+    throw new Error('продление истёкшего контракта ни разу не выпало')
+  })
+
   it('положение относительно состава считается от текущего клуба', () => {
     // Без клуба сравнивать не с чем.
     expect(squadStanding(newCareer('standing'))).toBeNull()

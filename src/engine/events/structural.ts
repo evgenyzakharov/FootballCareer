@@ -9,15 +9,21 @@ import { roleRank } from '../performance'
 const TO = 'to:'
 const LOAN = 'loan:'
 
-function move(clubId: string, ovr: number, age: number, loan: boolean, wageMult = 1): Effect {
+/**
+ * Условия, на которых игрок подпишется с клубом. Отдельная функция нужна затем,
+ * чтобы подпись под кнопкой и сам контракт считались одним и тем же кодом:
+ * иначе в карточке одна зарплата, а в контракте другая.
+ */
+function terms(clubId: string, ovr: number, age: number, loan: boolean, wageMult = 1) {
   const club = getClub(clubId)
   return {
-    t: 'transfer',
-    clubId,
-    loan,
     wage: Math.round(wageFor(ovr, age, club) * (loan ? 0.6 : 1) * wageMult),
     years: contractYears(age, club.tier, loan),
   }
+}
+
+function move(clubId: string, ovr: number, age: number, loan: boolean, wageMult = 1): Effect {
+  return { t: 'transfer', clubId, loan, ...terms(clubId, ovr, age, loan, wageMult) }
 }
 
 /**
@@ -153,9 +159,22 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
         }
       })
       if (c.club) {
+        // Истёкший контракт «остаться» продлевает — значит и условия нового
+        // надо показать заранее, а не после нажатия. Действующий контракт
+        // остаётся как есть, и показывать надо его остаток.
+        const expired = (c.state.contract?.yearsLeft ?? 0) <= 0
+        const deal = expired
+          ? terms(c.club.id, c.ovr, c.player.age, false)
+          : { wage: c.state.contract?.wage ?? 0, years: c.state.contract?.yearsLeft ?? 0 }
         options.push({
-          id: 'stay',
-          labelParams: { club: c.club.name, league: getLeague(c.club.leagueId).name, wage: 0, role: { key: 'role.starter' }, years: 0 },
+          id: expired ? 'stay_new' : 'stay',
+          labelParams: {
+            club: c.club.name,
+            league: getLeague(c.club.leagueId).name,
+            wage: deal.wage,
+            role: { key: 'role.starter' },
+            years: deal.years,
+          },
           hints: [H.stayClub, H.fansUp],
         })
       }
@@ -166,12 +185,11 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
     },
     resolve: (c, id) => {
       if (id === 'retire') return { outcome: 'retire', effects: [{ t: 'retire' }], headline: true, tone: 'neutral' }
-      if (id === 'stay') {
+      if (id === 'stay' || id === 'stay_new') {
         // Контракт истёк — «остаться» значит подписать новый, иначе игрок
         // годами доигрывал бы на нулевом сроке и рынок открывался каждый год.
-        const expired = (c.state.contract?.yearsLeft ?? 0) <= 0
         const effects = [gauge('fanLove', 8), gauge('lockerRoom', 6)]
-        if (expired && c.club) effects.unshift(move(c.club.id, c.ovr, c.player.age, false))
+        if (id === 'stay_new' && c.club) effects.unshift(move(c.club.id, c.ovr, c.player.age, false))
         return { outcome: 'stay', effects, tone: 'good' }
       }
       const loan = id.startsWith(LOAN)
@@ -198,10 +216,18 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
       return {
         bodyParams: { club: parent.name },
         options: [
-          { id: `${TO}${parent.id}`, labelParams: { club: parent.name }, hints: [H.growthUp, H.minutesDown] },
+          {
+            id: `${TO}${parent.id}`,
+            labelParams: { club: parent.name, ...terms(parent.id, c.ovr, c.player.age, false) },
+            hints: [H.growthUp, H.minutesDown],
+          },
           ...loans.map((o) => ({
             id: `${LOAN}${o.clubId}`,
-            labelParams: { club: getClub(o.clubId).name, league: getLeague(getClub(o.clubId).leagueId).name },
+            labelParams: {
+              club: getClub(o.clubId).name,
+              league: getLeague(getClub(o.clubId).leagueId).name,
+              ...terms(o.clubId, c.ovr, c.player.age, true),
+            },
             hints: [H.minutesUp, H.growthUp],
           })),
         ],
@@ -280,7 +306,12 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
         const club = getClub(fallback.clubId)
         options.push({
           id: `${TO}${fallback.clubId}`,
-          labelParams: { club: club.name, league: getLeague(club.leagueId).name },
+          labelParams: {
+            club: club.name,
+            league: getLeague(club.leagueId).name,
+            // Тот же множитель, что и в самом переходе ниже по тексту.
+            ...terms(fallback.clubId, c.ovr, c.player.age, false, 0.6),
+          },
           hints: [H.minutesUp, H.moneyDown],
         })
       }
