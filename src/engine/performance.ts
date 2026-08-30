@@ -214,6 +214,15 @@ const MATCH_SPREAD = 4.5
 const CAMEO_ANCHOR = 6.8
 
 /**
+ * Сколько свежести возвращает один матч, пропущенный по травме или бану. Просто
+ * не попасть в заявку — ещё не отдых: игрок тренируется в общей группе. А вот
+ * выбывший из обоймы восстанавливается, и из лазарета возвращаются физически
+ * свежими. Форму это не чинит: она падает отдельно, от нехватки игровой
+ * практики, — иначе травма превратилась бы в способ отдохнуть.
+ */
+const REST_RECOVERY = 0.9
+
+/**
  * Оценка «как игрок выглядит»: всё, что он приносит в матч сам, без учёта
  * результативных действий и случая. Из неё считается и оценка за матч, и то,
  * во что обошёлся отрезок, просиженный на скамейке.
@@ -351,16 +360,19 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const injuries: InjuryHit[] = []
 
   const matches: MatchResult[] = []
+  let sidelined = 0
   for (const fixture of buildFixtures(ctx.club, available, rng)) {
     // Сначала отбывается травма, потом дисквалификация: лечиться и сидеть в
     // бане одновременно нельзя, иначе оба срока текли бы вдвое быстрее.
     if (out > 0) {
       out--
+      sidelined++
       matches.push(missedMatch(fixture))
       continue
     }
     if (ban > 0) {
       ban--
+      sidelined++
       matches.push(missedMatch(fixture))
       continue
     }
@@ -413,7 +425,10 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   // чем из двух. Голы и передачи не масштабируются: они считаются поштучно и
   // складываются за сезон сами.
   const part = available / BLOCK_MATCHES
-  const fitnessDelta = round((6 - load * 22 + (player.age < 24 ? 3 : player.age > 31 ? -3 : 0)) * part, 1)
+  const fitnessDelta = round(
+    (6 - load * 22 + (player.age < 24 ? 3 : player.age > 31 ? -3 : 0)) * part + sidelined * REST_RECOVERY,
+    1,
+  )
   const formDelta = round(((scored - 6.8) * 9 + (seasonLoad < 0.25 ? -8 : 0)) * part, 1)
   const trustDelta = round(((scored - 6.75) * 7 + (seasonLoad > 0.55 ? 3 : -3)) * part, 1)
   const fanDelta = round((scored - 6.85) * 6 * part + goals * 0.9 + assists * 0.5 - red * 4, 1)

@@ -1143,6 +1143,33 @@ describe('движок карьеры', () => {
     expect(wageFor(80, 27, getClub('inter'))).toBeGreaterThan(1_000_000)
   })
 
+  it('пропуск по травме возвращает свежесть, но не форму', () => {
+    const club = getClub('inter')
+    const base = createPlayer(
+      { lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CM' },
+      5,
+      new Rng('rest', 'player', 0),
+    )
+    const player = { ...base, age: 26, gauges: { ...base.gauges, fitness: 50, form: 60 } }
+    const ctx = { player, club, role: 'starter' as Role, size: 26, playedBefore: 0, scheduledBefore: 0 }
+
+    const injured = simulateBlock({ ...ctx, minutesMult: 1, matchesOut: 26, banMatches: 0 }, new Rng('rest', 'b', 0))
+    expect(injured.apps).toBe(0)
+    // Игрок не играет — значит отдыхает: раньше свежесть за такой отрезок почти
+    // не двигалась, и из лазарета возвращались такими же уставшими.
+    expect(injured.fitnessDelta).toBeGreaterThan(10)
+    // Форму простой при этом не чинит, иначе травма стала бы способом отдохнуть.
+    expect(injured.formDelta).toBeLessThan(0)
+
+    // Просто не попасть в заявку — ещё не отдых: там игрок тренируется со всеми.
+    const benched = simulateBlock({ ...ctx, role: 'reserve', minutesMult: 1, matchesOut: 0, banMatches: 0 }, new Rng('rest', 'b', 0))
+    expect(injured.fitnessDelta).toBeGreaterThan(benched.fitnessDelta)
+
+    // Дисквалификация — такой же отдых, как травма.
+    const banned = simulateBlock({ ...ctx, minutesMult: 1, matchesOut: 0, banMatches: 26 }, new Rng('rest', 'b', 0))
+    expect(banned.fitnessDelta).toBeCloseTo(injured.fitnessDelta, 1)
+  })
+
   it('положение относительно состава считается от текущего клуба', () => {
     // Без клуба сравнивать не с чем.
     expect(squadStanding(newCareer('standing'))).toBeNull()
