@@ -8,6 +8,13 @@ export const BLOCK_MATCHES = 26
 
 const ROLE_ORDER: Role[] = ['reserve', 'bench', 'rotation', 'starter', 'star']
 
+/**
+ * «Нормальный» настрой: столько держится у игрока, которого не носит из провала
+ * в триумф. К нему межсезонье стягивает настрой, от него же считается вклад
+ * настроя в оценку — одно значение на обе механики, иначе они разъедутся.
+ */
+export const MORALE_LEVEL = 65
+
 export interface RoleContext {
   player: Player
   club: Club
@@ -159,8 +166,26 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
     (ovr - squadLevel(club.tier)) * 0.028 +
     contribution * 1.4 +
     (player.gauges.form - 60) * 0.006 +
+    // Настрой весит в оценке ровно столько же, сколько форма. Форма при этом
+    // остаётся сильнее: она вдобавок умножает голы и передачи. До этого настрой
+    // был мёртвым показателем — варианты «сжечь себя ради результата» не стоили
+    // ничего, потому что просевший настрой не отзывался нигде, кроме роста.
+    (player.gauges.morale - MORALE_LEVEL) * 0.006 +
+    // Раздевалка и пресса добавляют немного и по-разному. Авторитет считается
+    // без середины, как и в `determineRole`: он зарабатывается с нуля и после
+    // каждого перехода срезается, поэтому «средним» его значением был бы ноль,
+    // и любая середина превратилась бы в вечный штраф.
+    player.gauges.lockerRoom * 0.0025 +
+    // У прессы середина есть по самой шкале: ноль — это когда о вас не пишут.
+    player.gauges.mediaRep * 0.0012 +
     (player.position === 'GK' && apps > 0 ? (cleanSheets / apps) * 1.1 : 0)
-  const rating = clamp(round(rng.around(baseRating, 0.22), 2), 4.5, 9.6)
+  // Просевший настрой бьёт и по стабильности: отрезки разваливаются на провалы
+  // и всплески вместо ровной линии. Коэффициент крупный намеренно — разброс
+  // готовой оценки и без того в основном задан лотереей голов, и добавка
+  // помельче в нём просто утонула бы. Выше «нормального» ничего не меняется:
+  // счастливый игрок не становится предсказуемее обычного.
+  const spread = 0.22 + Math.max(0, MORALE_LEVEL - player.gauges.morale) * 0.006
+  const rating = clamp(round(rng.around(baseRating, spread), 2), 4.5, 9.6)
 
   const aggression = player.position === 'CB' || player.position === 'CDM' ? 1.7 : 1
   const yellow = poisson(apps * 0.09 * aggression, rng)

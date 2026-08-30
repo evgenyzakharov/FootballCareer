@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
-import type { CareerState, Confederation, Objective, Pace, Position, Role } from '../src/engine/types'
-import { averageRating } from '../src/engine/performance'
+import type { CareerState, Confederation, Gauges, Objective, Pace, Position, Role } from '../src/engine/types'
+import { averageRating, simulateBlock } from '../src/engine/performance'
 import { adjustObjective, makeObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
-import { playerOvr, squadLevel } from '../src/engine/player'
+import { createPlayer, playerOvr, squadLevel } from '../src/engine/player'
 import { formatMoney, missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS, buildCard, getEvent, resolveCard } from '../src/engine/events'
 import { findClub, getClub } from '../src/data/clubs'
@@ -720,6 +720,73 @@ describe('движок карьеры', () => {
       state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
     }
     expect(gkBlocks).toBeGreaterThan(3)
+  })
+
+  /**
+   * Средняя оценка и её разброс на многих отрезках с одними и теми же
+   * показателями. Через неё проверяются вклады показателей в симуляцию: одна
+   * прогонка ничего не скажет, потому что оценка бросается со случайностью.
+   */
+  function blockRatings(gauges: Partial<Gauges>): { mean: number; spread: number } {
+    const club = getClub('inter')
+    const base = createPlayer(
+      { lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'ST' },
+      5,
+      new Rng('sens', 'player', 0),
+    )
+    const player = {
+      ...base,
+      age: 26,
+      gauges: {
+        form: 60, fitness: 85, morale: 65, coachTrust: 60,
+        fanLove: 55, mediaRep: 0, lockerRoom: 20, fame: 30,
+        ...gauges,
+      },
+    }
+    const ratings: number[] = []
+    for (let i = 0; i < 600; i++) {
+      const result = simulateBlock(
+        { player, club, role: 'starter', minutesMult: 1, blocksOut: 0 },
+        new Rng('sens', 'block', i),
+      )
+      if (result.ratingCount > 0) ratings.push(result.ratingSum / result.ratingCount)
+    }
+    const mean = ratings.reduce((sum, x) => sum + x, 0) / ratings.length
+    const variance = ratings.reduce((sum, x) => sum + (x - mean) ** 2, 0) / ratings.length
+    return { mean, spread: Math.sqrt(variance) }
+  }
+
+  it('настрой двигает оценку за отрезок и её стабильность', () => {
+    const low = blockRatings({ morale: 0 })
+    const normal = blockRatings({})
+    const high = blockRatings({ morale: 100 })
+
+    // Раньше настрой не влиял на симуляцию вообще, и уронить его было бесплатно.
+    expect(low.mean).toBeLessThan(normal.mean)
+    expect(high.mean).toBeGreaterThan(normal.mean)
+    // Просевший настрой ещё и раскачивает результат: провалы вперемешку со
+    // всплесками. Выше нормального разброс не меняется.
+    expect(low.spread).toBeGreaterThan(normal.spread)
+    expect(high.spread).toBeCloseTo(normal.spread, 1)
+  })
+
+  it('раздевалка и пресса двигают оценку, но слабее настроя', () => {
+    const normal = blockRatings({})
+    const moraleSwing = blockRatings({ morale: 100 }).mean - blockRatings({ morale: 0 }).mean
+
+    // Авторитет считается без середины: он зарабатывается с нуля, поэтому
+    // нулевая раздевалка — не штраф, а просто отсутствие прибавки.
+    expect(blockRatings({ lockerRoom: 100 }).mean).toBeGreaterThan(normal.mean)
+    expect(blockRatings({ lockerRoom: 0 }).mean).toBeLessThan(normal.mean)
+    // У прессы середина есть по самой шкале: ноль — это когда о вас не пишут.
+    expect(blockRatings({ mediaRep: 100 }).mean).toBeGreaterThan(normal.mean)
+    expect(blockRatings({ mediaRep: -100 }).mean).toBeLessThan(normal.mean)
+
+    // «Немного» — это половина размаха настроя на всю шкалу, не больше.
+    const lockerSwing = blockRatings({ lockerRoom: 100 }).mean - blockRatings({ lockerRoom: 0 }).mean
+    const mediaSwing = blockRatings({ mediaRep: 100 }).mean - blockRatings({ mediaRep: -100 }).mean
+    expect(lockerSwing).toBeLessThan(moraleSwing * 0.6)
+    expect(mediaSwing).toBeLessThan(moraleSwing * 0.6)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

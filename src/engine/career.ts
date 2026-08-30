@@ -5,7 +5,7 @@ import type {
 import { ATTR_KEYS, attrAgeBand, isGoalkeeper, marketValue, overall } from './attributes'
 import { MAX_AGE, START_AGE, createPlayer, playerOvr, squadLevel } from './player'
 import type { Identity } from './player'
-import { BLOCK_MATCHES, averageRating, determineRole, keeperRun, simulateBlock } from './performance'
+import { BLOCK_MATCHES, MORALE_LEVEL, averageRating, determineRole, keeperRun, simulateBlock } from './performance'
 import {
   NATIONAL_TOURNAMENT, callUpChance, leagueLift, nationalTrophyChance,
   rollClubTrophies, rollLeaguePosition, tournamentThisSeason,
@@ -994,7 +994,7 @@ function develop(state: CareerState): CareerState {
       ...state.player.gauges,
       fitness: clamp(state.player.gauges.fitness + 26 + (state.player.traits.includes('pro_diet') ? 6 : 0), 0, 100),
       form: clamp(state.player.gauges.form * 0.7 + 60 * 0.3, 0, 100),
-      morale: clamp(state.player.gauges.morale * 0.8 + 65 * 0.2, 0, 100),
+      morale: clamp(state.player.gauges.morale * 0.8 + MORALE_LEVEL * 0.2, 0, 100),
     },
   }
   return { ...state, player }
