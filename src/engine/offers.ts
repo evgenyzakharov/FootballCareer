@@ -28,11 +28,26 @@ export function expectedRole(ovr: number, tier: number): Role {
   return 'reserve'
 }
 
-export function wageFor(ovr: number, age: number, tier: number): number {
+/**
+ * Зарплата за сезон, €. Считается от стоимости игрока, но не как постоянная её
+ * доля: в футболе она резко падает с классом. Игрок со дна получает за год почти
+ * столько же, сколько стоит, звезда — десятую часть своей цены. Прежняя формула
+ * брала фиксированные четырнадцать процентов и упиралась в нижнюю границу в
+ * тридцать тысяч, поэтому вся нижняя половина пирамиды — от третьей лиги России
+ * до Чемпионшипа — получала одно и то же.
+ *
+ * Лига важна не меньше тира: за один и тот же уровень в Англии платят в разы
+ * больше, чем во второй лиге России, и без этого множителя парень из академии
+ * зарабатывал три миллиона рублей в год.
+ */
+export function wageFor(ovr: number, age: number, club: Club | null): number {
   const value = marketValue(ovr, age)
-  const raw = value * 0.14 * (0.65 + (tier - 1) * 0.11)
-  const wage = clamp(raw, 30_000, 45_000_000)
-  const mag = 10 ** Math.max(3, Math.floor(Math.log10(wage)) - 1)
+  const share = clamp(0.3 - (ovr - 45) * 0.0035, 0.1, 0.3)
+  const tierFactor = 0.65 + ((club?.tier ?? 1) - 1) * 0.11
+  const strength = club ? getLeague(club.leagueId).strength : 2
+  const leagueFactor = 0.45 + (strength - 1) * 0.24
+  const wage = clamp(value * share * tierFactor * leagueFactor, 1_500, 45_000_000)
+  const mag = 10 ** Math.max(2, Math.floor(Math.log10(wage)) - 1)
   return Math.round(wage / mag) * mag
 }
 
@@ -108,7 +123,7 @@ function toOffer(club: Club, state: CareerState, ovr: number, kind: OfferKind, r
   return {
     clubId: club.id,
     kind,
-    wage: loan ? Math.round(wageFor(ovr, age, club.tier) * 0.6) : wageFor(ovr, age, club.tier),
+    wage: loan ? Math.round(wageFor(ovr, age, club) * 0.6) : wageFor(ovr, age, club),
     years: contractYears(age, club.tier, loan),
     expectedRole: expectedRole(ovr, club.tier),
     fee: loan ? 0 : Math.round(marketValue(ovr, age) * rng.around(1, 0.25)),
@@ -138,10 +153,12 @@ export function academyOffers(state: CareerState, rng: Rng): Offer[] {
     const list = candidates.length > 0 ? candidates : fallback
     if (list.length > 0) picked.push(rng.pick(list))
   }
+  // Первый контракт — по рынку своего клуба, а не по общей ставке: во второй
+  // лиге России это несколько сотен тысяч рублей в год, а не три миллиона.
   return picked.map((club) => ({
     clubId: club.id,
     kind: 'academy' as OfferKind,
-    wage: 30_000 + (club.tier - 1) * 8_000,
+    wage: wageFor(playerOvr(state.player), state.player.age, club),
     years: 3,
     expectedRole: 'reserve' as Role,
     fee: 0,

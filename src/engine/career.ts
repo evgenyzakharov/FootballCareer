@@ -11,14 +11,14 @@ import {
 } from './performance'
 import {
   NATIONAL_TOURNAMENT, callUpChance, leagueLift, nationalTrophyChance,
-  rollClubTrophies, rollLeaguePosition, tournamentThisSeason,
+  isOlympicYear, rollClubTrophies, rollLeaguePosition, tournamentThisSeason,
 } from './competitions'
 import { rollAwards } from './awards'
 import { Rng, clamp, round } from './rng'
 import { findClub, getClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
 import { getLeague } from '../data/leagues'
-import { buildCard, getEvent, pickEvent, resolveCard } from './events'
+import { buildCard, getEvent, needsPitch, pickEvent, resolveCard } from './events'
 import type { EventCtx } from './events'
 import { SUMMER_RECOVERY, injuryMatches } from './injuries'
 import { adjustObjective, makeObjective } from './events/structural'
@@ -504,11 +504,24 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
     case 'review': {
       const country = getCountry(next.player.countryCode)
       const tournament = tournamentThisSeason(seasonEndYear(next), country.confederation)
-      if (tournament && (next.flags.national_established ?? 0) > 0 && (next.flags.national_retired ?? 0) === 0) {
+      // Большие турниры идут летом, между сезонами, и только если есть кому
+      // ехать: травмированный смотрит их из дома.
+      const availableForCountry =
+        (next.flags.national_established ?? 0) > 0 &&
+        (next.flags.national_retired ?? 0) === 0 &&
+        next.player.matchesOut === 0 &&
+        next.player.banMatches === 0
+      if (tournament && availableForCountry) {
         const id = tournament === 'world' ? 'world_cup' : NATIONAL_TOURNAMENT[country.confederation]
         // Решающий момент турнира вратарь переживает с другой стороны точки.
         const key = next.player.position === 'GK' ? 'tournament_moment_gk' : 'tournament_moment'
         beats.push({ t: 'event', key, payload: { tournament: id } })
+      }
+      // Олимпиада — тоже лето и тоже раз в четыре года. Планку возраста
+      // проверяем здесь: биты, выданные движком, гейт самого события не
+      // спрашивают. За карьеру на Игры можно съездить и дважды.
+      if (isOlympicYear(seasonEndYear(next)) && availableForCountry && next.player.age <= 23) {
+        beats.push({ t: 'event', key: 'olympics' })
       }
       beats.push({ t: 'season_end' })
       beats.push({ t: 'market' })
@@ -531,6 +544,8 @@ function freeAgentBeats(beats: Beat[], stage: Stage): Beat[] {
 
 function shouldCallUp(state: CareerState): boolean {
   if (state.contract === null) return false
+  // Травмированного в сборную не зовут — ни в первый раз, ни в следующий.
+  if (state.player.matchesOut > 0 || state.player.banMatches > 0) return false
   const country = getCountry(state.player.countryCode)
   const p = callUpChance({
     ovr: playerOvr(state.player),
@@ -577,6 +592,11 @@ function openBeat(state: CareerState, beat: Beat): CareerState {
     case 'event': {
       const def = getEvent(beat.key)
       const ctx = ctxFor(state, beat.payload ?? {})
+      // Тот же гейт, что и в лотерее ситуаций, но здесь он нужен и для битов от
+      // движка, и для отложенных последствий: травмированному нечего решать ни
+      // на поле, ни в сборной.
+      const out = state.player.matchesOut > 0 || state.player.banMatches > 0
+      if (out && needsPitch(def.channel)) return state
       if (def.when && !def.when(ctx) && def.weight > 0) return state
       const card = buildCard(def, ctx)
       if (card.options.length === 0) return state
@@ -999,6 +1019,9 @@ function simulateNational(state: CareerState, rng: Rng): NationalTally {
   const country = getCountry(state.player.countryCode)
   const established = (state.flags.national_established ?? 0) > 0
   if (!established) return emptyNational()
+  // Лечиться и играть за сборную одновременно нельзя: летние сборы и турнир
+  // проходят мимо травмированного.
+  if (state.player.matchesOut > 0 || state.player.banMatches > 0) return emptyNational()
 
   const p = callUpChance({
     ovr: playerOvr(state.player),

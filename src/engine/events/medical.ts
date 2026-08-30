@@ -14,7 +14,7 @@ export const MEDICAL_EVENTS: EventDef[] = [
       options: [
         { id: 'rush', hints: [H.minutesUp, H.injuryRiskHigh] },
         { id: 'protocol', hints: [H.safe, H.minutesDown] },
-        { id: 'specialist', cost: 250_000, hints: [H.moneyDown, H.fitnessUp] },
+        { id: 'specialist', cost: 35_000, hints: [H.moneyDown, H.fitnessUp] },
       ],
     }),
     // Повреждение уже случилось в матче и срок уже назначен: карточка решает
@@ -40,7 +40,7 @@ export const MEDICAL_EVENTS: EventDef[] = [
       if (id === 'specialist') {
         return {
           outcome: 'specialist',
-          effects: [heal(0.7), money(-250_000), gauge('fitness', 6)],
+          effects: [heal(0.7), money(-35_000), gauge('fitness', 6)],
           tone: 'good',
         }
       }
@@ -92,7 +92,7 @@ export const MEDICAL_EVENTS: EventDef[] = [
     once: false,
     weight: 0,
     build: () => ({ options: [
-      { id: 'abroad', cost: 600_000, hints: [H.moneyDown, H.fitnessUp] },
+      { id: 'abroad', cost: 90_000, hints: [H.moneyDown, H.fitnessUp] },
       { id: 'club', hints: [H.safe] },
       { id: 'conservative', hints: [H.gamble, H.minutesUp] },
     ] }),
@@ -100,7 +100,7 @@ export const MEDICAL_EVENTS: EventDef[] = [
       if (id === 'abroad') {
         return {
           outcome: 'abroad',
-          effects: [money(-600_000), gauge('fitness', 22), attr('physical', 1), trait('rebuilt_knee')],
+          effects: [money(-90_000), gauge('fitness', 22), attr('physical', 1), trait('rebuilt_knee')],
           tone: 'good',
         }
       }
@@ -181,7 +181,7 @@ export const MEDICAL_EVENTS: EventDef[] = [
     build: () => ({ options: [
       { id: 'play', hints: [H.trustUp, H.injuryRiskHigh] },
       { id: 'refuse', hints: [H.fitnessUp, H.trustDown] },
-      { id: 'own_doctor', cost: 150_000, hints: [H.moneyDown, H.safe] },
+      { id: 'own_doctor', cost: 12_000, hints: [H.moneyDown, H.safe] },
     ] }),
     resolve: (c, id) => {
       if (id === 'play') {
@@ -195,7 +195,7 @@ export const MEDICAL_EVENTS: EventDef[] = [
             }
       }
       if (id === 'own_doctor') {
-        return { outcome: 'own_doctor', effects: [money(-150_000), gauge('fitness', 12), gauge('coachTrust', 3)], tone: 'good' }
+        return { outcome: 'own_doctor', effects: [money(-12_000), gauge('fitness', 12), gauge('coachTrust', 3)], tone: 'good' }
       }
       return { outcome: 'refuse', effects: [gauge('coachTrust', -13), rel('manager', -8), gauge('fitness', 10)], tone: 'neutral' }
     },
@@ -208,13 +208,13 @@ export const MEDICAL_EVENTS: EventDef[] = [
     weight: 5,
     when: (c) => c.player.age >= 19 && (c.player.gauges.form < 55 || c.player.gauges.morale < 50),
     build: () => ({ options: [
-      { id: 'psychologist', cost: 80_000, hints: [H.moneyDown, H.moraleUp] },
+      { id: 'psychologist', cost: 9_000, hints: [H.moneyDown, H.moraleUp] },
       { id: 'endure', hints: [H.formDown] },
       { id: 'pills', hints: [H.formUp, H.consequenceLater] },
     ] }),
     resolve: (_c, id) => {
       if (id === 'psychologist') {
-        return { outcome: 'psychologist', effects: [money(-80_000), attr('mental', 3), gauge('morale', 12), gauge('form', 6)], tone: 'good' }
+        return { outcome: 'psychologist', effects: [money(-9_000), attr('mental', 3), gauge('morale', 12), gauge('form', 6)], tone: 'good' }
       }
       if (id === 'pills') {
         return {

@@ -15,7 +15,7 @@ function move(clubId: string, ovr: number, age: number, loan: boolean, wageMult 
     t: 'transfer',
     clubId,
     loan,
-    wage: Math.round(wageFor(ovr, age, club.tier) * (loan ? 0.6 : 1) * wageMult),
+    wage: Math.round(wageFor(ovr, age, club) * (loan ? 0.6 : 1) * wageMult),
     years: contractYears(age, club.tier, loan),
   }
 }
@@ -325,7 +325,7 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
           hints: [H.minutesUp, H.moneyDown],
         })
       }
-      options.push({ id: 'keep_fit', cost: 120_000, hints: [H.fitnessUp, H.moneyDown] })
+      options.push({ id: 'keep_fit', cost: 35_000, hints: [H.fitnessUp, H.moneyDown] })
       options.push({ id: 'badges', hints: [H.growthUp, H.formDown] })
       return { options }
     },
@@ -343,7 +343,7 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
       if (id === 'keep_fit') {
         return {
           outcome: 'keep_fit',
-          effects: [money(-120_000), gauge('fitness', 18), gauge('form', 6), trait('self_made')],
+          effects: [money(-35_000), gauge('fitness', 18), gauge('form', 6), trait('self_made')],
           tone: 'neutral',
         }
       }
@@ -429,9 +429,9 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
     stages: ['winter'],
     once: false,
     weight: 5,
-    when: (c) => c.ovr >= 70 && (c.state.contract?.wage ?? 0) < wageFor(c.ovr, c.player.age, c.club?.tier ?? 1) * 0.7,
+    when: (c) => c.ovr >= 70 && (c.state.contract?.wage ?? 0) < wageFor(c.ovr, c.player.age, c.club) * 0.7,
     build: (c) => ({
-      bodyParams: { fair: wageFor(c.ovr, c.player.age, c.club?.tier ?? 0), current: c.state.contract?.wage ?? 0 },
+      bodyParams: { fair: wageFor(c.ovr, c.player.age, c.club), current: c.state.contract?.wage ?? 0 },
       options: [
         { id: 'demand', hints: [H.moneyUp, H.trustDown] },
         { id: 'wait', hints: [H.trustUp] },
@@ -441,7 +441,7 @@ export const STRUCTURAL_EVENTS: EventDef[] = [
     resolve: (c, id) => {
       const club = c.club
       if (!club) return { outcome: 'wait', effects: [] }
-      const fair = wageFor(c.ovr, c.player.age, club.tier)
+      const fair = wageFor(c.ovr, c.player.age, club)
       if (id === 'demand') {
         return c.rng.chance(0.6)
           ? {

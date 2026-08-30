@@ -68,12 +68,12 @@ export const LIFE_EVENTS: EventDef[] = [
     weight: 6,
     when: (c) => c.club !== null && c.club.country !== c.player.countryCode && c.player.age >= 22,
     build: (c) => ({ bodyParams: { home: getCountry(c.player.countryCode).nameAcc }, options: [
-      { id: 'bring_them', cost: 400_000, hints: [H.moraleUp, H.moneyDown] },
+      { id: 'bring_them', cost: 120_000, hints: [H.moraleUp, H.moneyDown] },
       { id: 'promise_return', hints: [H.moraleUp, H.consequenceLater] },
       { id: 'refuse', hints: [H.moraleDown, H.formUp] },
     ] }),
     resolve: (_c, id) => {
-      if (id === 'bring_them') return { outcome: 'bring_them', effects: [gauge('morale', 16), money(-400_000), gauge('form', 6)], tone: 'good' }
+      if (id === 'bring_them') return { outcome: 'bring_them', effects: [gauge('morale', 16), money(-120_000), gauge('form', 6)], tone: 'good' }
       if (id === 'promise_return') return { outcome: 'promise_return', effects: [gauge('morale', 10), later('return_home_promise', 3, 'winter')], tone: 'neutral' }
       return { outcome: 'refuse', effects: [gauge('morale', -14), gauge('form', 6), attr('mental', 1)], tone: 'neutral' }
     },
@@ -124,12 +124,12 @@ export const LIFE_EVENTS: EventDef[] = [
     once: false,
     weight: 0,
     build: () => ({ options: [
-      { id: 'sell_assets', cost: 600_000, hints: [H.moneyDown, H.safe] },
+      { id: 'sell_assets', cost: 150_000, hints: [H.moneyDown, H.safe] },
       { id: 'borrow', hints: [H.consequenceLater] },
       { id: 'go_public', hints: [H.mediaDown, H.fansUp] },
     ] }),
     resolve: (_c, id) => {
-      if (id === 'sell_assets') return { outcome: 'sell_assets', effects: [money(-600_000), gauge('morale', 6)], tone: 'neutral' }
+      if (id === 'sell_assets') return { outcome: 'sell_assets', effects: [money(-150_000), gauge('morale', 6)], tone: 'neutral' }
       if (id === 'borrow') return { outcome: 'borrow', effects: [money(400_000), later('honesty_test', 1, 'spring')], tone: 'bad' }
       return { outcome: 'go_public', effects: [gauge('mediaRep', -12), gauge('fanLove', 10), gauge('morale', 10), trait('open_book')], headline: true, tone: 'neutral' }
     },
@@ -186,12 +186,12 @@ export const LIFE_EVENTS: EventDef[] = [
     weight: 4,
     when: (c) => c.player.money > 8_000_000 && c.player.gauges.fame >= 45,
     build: () => ({ options: [
-      { id: 'found', cost: 3_000_000, hints: [H.moneyDown, H.fansUp, H.mediaUp] },
+      { id: 'found', cost: 400_000, hints: [H.moneyDown, H.fansUp, H.mediaUp] },
       { id: 'skip', hints: [H.noEffect] },
     ] }),
     resolve: (_c, id) =>
       id === 'found'
-        ? { outcome: 'found', effects: [money(-3_000_000), gauge('fanLove', 20), gauge('mediaRep', 24), gauge('morale', 10), trait('philanthropist')], headline: true, tone: 'good' }
+        ? { outcome: 'found', effects: [money(-400_000), gauge('fanLove', 20), gauge('mediaRep', 24), gauge('morale', 10), trait('philanthropist')], headline: true, tone: 'good' }
         : { outcome: 'skip', effects: [], tone: 'neutral' },
   },
   {
@@ -223,7 +223,7 @@ export const LIFE_EVENTS: EventDef[] = [
       bodyParams: { country: getCountry(c.club?.country ?? c.player.countryCode).nameGen },
       options: [
         { id: 'learn', hints: [H.lockerUp, H.formDown] },
-        { id: 'interpreter', cost: 60_000, hints: [H.moneyDown, H.lockerDown] },
+        { id: 'interpreter', cost: 8_000, hints: [H.moneyDown, H.lockerDown] },
         { id: 'football_only', hints: [H.formUp, H.lockerDown] },
       ],
     }),
@@ -232,7 +232,7 @@ export const LIFE_EVENTS: EventDef[] = [
         return { outcome: 'learn', effects: [attr('mental', 3), gauge('lockerRoom', 12), gauge('form', -4)], tone: 'good' }
       }
       if (id === 'interpreter') {
-        return { outcome: 'interpreter', effects: [money(-60_000), gauge('lockerRoom', -6), gauge('form', 3)], tone: 'neutral' }
+        return { outcome: 'interpreter', effects: [money(-8_000), gauge('lockerRoom', -6), gauge('form', 3)], tone: 'neutral' }
       }
       return { outcome: 'football_only', effects: [gauge('lockerRoom', -12), gauge('form', 6), flag('outsider')], tone: 'neutral' }
     },
@@ -246,15 +246,15 @@ export const LIFE_EVENTS: EventDef[] = [
     when: (c) => c.player.age >= 20,
     build: () => ({ options: [
       { id: 'go_home', hints: [H.moraleUp, H.minutesDown] },
-      { id: 'pay_treatment', cost: 500_000, hints: [H.moneyDown] },
-      { id: 'bring_family', cost: 1_200_000, hints: [H.moneyDown, H.moraleUp] },
+      { id: 'pay_treatment', cost: 60_000, hints: [H.moneyDown] },
+      { id: 'bring_family', cost: 180_000, hints: [H.moneyDown, H.moraleUp] },
     ] }),
     resolve: (_c, id) => {
       if (id === 'pay_treatment') {
-        return { outcome: 'pay_treatment', effects: [money(-500_000), gauge('morale', -6), gauge('form', -4)], tone: 'neutral' }
+        return { outcome: 'pay_treatment', effects: [money(-60_000), gauge('morale', -6), gauge('form', -4)], tone: 'neutral' }
       }
       if (id === 'bring_family') {
-        return { outcome: 'bring_family', effects: [money(-1_200_000), gauge('morale', 20), gauge('form', 6), trait('family_man')], tone: 'good' }
+        return { outcome: 'bring_family', effects: [money(-180_000), gauge('morale', 20), gauge('form', 6), trait('family_man')], tone: 'good' }
       }
       return { outcome: 'go_home', effects: [minutes(0.7), gauge('coachTrust', -10), gauge('morale', 14)], tone: 'neutral' }
     },
@@ -267,18 +267,18 @@ export const LIFE_EVENTS: EventDef[] = [
     weight: 4,
     when: (c) => c.player.money > 1_000_000 && c.player.age >= 19,
     build: () => ({ options: [
-      { id: 'admit', cost: 80_000, hints: [H.moneyDown, H.safe] },
-      { id: 'lawyers', cost: 250_000, hints: [H.moneyDown, H.gamble] },
+      { id: 'admit', cost: 25_000, hints: [H.moneyDown, H.safe] },
+      { id: 'lawyers', cost: 70_000, hints: [H.moneyDown, H.gamble] },
       { id: 'silence', hints: [H.mediaDown, H.fameUp] },
     ] }),
     resolve: (c, id) => {
       if (id === 'admit') {
-        return { outcome: 'admit', effects: [money(-80_000), gauge('mediaRep', -4), gauge('morale', -3)], tone: 'neutral' }
+        return { outcome: 'admit', effects: [money(-25_000), gauge('mediaRep', -4), gauge('morale', -3)], tone: 'neutral' }
       }
       if (id === 'lawyers') {
         return c.rng.chance(0.5)
-          ? { outcome: 'cleared', effects: [money(-250_000), gauge('mediaRep', 5)], tone: 'good' }
-          : { outcome: 'convicted', effects: [money(-250_000), gauge('mediaRep', -16), gauge('morale', -8)], headline: true, tone: 'bad' }
+          ? { outcome: 'cleared', effects: [money(-70_000), gauge('mediaRep', 5)], tone: 'good' }
+          : { outcome: 'convicted', effects: [money(-70_000), gauge('mediaRep', -16), gauge('morale', -8)], headline: true, tone: 'bad' }
       }
       return { outcome: 'silence', effects: [gauge('mediaRep', -14), gauge('fanLove', -6), gauge('fame', 5)], headline: true, tone: 'bad' }
     },

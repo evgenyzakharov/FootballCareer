@@ -211,10 +211,13 @@ export const NATIONAL_EVENTS: EventDef[] = [
   {
     key: 'olympics',
     channel: 'national',
-    stages: ['run_in'],
-    once: true,
-    weight: 12,
-    when: (c) => c.player.age <= 25 && (c.state.flags.national_established ?? 0) > 0,
+    // Игры идут летом, между сезонами, и выдаёт их движок в свои годы — не
+    // лотерея ситуаций посреди мая.
+    stages: ['review'],
+    // Не once: на две Олимпиады подряд игрок вполне успевает.
+    once: false,
+    weight: 0,
+    when: (c) => c.player.age <= 23 && (c.state.flags.national_established ?? 0) > 0,
     build: () => ({ options: [
       { id: 'go', hints: [H.fameUp, H.fitnessDown] },
       { id: 'club_first', hints: [H.trustUp, H.consequenceLater] },

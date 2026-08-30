@@ -275,7 +275,7 @@ export const GOALKEEPER_EVENTS: EventDef[] = [
           outcome: 'took_bench',
           params: { club: club.name },
           effects: [
-            { t: 'transfer', clubId, loan: false, wage: wageFor(c.ovr, c.player.age, club.tier), years: contractYears(c.player.age, club.tier, false) },
+            { t: 'transfer', clubId, loan: false, wage: wageFor(c.ovr, c.player.age, club), years: contractYears(c.player.age, club.tier, false) },
             minutes(0.3), gauge('fame', 8), gauge('morale', -6), trait('veteran_backup'),
           ],
           headline: true,

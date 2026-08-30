@@ -14,7 +14,7 @@ function moveEffect(clubId: string, ovr: number, age: number): Effect {
     t: 'transfer',
     clubId,
     loan: false,
-    wage: wageFor(ovr, age, club.tier),
+    wage: wageFor(ovr, age, club),
     years: contractYears(age, club.tier, false),
   }
 }
@@ -114,7 +114,7 @@ export const TRANSFER_EVENTS: EventDef[] = [
     weight: 8,
     when: (c) => (c.state.contract?.yearsLeft ?? 9) <= 1 && c.club !== null,
     build: (c) => ({
-      bodyParams: { club: c.club?.name ?? '', wage: wageFor(c.ovr, c.player.age, c.club?.tier ?? 1) },
+      bodyParams: { club: c.club?.name ?? '', wage: wageFor(c.ovr, c.player.age, c.club) },
       options: [
         { id: 'sign', hints: [H.moneyUp, H.stayClub] },
         { id: 'push_more', hints: [H.gamble, H.moneyUp] },
@@ -124,7 +124,7 @@ export const TRANSFER_EVENTS: EventDef[] = [
     resolve: (c, id) => {
       const club = c.club
       if (!club) return { outcome: 'sign', effects: [] }
-      const base = wageFor(c.ovr, c.player.age, club.tier)
+      const base = wageFor(c.ovr, c.player.age, club)
       if (id === 'sign') {
         return {
           outcome: 'sign',
@@ -159,12 +159,12 @@ export const TRANSFER_EVENTS: EventDef[] = [
     weight: 5,
     when: (c) => c.ovr >= 72 && c.player.age <= 28,
     build: () => ({ options: [
-      { id: 'insert', cost: 200_000, hints: [H.moneyDown, H.consequenceLater] },
+      { id: 'insert', cost: 40_000, hints: [H.moneyDown, H.consequenceLater] },
       { id: 'no_clause', hints: [H.moneyUp, H.stayClub] },
     ] }),
     resolve: (_c, id) =>
       id === 'insert'
-        ? { outcome: 'insert', effects: [money(-200_000), flag('release_clause'), rel('agent', 12)], tone: 'neutral' }
+        ? { outcome: 'insert', effects: [money(-40_000), flag('release_clause'), rel('agent', 12)], tone: 'neutral' }
         : { outcome: 'no_clause', effects: [money(500_000), gauge('coachTrust', 6)], tone: 'neutral' },
   },
   {
@@ -192,7 +192,7 @@ export const TRANSFER_EVENTS: EventDef[] = [
           outcome: 'returned',
           params: { club: club.name },
           effects: [
-            { t: 'transfer', clubId, loan: false, wage: Math.round(wageFor(c.ovr, c.player.age, club.tier) * 0.6), years: 2 },
+            { t: 'transfer', clubId, loan: false, wage: Math.round(wageFor(c.ovr, c.player.age, club) * 0.6), years: 2 },
             gauge('fanLove', 30), gauge('morale', 20), gauge('lockerRoom', 14), trait('homecoming'),
           ],
           headline: true,
@@ -230,7 +230,7 @@ export const TRANSFER_EVENTS: EventDef[] = [
           outcome: 'took_money',
           params: { club: club.name },
           effects: [
-            { t: 'transfer', clubId, loan: false, wage: Math.round(wageFor(c.ovr, c.player.age, club.tier) * 2.5), years: 2 },
+            { t: 'transfer', clubId, loan: false, wage: Math.round(wageFor(c.ovr, c.player.age, club) * 2.5), years: 2 },
             gauge('fame', 10), gauge('mediaRep', -10),
           ],
           headline: true,
@@ -362,7 +362,7 @@ export const TRANSFER_EVENTS: EventDef[] = [
           params: { club: club.name },
           // Аренда на остаток сезона: год возвращения считает сам движок.
           effects: [
-            { t: 'transfer', clubId, loan: true, wage: wageFor(c.ovr, c.player.age, club.tier), years: 1 },
+            { t: 'transfer', clubId, loan: true, wage: wageFor(c.ovr, c.player.age, club), years: 1 },
             minutes(1.4),
             gauge('morale', 8),
           ],

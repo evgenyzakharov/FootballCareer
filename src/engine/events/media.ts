@@ -146,12 +146,12 @@ export const MEDIA_EVENTS: EventDef[] = [
     build: () => ({ options: [
       { id: 'apologise', hints: [H.mediaUp, H.moraleDown] },
       { id: 'joke', hints: [H.fansUp, H.trustDown] },
-      { id: 'lawyers', cost: 200_000, hints: [H.moneyDown, H.mediaUp] },
+      { id: 'lawyers', cost: 40_000, hints: [H.moneyDown, H.mediaUp] },
     ] }),
     resolve: (_c, id) => {
       if (id === 'apologise') return { outcome: 'apologise', effects: [gauge('mediaRep', 10), gauge('morale', -6), gauge('coachTrust', 4)], tone: 'neutral' }
       if (id === 'joke') return { outcome: 'joke', effects: [gauge('fanLove', 12), gauge('fame', 8), gauge('coachTrust', -8)], tone: 'neutral' }
-      return { outcome: 'lawyers', effects: [money(-200_000), gauge('mediaRep', 14), rel('journalist', -12)], tone: 'neutral' }
+      return { outcome: 'lawyers', effects: [money(-40_000), gauge('mediaRep', 14), rel('journalist', -12)], tone: 'neutral' }
     },
   },
   {
@@ -179,12 +179,12 @@ export const MEDIA_EVENTS: EventDef[] = [
     weight: 0,
     build: () => ({ options: [
       { id: 'own_channel', hints: [H.fameUp, H.mediaDown] },
-      { id: 'make_peace', cost: 100_000, hints: [H.mediaUp, H.moneyDown] },
+      { id: 'make_peace', cost: 45_000, hints: [H.mediaUp, H.moneyDown] },
     ] }),
     resolve: (_c, id) =>
       id === 'own_channel'
         ? { outcome: 'own_channel', effects: [gauge('fame', 16), gauge('mediaRep', -10), money(300_000), trait('own_media')], tone: 'neutral' }
-        : { outcome: 'make_peace', effects: [gauge('mediaRep', 18), money(-100_000), rel('journalist', 16)], tone: 'good' },
+        : { outcome: 'make_peace', effects: [gauge('mediaRep', 18), money(-45_000), rel('journalist', 16)], tone: 'good' },
   },
   {
     key: 'charity_visit',

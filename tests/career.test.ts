@@ -13,8 +13,10 @@ import { formatMoney, missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS, buildCard, getEvent, resolveCard } from '../src/engine/events'
 import { findClub, getClub } from '../src/data/clubs'
 import { getLeague } from '../src/data/leagues'
-import { NATIONAL_TOURNAMENT, leagueLift, rollLeaguePosition, tournamentThisSeason } from '../src/engine/competitions'
-import { academyOffers, clubWantsToRenew, generateOffers } from '../src/engine/offers'
+import {
+  NATIONAL_TOURNAMENT, isOlympicYear, leagueLift, rollLeaguePosition, tournamentThisSeason,
+} from '../src/engine/competitions'
+import { academyOffers, clubWantsToRenew, generateOffers, wageFor } from '../src/engine/offers'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
 function playCareer(
@@ -1072,6 +1074,73 @@ describe('движок карьеры', () => {
     for (const season of state.history) {
       expect(Object.prototype.hasOwnProperty.call(season, 'matches')).toBe(false)
     }
+  })
+
+  it('травмированному не предлагают ни поле, ни сборную', () => {
+    const seen = new Set<string>()
+    let hurtCards = 0
+    for (const seed of ['hurt-ev-1', 'hurt-ev-2', 'hurt-ev-3']) {
+      let state = setIdentity(newCareer(seed), {
+        lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'ST',
+      })
+      const rng = new Rng(seed, 'choices', 0)
+      let guard = 0
+      while (state.phase !== 'retired' && guard < 4000) {
+        guard++
+        if (state.resolution) { state = ack(state); continue }
+        if (!state.card) break
+        const out = state.player.matchesOut > 0 || state.player.banMatches > 0
+        if (out && state.card.kind === 'decision') {
+          hurtCards++
+          seen.add(state.card.channel)
+          // Лечится — значит не бьёт пенальти в финале и не едет на турнир.
+          expect(state.card.channel).not.toBe('match')
+          expect(state.card.channel).not.toBe('national')
+        }
+        const available = state.card.options.filter((o) => !o.disabled)
+        state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
+      }
+    }
+    // Проверка бессмысленна, если травмированному вообще ничего не выпадало.
+    expect(hurtCards).toBeGreaterThan(0)
+    expect(seen.size).toBeGreaterThan(0)
+  })
+
+  it('травмированного не вызывают в сборную', () => {
+    for (const seed of ['hurt-nat-1', 'hurt-nat-2']) {
+      const state = playCareer(seed)
+      for (const season of state.history) {
+        // Сезон, закрытый с незалеченной травмой, не должен приносить матчей
+        // за сборную: летние сборы проходят мимо.
+        if (season.national.caps > 0) expect(season.tally.apps).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('олимпиада идёт летом и только в свой год', () => {
+    // Игры и Евро делят одни и те же годы — так и в жизни.
+    for (const year of [2028, 2032, 2036]) expect(isOlympicYear(year)).toBe(true)
+    for (const year of [2026, 2027, 2029, 2030]) expect(isOlympicYear(year)).toBe(false)
+
+    // Само событие живёт на этапе итогов сезона, то есть между сезонами.
+    expect(getEvent('olympics').stages).toEqual(['review'])
+    // И выдаётся движком, а не лотереей ситуаций посреди мая.
+    expect(getEvent('olympics').weight).toBe(0)
+  })
+
+  it('первый контракт во второй лиге России — не больше шестисот тысяч рублей в год', () => {
+    // Движок считает в евро, интерфейс показывает рубли по сто за евро.
+    const RUB_PER_EUR = 100
+    for (const clubId of ['dynamo-bryansk', 'rodina-2', 'sibir']) {
+      const club = getClub(clubId)
+      const wage = wageFor(45, 16, club)
+      expect(wage * RUB_PER_EUR).toBeLessThanOrEqual(600_000)
+      expect(wage).toBeGreaterThan(0)
+    }
+    // При этом за тот же уровень в сильной лиге платят заметно больше:
+    // раньше нижняя граница в тридцать тысяч равняла всех подряд.
+    expect(wageFor(45, 16, getClub('oxford-utd'))).toBeGreaterThan(wageFor(45, 16, getClub('dynamo-bryansk')))
+    expect(wageFor(80, 27, getClub('inter'))).toBeGreaterThan(1_000_000)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {
