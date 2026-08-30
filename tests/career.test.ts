@@ -16,7 +16,7 @@ import { getLeague } from '../src/data/leagues'
 import {
   NATIONAL_TOURNAMENT, isOlympicYear, leagueLift, rollLeaguePosition, tournamentThisSeason,
 } from '../src/engine/competitions'
-import { academyOffers, clubWantsToRenew, generateOffers, wageFor } from '../src/engine/offers'
+import { MAX_SQUAD_GAP, academyOffers, clubWantsToRenew, generateOffers, wageFor } from '../src/engine/offers'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
 function playCareer(
@@ -334,6 +334,27 @@ describe('движок карьеры', () => {
 
     // Без контракта продлевать нечего.
     expect(clubWantsToRenew({ ...state, contract: null }, 90, 'star')).toBe(false)
+  })
+
+  it('клуб не удерживает того, кто его перерос', () => {
+    let state = setIdentity(newCareer('outgrown'), {
+      lastName: 'ТЕСТОВ', shirt: 10, foot: 'right', countryCode: 'RUS', position: 'CAM',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+    const club = findClub(state.contract!.clubId)!
+    const level = squadLevel(club.tier)
+    const loved: CareerState = {
+      ...state,
+      player: { ...state.player, gauges: { ...state.player.gauges, coachTrust: 95, fanLove: 95 } },
+    }
+
+    // Порог общий с рынком: кого клуб уже не может подписать, того он и не
+    // удерживает. Продление было единственной лазейкой мимо этой проверки —
+    // игрок на восемьдесят OVR годами доигрывал во второй лиге.
+    expect(clubWantsToRenew(loved, level + MAX_SQUAD_GAP, 'star')).toBe(true)
+    expect(clubWantsToRenew(loved, level + MAX_SQUAD_GAP + 1, 'star')).toBe(false)
+    // И никакая любовь трибун с доверием тренера этого не перебивает.
+    expect(clubWantsToRenew(loved, level + 30, 'star')).toBe(false)
   })
 
   it('деньги показываются в рублях, когда игрок из России', () => {

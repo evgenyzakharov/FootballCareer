@@ -51,6 +51,13 @@ export function wageFor(ovr: number, age: number, club: Club | null): number {
   return Math.round(wage / mag) * mag
 }
 
+/**
+ * Насколько игрок может быть сильнее состава, чтобы клуб всё-таки его взял.
+ * Кто перерос клуб сильнее — уходит выше. Порог общий для рынка и для
+ * продления: иначе продление становится лазейкой мимо этой проверки.
+ */
+export const MAX_SQUAD_GAP = 16
+
 /** Насколько клуб «хочет» игрока: вес в лотерее предложений. */
 function interest(club: Club, state: CareerState, ovr: number): number {
   const player = state.player
@@ -61,7 +68,7 @@ function interest(club: Club, state: CareerState, ovr: number): number {
   // Клуб не смотрит на тех, кто заметно слабее его состава, и не берёт
   // тех, кто заметно сильнее — они уйдут выше.
   if (gap < -12) return 0
-  if (gap > 16) return 0
+  if (gap > MAX_SQUAD_GAP) return 0
 
   // Дисквалифицированного игрока клубы не подписывают: именно так карьера и
   // попадает в состояние «без клуба», а не только через пустой рынок. Смотрим
@@ -104,7 +111,12 @@ function interest(club: Club, state: CareerState, ovr: number): number {
 export function clubWantsToRenew(state: CareerState, ovr: number, role: Role): boolean {
   const club = findClub(state.contract?.clubId ?? null)
   if (!club) return false
-  let score = (ovr - squadLevel(club.tier)) * 0.9
+  const gap = ovr - squadLevel(club.tier)
+  // Клуб не удерживает того, кто его перерос. Раньше проверка стояла только на
+  // рынке, и продление было лазейкой мимо неё: игрок на восемьдесят OVR мог
+  // годами доигрывать во второй лиге, куда его никто бы уже не подписал.
+  if (gap > MAX_SQUAD_GAP) return false
+  let score = gap * 0.9
   score += (state.player.gauges.coachTrust - 45) * 0.35
   score += (state.player.gauges.fanLove - 40) * 0.15
   score += (roleRank(role) - 1) * 6
