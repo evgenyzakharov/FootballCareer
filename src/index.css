@@ -517,15 +517,17 @@ input { font: inherit; color: inherit; }
 .form__strip {
   display: flex;
   align-items: flex-end;
-  gap: 2px;
+  gap: 1px;
   min-height: 46px;
   padding: 6px 8px 5px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm);
   background: linear-gradient(180deg, rgba(18, 64, 44, .35), rgba(18, 64, 44, 0));
-  overflow-x: auto;
+  /* Полоса ужимается под ширину панели, а не уезжает за край телефона:
+     столбиков за сезон полсотни, и прокручивать их незачем. */
+  overflow: hidden;
 }
-.form__pip { flex: 1 0 5px; min-width: 5px; border-radius: 2px; background: #232b35; }
+.form__pip { flex: 1 1 5px; min-width: 2px; border-radius: 2px; background: #232b35; }
 .form__pip[data-tier='great'] { background: var(--accent); }
 .form__pip[data-tier='good'] { background: var(--accent-dim); }
 .form__pip[data-tier='ok'] { background: #3d5f4c; }
