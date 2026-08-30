@@ -6,7 +6,8 @@ import { seasonLabel } from '../src/ui/format'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
 import type { CareerState, Confederation, Gauges, Objective, Pace, Position, Role } from '../src/engine/types'
 import {
-  ROUNDS_PER_SEASON, SEASON_MATCHES, averageRating, matchesBefore, matchesInRound, simulateBlock,
+  DOGHOUSE, FROZEN_OUT, ROUNDS_PER_SEASON, SEASON_MATCHES,
+  averageRating, determineRole, matchesBefore, matchesInRound, roleRank, simulateBlock,
 } from '../src/engine/performance'
 import { seasonFixtures } from '../src/engine/fixtures'
 import { INJURY_TYPES, injuryMatches } from '../src/engine/injuries'
@@ -1363,6 +1364,74 @@ describe('движок карьеры', () => {
       state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
     }
     expect(checked).toBeGreaterThan(0)
+  })
+
+  it('тренер, который не доверяет, не ставит — каким бы сильным игрок ни был', () => {
+    const club = getClub('baltika')
+    const base = createPlayer(
+      { lastName: 'ТЕСТОВ', shirt: 1, foot: 'right', countryCode: 'RUS', position: 'GK' },
+      3,
+      new Rng('trust', 'player', 0),
+    )
+    /** Игрок ровно заданного класса: разрыв с составом считается от него. */
+    const at = (ovr: number, coachTrust: number) => {
+      const attrs = { ...base.attrs }
+      for (const key of Object.keys(attrs) as (keyof typeof attrs)[]) attrs[key] = ovr
+      return { ...base, age: 29, attrs, gauges: { ...base.gauges, coachTrust, form: 60, lockerRoom: 20 } }
+    }
+
+    // Раньше класс перебивал всё: при нулевом доверии игрок, на пятнадцать
+    // пунктов сильнее состава, всё равно выходил в основе, и поссориться с
+    // тренером насмерть было нельзя.
+    for (const ovr of [70, 81, 90]) {
+      expect(determineRole({ player: at(ovr, 0), club, rivalPressure: 0 })).toBe('reserve')
+      expect(determineRole({ player: at(ovr, FROZEN_OUT), club, rivalPressure: 0 })).toBe('reserve')
+      expect(determineRole({ player: at(ovr, DOGHOUSE), club, rivalPressure: 0 })).toBe('bench')
+    }
+    // Выше порога всё как было: решает класс.
+    expect(determineRole({ player: at(90, 60), club, rivalPressure: 0 })).toBe('star')
+    // Потолок работает только вниз: доверие по-прежнему помогает, а не мешает.
+    expect(roleRank(determineRole({ player: at(50, 100), club, rivalPressure: 0 })))
+      .toBeGreaterThan(roleRank(determineRole({ player: at(50, 0), club, rivalPressure: 0 })))
+  })
+
+  it('оказавшийся вне обоймы может уйти, не досиживая контракт', () => {
+    let state = setIdentity(newCareer('frozen'), {
+      lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CAM',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+    // Контракт свежий: без конфликта рынок летом почти наверняка не откроется.
+    expect(state.contract!.yearsLeft).toBeGreaterThan(1)
+
+    const frozen: CareerState = {
+      ...state,
+      player: { ...state.player, gauges: { ...state.player.gauges, coachTrust: 0 } },
+    }
+    // Тренер вычеркнул — клуб не продлевает и рынок открыт.
+    expect(clubWantsToRenew(frozen, playerOvr(frozen.player), 'starter')).toBe(false)
+
+    const rng = new Rng('frozen', 'choices', 0)
+    let current = frozen
+    let guard = 0
+    let sawMarket = false
+    while (current.history.length < 1 && guard < 600) {
+      guard++
+      if (current.resolution) { current = ack(current); continue }
+      if (!current.card) break
+      const available = current.card.options.filter((o) => !o.disabled)
+      current = choose(current, available.length > 0 ? rng.pick(available).id : 'next')
+    }
+    // Первое же лето даёт выбор клуба, а не «спокойное межсезонье».
+    guard = 0
+    while (!sawMarket && guard < 200) {
+      guard++
+      if (current.resolution) { current = ack(current); continue }
+      if (!current.card) break
+      if (['market_decision', 'contract_expired', 'no_offers'].includes(current.card.eventKey)) sawMarket = true
+      const available = current.card.options.filter((o) => !o.disabled)
+      if (!sawMarket) current = choose(current, available.length > 0 ? rng.pick(available).id : 'next')
+    }
+    expect(sawMarket).toBe(true)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

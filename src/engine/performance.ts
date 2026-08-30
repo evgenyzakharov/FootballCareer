@@ -51,8 +51,21 @@ export interface RoleContext {
 }
 
 /**
+ * Доверие тренера, ниже которого разговор окончен: игрок не в обойме, каким бы
+ * сильным он ни был. Ниже второго порога он ещё попадает в заявку, но выходит
+ * редко — это «в запасе после конфликта», а не «не тянет состав».
+ */
+export const FROZEN_OUT = 5
+export const DOGHOUSE = 15
+
+/**
  * Роль в клубе — центральная величина: от неё зависят минуты, а от минут —
  * статистика, рост и вообще всё остальное.
+ *
+ * Разрыв в классе решает почти всё, но не всё: тренер, который игроку не
+ * доверяет, его не ставит. Раньше класс перебивал и это — при нулевом доверии
+ * игрок на 90 OVR всё равно выходил в основе клуба уровня 66, и поссориться с
+ * тренером насмерть было попросту нельзя.
  */
 export function determineRole({ player, club, rivalPressure }: RoleContext): Role {
   const gap = playerOvr(player) - squadLevel(club.tier)
@@ -62,11 +75,15 @@ export function determineRole({ player, club, rivalPressure }: RoleContext): Rol
     (player.gauges.form - 60) * 0.1 +
     player.gauges.lockerRoom * 0.05 -
     rivalPressure * 5
-  if (score >= 14) return 'star'
-  if (score >= 4) return 'starter'
-  if (score >= -6) return 'rotation'
-  if (score >= -16) return 'bench'
-  return 'reserve'
+  const byScore: Role =
+    score >= 14 ? 'star'
+      : score >= 4 ? 'starter'
+        : score >= -6 ? 'rotation'
+          : score >= -16 ? 'bench'
+            : 'reserve'
+  const trust = player.gauges.coachTrust
+  const ceiling: Role = trust <= FROZEN_OUT ? 'reserve' : trust <= DOGHOUSE ? 'bench' : 'star'
+  return roleRank(byScore) <= roleRank(ceiling) ? byScore : ceiling
 }
 
 export function roleShare(role: Role): number {

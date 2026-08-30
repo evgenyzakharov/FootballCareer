@@ -6,7 +6,7 @@ import { ATTR_KEYS, attrAgeBand, isGoalkeeper, marketValue, overall } from './at
 import { MAX_AGE, START_AGE, createPlayer, playerOvr, squadLevel } from './player'
 import type { Identity } from './player'
 import {
-  BLOCK_MATCHES, MORALE_LEVEL, ROUNDS_PER_SEASON, SEASON_MATCHES,
+  BLOCK_MATCHES, DOGHOUSE, MORALE_LEVEL, ROUNDS_PER_SEASON, SEASON_MATCHES,
   averageRating, determineRole, keeperRun, matchesBefore, matchesInRound, simulateBlock,
 } from './performance'
 import {
@@ -1174,6 +1174,9 @@ function openMarket(state: CareerState): CareerState {
 function marketIsOpen(state: CareerState, rng: Rng): boolean {
   if ((state.contract?.yearsLeft ?? 0) <= 0) return true
   if ((state.flags.wants_out ?? 0) > 0) return true
+  // Оказался вне обоймы — рынок открыт: сидеть в запасе до конца контракта,
+  // когда тренер тебя вычеркнул, игрок не обязан.
+  if (state.player.gauges.coachTrust <= DOGHOUSE) return true
   if ((state.flags.free_agent_soon ?? 0) > 0) return true
   const last = state.history[state.history.length - 1]
   if (last && last.ovrEnd - last.ovrStart >= 5) return true

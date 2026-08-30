@@ -4,7 +4,7 @@ import { getCountry } from '../data/countries'
 import { getLeague } from '../data/leagues'
 import { marketValue } from './attributes'
 import { playerOvr, squadLevel } from './player'
-import { roleRank } from './performance'
+import { FROZEN_OUT, roleRank } from './performance'
 import { Rng, clamp } from './rng'
 
 export type OfferKind = 'transfer' | 'loan' | 'stay' | 'academy' | 'free'
@@ -136,6 +136,9 @@ function interest(club: Club, state: CareerState, ovr: number): number {
 export function clubWantsToRenew(state: CareerState, ovr: number, role: Role): boolean {
   const club = findClub(state.contract?.clubId ?? null)
   if (!club) return false
+  // Тренер, который тебя не ставит, и продлевать с тобой не станет — этого не
+  // перебивают ни класс, ни трибуны.
+  if (state.player.gauges.coachTrust <= FROZEN_OUT) return false
   // Переросшему клуб всё равно предложит продление — просто на свои деньги, а
   // не на рыночные: потолок в `clubWageCeiling` не даст ему выписать столько,
   // сколько игрок стоит. Решает игрок, видя обе цифры рядом.

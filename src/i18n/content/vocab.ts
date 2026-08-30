@@ -97,6 +97,7 @@ export const VOCAB: Content = {
   'comp.ligue2': { ru: 'Победа в Лиге 2', en: 'Ligue 2 title' },
   'comp.rpl': { ru: 'Чемпион России', en: 'Russian champion' },
   'comp.pfl': { ru: 'Победа в Первой лиге', en: 'First League title' },
+  'comp.vtoraya-a': { ru: 'Победа во Второй лиге А', en: 'Second League A title' },
   'comp.eredivisie': { ru: 'Чемпион Нидерландов', en: 'Dutch champion' },
   'comp.primeira': { ru: 'Чемпион Португалии', en: 'Portuguese champion' },
   'comp.superlig': { ru: 'Чемпион Турции', en: 'Turkish champion' },
