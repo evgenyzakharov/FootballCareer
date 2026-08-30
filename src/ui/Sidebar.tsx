@@ -1,5 +1,8 @@
 import type { CareerState } from '../engine/types'
-import { Chip, Empty, Panel } from './bits'
+import { isGoalkeeper } from '../engine/attributes'
+import { careerTotals } from '../engine/career'
+import { getCountry } from '../data/countries'
+import { Chip, Empty, KeyValue, Panel, Stat } from './bits'
 import { seasonShort } from './format'
 import { useLocale, useT } from './locale'
 
@@ -19,6 +22,10 @@ export function Sidebar({ state }: { state: CareerState }) {
   const t = useT()
   const locale = useLocale()
   const feed = [...state.feed].reverse().slice(0, 40)
+  // Сборная считается за всю карьеру, а не по сезонам: в таблице карьеры её
+  // нет вовсе, а в отчёте о сезоне видно только текущий год.
+  const totals = careerTotals(state)
+  const gk = isGoalkeeper(state.player.position)
 
   return (
     <>
@@ -39,6 +46,31 @@ export function Sidebar({ state }: { state: CareerState }) {
               </div>
             ))}
           </div>
+        )}
+      </Panel>
+
+      <Panel titleKey="panel.national">
+        {totals.caps === 0 ? (
+          <Empty textKey="panel.no_caps" />
+        ) : (
+          <>
+            <div className={gk ? 'stat-row' : 'stat-row stat-row--pair'}>
+              <Stat labelKey="hud.caps" value={totals.caps} />
+              {gk ? (
+                <>
+                  <Stat labelKey="hud.clean_sheets" value={totals.nationalCleanSheets} />
+                  <Stat labelKey="hud.conceded" value={totals.nationalConceded} />
+                </>
+              ) : (
+                <Stat labelKey="hud.goals" value={totals.nationalGoals} />
+              )}
+            </div>
+            <KeyValue labelKey="national.country" value={getCountry(state.player.countryCode).name[locale]} />
+            <KeyValue labelKey="national.tournaments" value={totals.nationalTournaments} />
+            {totals.nationalTrophies > 0 && (
+              <KeyValue labelKey="national.titles" tone="good" value={totals.nationalTrophies} />
+            )}
+          </>
         )}
       </Panel>
 

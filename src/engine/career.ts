@@ -1172,12 +1172,18 @@ export function careerTotals(state: CareerState) {
       goalsConceded: acc.goalsConceded + s.tally.goalsConceded,
       caps: acc.caps + s.national.caps,
       nationalGoals: acc.nationalGoals + s.national.goals,
+      nationalCleanSheets: acc.nationalCleanSheets + s.national.cleanSheets,
+      nationalConceded: acc.nationalConceded + s.national.goalsConceded,
+      // Турниры считаем по сезонам: за одно лето их больше одного не бывает.
+      nationalTournaments: acc.nationalTournaments + (s.national.tournament ? 1 : 0),
+      nationalTrophies: acc.nationalTrophies + (s.national.trophy ? 1 : 0),
       trophies: acc.trophies + s.trophies.length + (s.national.trophy ? 1 : 0),
       awards: acc.awards + s.awards.length,
     }),
     {
       apps: 0, goals: 0, assists: 0, cleanSheets: 0, goalsConceded: 0,
-      caps: 0, nationalGoals: 0, trophies: 0, awards: 0,
+      caps: 0, nationalGoals: 0, nationalCleanSheets: 0, nationalConceded: 0,
+      nationalTournaments: 0, nationalTrophies: 0, trophies: 0, awards: 0,
     },
   )
 }
