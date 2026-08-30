@@ -255,6 +255,8 @@ export interface Card {
   channel: EventChannel
   /** Строки-детали для отчётов: трофеи, награды, итоги блока. */
   details?: Text[]
+  /** Матчи, о которых отчитывается карточка тура. */
+  matches?: MatchResult[]
   /** Контекст, с которым карточка была собрана: нужен при разборе выбора. */
   payload?: Record<string, string | number>
 }
@@ -375,6 +377,11 @@ export interface CurrentSeason {
   oddsMult: Partial<Record<CompetitionKind, number>>
   /** Сколько туров сезона уже отыграно. Всего их `ROUNDS_PER_SEASON[pace]`. */
   roundsPlayed: number
+  /**
+   * Матчи текущего сезона. В историю они не уезжают: за двадцать сезонов это
+   * тысяча записей в сохранении, а таблице карьеры хватает итогов.
+   */
+  matches: MatchResult[]
   /** Множитель минут на остаток сезона, накопленный решениями. */
   minutesMult: number
 }

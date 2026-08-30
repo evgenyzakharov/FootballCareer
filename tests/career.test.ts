@@ -955,7 +955,7 @@ describe('движок карьеры', () => {
       checked++
       // Сломавшийся матч не доигран, а следующие пропущены.
       expect(result.matches[hurtAt].minutes).toBeLessThan(90)
-      expect(result.injury).not.toBeNull()
+      expect(result.injuries.length).toBeGreaterThan(0)
       const after = result.matches.slice(hurtAt + 1)
       const cost = injuryMatches(result.matches[hurtAt].injury!.kind, result.matches[hurtAt].injury!.severity)
       const missedAfter = after.filter((m) => m.minutes === 0).length
@@ -1031,6 +1031,47 @@ describe('движок карьеры', () => {
     expect(Math.abs(small.fitnessDelta)).toBeLessThan(Math.abs(half.fitnessDelta))
     expect(small.matches).toHaveLength(5)
     expect(half.matches).toHaveLength(26)
+  })
+
+  it('матчи сезона копятся и попадают в отчёт о туре', () => {
+    let state = setIdentity(newCareer('shown'), {
+      lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CAM',
+    })
+    const rng = new Rng('shown', 'choices', 0)
+    let guard = 0
+    let reports = 0
+    let seen = 0
+    while (state.history.length === 0 && guard < 400) {
+      guard++
+      if (state.resolution) { state = ack(state); continue }
+      if (!state.card) break
+      if (state.card.eventKey === 'block_report') {
+        reports++
+        // Карточка тура несёт свои матчи: из них она и собрана.
+        const matches = state.card.matches ?? []
+        expect(matches.length).toBeGreaterThan(0)
+        seen += matches.length
+        for (const match of matches) {
+          expect(findClub(match.opponentId)).not.toBeNull()
+          expect(match.opponentId).not.toBe(state.season?.clubId)
+        }
+        // Сезон помнит всё сыгранное до сих пор, а не только последний тур.
+        expect(state.season!.matches).toHaveLength(seen)
+      }
+      const available = state.card.options.filter((o) => !o.disabled)
+      state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
+    }
+    expect(reports).toBeGreaterThan(1)
+    // За сезон разыгрывается ровно календарь сезона, не больше и не меньше.
+    expect(seen).toBe(SEASON_MATCHES)
+  })
+
+  it('матчи не утекают в историю: в сохранении остаётся только текущий сезон', () => {
+    const state = playCareer('no-leak')
+    // Тысяча записей о матчах за карьеру раздула бы сохранение на пустом месте.
+    for (const season of state.history) {
+      expect(Object.prototype.hasOwnProperty.call(season, 'matches')).toBe(false)
+    }
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

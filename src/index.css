@@ -442,6 +442,29 @@ input { font: inherit; color: inherit; }
 
 /* ─── Таймлайн ────────────────────────────────────────────────────────────── */
 
+/* Список матчей: та же таблица, что и в карьере, но плотнее — она стоит и
+   внутри карточки тура, где места мало. */
+.matches { overflow-x: auto; }
+.matches table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.matches th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-faint);
+  padding: 0 4px 4px;
+}
+.matches td { padding: 4px; border-top: 1px solid var(--line-soft); vertical-align: top; }
+.matches .num { text-align: right; font-variant-numeric: tabular-nums; }
+.matches__club { overflow-wrap: anywhere; }
+.matches__where { color: var(--text-faint); margin-left: 4px; }
+.matches__comp { display: block; color: var(--text-faint); font-size: 10.5px; margin-top: 1px; }
+.matches__sub { color: var(--text-faint); font-size: 10.5px; margin-left: 3px; }
+.matches__hurt { display: block; color: #fca5a5; font-size: 10.5px; }
+/* Пропущенный матч не должен спорить за внимание с сыгранным. */
+.matches tr[data-played='false'] td { color: var(--text-faint); }
+
 .timeline { max-height: 420px; overflow-y: auto; }
 .timeline table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .timeline th {

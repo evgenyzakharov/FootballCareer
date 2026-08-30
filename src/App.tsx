@@ -122,7 +122,11 @@ export default function App() {
               {state.resolution ? (
                 <ResolutionView resolution={state.resolution} onNext={() => setState(ack(state))} />
               ) : state.card ? (
-                <CardView card={state.card} onChoose={(optionId) => setState(choose(state, optionId))} />
+                <CardView
+                  card={state.card}
+                  position={state.player.position}
+                  onChoose={(optionId) => setState(choose(state, optionId))}
+                />
               ) : null}
             </div>
             <div className="career__right">

@@ -32,7 +32,7 @@ import type { ManagerStyle } from './relationships'
  * Версия формы состояния. Растёт при любом несовместимом изменении схемы;
  * подъём версии обязан сопровождаться миграцией в `save.ts`.
  */
-export const STATE_VERSION = 8
+export const STATE_VERSION = 9
 
 const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'review']
 
@@ -324,6 +324,7 @@ function startSeason(state: CareerState): CareerState {
       awards: [],
       oddsMult: {},
       roundsPlayed: 0,
+      matches: [],
       minutesMult: rng.around(1, 0.05),
     },
     contract: state.contract ? { ...state.contract, objective } : null,
@@ -643,25 +644,31 @@ function runBlock(state: CareerState): CareerState {
 
   let next: CareerState = {
     ...state,
-    season: { ...season, tally, roundsPlayed: season.roundsPlayed + 1 },
+    season: {
+      ...season,
+      tally,
+      roundsPlayed: season.roundsPlayed + 1,
+      matches: [...season.matches, ...result.matches],
+    },
     player: {
       ...state.player,
       matchesOut: result.matchesOutLeft,
       banMatches: result.banMatchesLeft,
-      // Повреждение, полученное в матче, уже стоило игроку пропусков внутри
-      // отрезка — в историю оно попадает здесь, а не через эффект карточки.
-      injuries: result.injury
-        ? [...state.player.injuries, {
+      // Повреждения, полученные в матчах, уже стоили игроку пропусков внутри
+      // тура — в историю они попадают здесь, а не через эффект карточки.
+      injuries: [
+        ...state.player.injuries,
+        ...result.injuries.map((hit) => ({
           age: state.player.age,
-          kind: result.injury.kind,
-          severity: result.injury.severity,
-          matchesOut: injuryMatches(result.injury.kind, result.injury.severity),
-        }]
-        : state.player.injuries,
+          kind: hit.kind,
+          severity: hit.severity,
+          matchesOut: injuryMatches(hit.kind, hit.severity),
+        })),
+      ],
     },
   }
-  if (result.injury) {
-    next = applyEffect(next, { t: 'gauge', key: 'fitness', delta: -result.injury.severity * 8 })
+  for (const hit of result.injuries) {
+    next = applyEffect(next, { t: 'gauge', key: 'fitness', delta: -hit.severity * 8 })
   }
   next = applyEffects(next, [
     { t: 'gauge', key: 'fitness', delta: result.fitnessDelta },
@@ -708,11 +715,17 @@ function runBlock(state: CareerState): CareerState {
       },
     options: [],
     details: blockDetails(result, injured, banned),
+    matches: result.matches,
   }
   // Серьёзное повреждение — это ещё и решение, как возвращаться. Лёгкое
   // проходит строкой в отчёте: карточка на каждый ушиб только утомляла бы.
-  const queue: Beat[] = result.injury && result.injury.severity >= 2
-    ? [{ t: 'event', key: 'injury_hit', payload: { kind: result.injury.kind, severity: result.injury.severity } }, ...next.queue]
+  // Если за тур сломался дважды, спрашиваем про худшее из двух.
+  const worst = result.injuries.reduce<typeof result.injuries[number] | null>(
+    (worse, hit) => (worse === null || hit.severity > worse.severity ? hit : worse),
+    null,
+  )
+  const queue: Beat[] = worst && worst.severity >= 2
+    ? [{ t: 'event', key: 'injury_hit', payload: { kind: worst.kind, severity: worst.severity } }, ...next.queue]
     : next.queue
   return { ...next, card, queue }
 }
@@ -758,12 +771,12 @@ function blockDetails(result: ReturnType<typeof simulateBlock>, injured: boolean
   const lines: Text[] = []
   if (banned) lines.push({ key: 'report.block.suspended' })
   else if (injured) lines.push({ key: 'report.block.missed' })
-  if (result.injury) {
+  for (const hit of result.injuries) {
     lines.push({
       key: 'report.block.injury',
       params: {
-        kind: { key: `injury.${result.injury.kind}` },
-        matches: injuryMatches(result.injury.kind, result.injury.severity),
+        kind: { key: `injury.${hit.kind}` },
+        matches: injuryMatches(hit.kind, hit.severity),
       },
     })
   }

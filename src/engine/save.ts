@@ -112,6 +112,13 @@ const MIGRATIONS: Record<number, (state: RawState) => RawState> = {
     delete season.blocksPlayed
     return { ...state, season, version: 8 }
   },
+
+  // v8 → v9. Сезон стал помнить сыгранные матчи, чтобы их было из чего
+  // показать. За прошлые туры их взять неоткуда — начинаем с пустого списка.
+  8: (state) => {
+    if (!state.season) return { ...state, version: 9 }
+    return { ...state, season: { matches: [], ...(state.season as Record<string, unknown>) }, version: 9 }
+  },
 }
 
 /** Минимальная проверка формы: битый или чужой JSON не должен ронять игру. */

@@ -3,6 +3,7 @@ import { isGoalkeeper } from '../engine/attributes'
 import { careerTotals } from '../engine/career'
 import { getCountry } from '../data/countries'
 import { Chip, Empty, KeyValue, Panel, Stat } from './bits'
+import { MatchList } from './Matches'
 import { seasonShort } from './format'
 import { useLocale, useT } from './locale'
 
@@ -26,6 +27,8 @@ export function Sidebar({ state }: { state: CareerState }) {
   // нет вовсе, а в отчёте о сезоне видно только текущий год.
   const totals = careerTotals(state)
   const gk = isGoalkeeper(state.player.position)
+  // Последние восемь матчей сезона, свежие сверху.
+  const recent = [...(state.season?.matches ?? [])].reverse().slice(0, 8)
 
   return (
     <>
@@ -46,6 +49,15 @@ export function Sidebar({ state }: { state: CareerState }) {
               </div>
             ))}
           </div>
+        )}
+      </Panel>
+
+      {/* Отчёт о туре пролистывается и исчезает — здесь матчи остаются на виду. */}
+      <Panel titleKey="panel.matches">
+        {recent.length === 0 ? (
+          <Empty textKey="panel.no_matches" />
+        ) : (
+          <MatchList matches={recent} gk={gk} />
         )}
       </Panel>
 

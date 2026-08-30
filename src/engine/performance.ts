@@ -142,8 +142,8 @@ function assistRate(position: Position, ovr: number): number {
 export interface BlockResult {
   /** Все матчи отрезка, включая пропущенные: из них собран весь остальной итог. */
   matches: MatchResult[]
-  /** Повреждение, полученное по ходу отрезка. Применяет его движок. */
-  injury: InjuryHit | null
+  /** Повреждения, полученные по ходу тура: за пять матчей их бывает и два. */
+  injuries: InjuryHit[]
   /** Остаток срока травмы и дисквалификации после отрезка. */
   matchesOutLeft: number
   banMatchesLeft: number
@@ -348,7 +348,7 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const available = ctx.size
   let out = ctx.matchesOut
   let ban = ctx.banMatches
-  let injury: InjuryHit | null = null
+  const injuries: InjuryHit[] = []
 
   const matches: MatchResult[] = []
   for (const fixture of buildFixtures(ctx.club, available, rng)) {
@@ -371,7 +371,7 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
     if (match.injury) {
       // Тяжесть повреждения ещё может измениться от того, как игрок будет
       // лечиться, но выбывает он с этого матча — а не с конца полусезона.
-      injury = match.injury
+      injuries.push(match.injury)
       out = injuryMatches(match.injury.kind, match.injury.severity)
     }
   }
@@ -420,7 +420,7 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
 
   return {
     matches,
-    injury,
+    injuries,
     matchesOutLeft: out,
     banMatchesLeft: ban,
     apps, goals, assists, cleanSheets, goalsConceded,
