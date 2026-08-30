@@ -1,4 +1,6 @@
-import type { Club, Player, Position, Role } from './types'
+import type { Club, MatchResult, Player, Position, Role } from './types'
+import type { Fixture } from './fixtures'
+import { buildFixtures } from './fixtures'
 import { getLeague } from '../data/leagues'
 import { playerOvr, squadLevel } from './player'
 import { Rng, clamp, round } from './rng'
@@ -51,6 +53,21 @@ export function roleShare(role: Role): number {
   }
 }
 
+/**
+ * Как роль делится на выход в старте и выход со скамейки. Сумма каждой пары —
+ * ровно `roleShare`: общее число появлений осталось прежним, изменилось лишь
+ * то, что теперь видно, вышел игрок с первых минут или на двадцать в концовке.
+ * Ротация и скамейка выходят на замену чаще, чем начинают, — в этом и разница
+ * между ними и основой.
+ */
+const INVOLVEMENT: Record<Role, { start: number; sub: number }> = {
+  star: { start: 0.86, sub: 0.06 },
+  starter: { start: 0.66, sub: 0.14 },
+  rotation: { start: 0.26, sub: 0.26 },
+  bench: { start: 0.06, sub: 0.18 },
+  reserve: { start: 0.01, sub: 0.06 },
+}
+
 export function shiftRole(role: Role, delta: number): Role {
   const idx = clamp(ROLE_ORDER.indexOf(role) + delta, 0, ROLE_ORDER.length - 1)
   return ROLE_ORDER[idx]
@@ -60,7 +77,11 @@ export function roleRank(role: Role): number {
   return ROLE_ORDER.indexOf(role)
 }
 
-/** Голы за матч по позиции: калибровано так, чтобы топ-форвард на 90 OVR давал ~30 за сезон. */
+/**
+ * Голы за полный матч по позиции: калибровано так, чтобы топ-форвард на 90 OVR
+ * давал ~30 за сезон. Ставка идёт на девяносто минут, а не на появление,
+ * поэтому в симуляции она домножается на сыгранную долю матча.
+ */
 function goalRate(position: Position, ovr: number): number {
   const o = ovr - 55
   switch (position) {
@@ -92,6 +113,8 @@ function assistRate(position: Position, ovr: number): number {
 }
 
 export interface BlockResult {
+  /** Все матчи отрезка, включая пропущенные: из них собран весь остальной итог. */
+  matches: MatchResult[]
   apps: number
   goals: number
   assists: number
@@ -128,81 +151,173 @@ export function keeperRun(apps: number, cleanRate: number, rng: Rng): { cleanShe
   return { cleanSheets, goalsConceded }
 }
 
-export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
+/**
+ * Появление считается по полному матчу, а средняя длина выхода меньше
+ * девяноста минут: у основы это примерно три четверти матча, у скамейки — куда
+ * меньше. Множитель возвращает суммы сезона на прежний уровень, чтобы таблицы
+ * `goalRate` и `assistRate`, подобранные под «тридцать голов у топ-форварда»,
+ * остались теми же.
+ */
+const PER_MATCH_SCALE = 1.24
+
+/**
+ * Разброс оценки за один матч против разброса за полусезон. Отдельный матч
+ * качает куда сильнее, но за сезон это усредняется: множитель подобран так,
+ * чтобы средняя за сезон осталась примерно такой же по разбросу, какой была
+ * при двух бросках на весь год.
+ */
+const MATCH_SPREAD = 4.5
+
+/**
+ * Оценка, к которой стягивается короткий выход на замену. Это уровень «отыграл
+ * ровно на свой уровень»: именно от него не двигается форма после отрезка.
+ */
+const CAMEO_ANCHOR = 6.8
+
+/**
+ * Оценка «как игрок выглядит»: всё, что он приносит в матч сам, без учёта
+ * результативных действий и случая. Из неё считается и оценка за матч, и то,
+ * во что обошёлся отрезок, просиженный на скамейке.
+ */
+function baseRating(player: Player, club: Club): number {
+  // База 6.6 — это «нормальный игрок основы»; ниже неё показатели начинают падать.
+  return (
+    6.6 +
+    (playerOvr(player) - squadLevel(club.tier)) * 0.028 +
+    (player.gauges.form - 60) * 0.006 +
+    // Настрой весит в оценке ровно столько же, сколько форма. Форма при этом
+    // остаётся сильнее: она вдобавок умножает голы и передачи.
+    (player.gauges.morale - MORALE_LEVEL) * 0.006 +
+    // Раздевалка считается без середины, как и в `determineRole`: авторитет
+    // зарабатывается с нуля и после каждого перехода срезается.
+    player.gauges.lockerRoom * 0.0025 +
+    // У прессы середина есть по самой шкале: ноль — это когда о вас не пишут.
+    player.gauges.mediaRep * 0.0012
+  )
+}
+
+function missedMatch(fixture: Fixture): MatchResult {
+  return {
+    ...fixture,
+    minutes: 0,
+    started: false,
+    goals: 0,
+    assists: 0,
+    cleanSheet: false,
+    goalsConceded: 0,
+    yellow: 0,
+    red: false,
+    rating: 0,
+  }
+}
+
+/**
+ * Один матч. Сначала решается, вышел ли игрок вообще и на сколько, и уже от
+ * минут считается всё остальное: короткий выход и голов приносит меньше, и на
+ * оценку влияет слабее.
+ */
+export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): MatchResult {
   const { player, club, role } = ctx
   const ovr = playerOvr(player)
   const league = getLeague(club.leagueId)
 
-  const available = clamp(BLOCK_MATCHES - ctx.blocksOut * BLOCK_MATCHES, 0, BLOCK_MATCHES)
-  const fitnessFactor = 0.65 + (player.gauges.fitness / 100) * 0.35
-  const apps = clamp(
-    Math.round(available * roleShare(role) * ctx.minutesMult * fitnessFactor * rng.around(1, 0.12)),
-    0,
-    available,
-  )
+  // Свежесть и решения игрока двигают не длину матча, а шанс в него попасть:
+  // уставшего чаще оставляют на скамейке, а не снимают на сороковой минуте.
+  const availability = clamp((0.65 + (player.gauges.fitness / 100) * 0.35) * ctx.minutesMult, 0, 1.4)
+  const gk = player.position === 'GK'
+  // Вратаря не выпускают на двадцать минут: он либо стоит весь матч, либо не
+  // играет вовсе. Поэтому его выходы со скамейки — это просто попадания в
+  // старт, а не короткие камео.
+  const base = INVOLVEMENT[role]
+  const involvement = gk ? { start: base.start + base.sub, sub: 0 } : base
+  const roll = rng.float()
+  const started = roll < involvement.start * availability
+  const cameOn = !started && roll < (involvement.start + involvement.sub) * availability
+  if (!started && !cameOn) return missedMatch(fixture)
+
+  // Чем выше роль, тем реже снимают до финального свистка.
+  const full = gk || rng.chance(0.4 + roleRank(role) * 0.09)
+  const minutes = started ? (full ? 90 : rng.int(55, 85)) : rng.int(6, 34)
+  const share = minutes / 90
 
   // Сильная команда создаёт больше момента, слабая — меньше.
   const teamFactor = 0.82 + (club.tier - 1) * 0.055
   // Сильная лига — плотнее защита.
   const leagueFactor = 1.12 - league.strength * 0.03
   const formFactor = 0.72 + (player.gauges.form / 100) * 0.56
+  const volume = share * PER_MATCH_SCALE * teamFactor * leagueFactor * formFactor
 
-  const gExp = apps * goalRate(player.position, ovr) * teamFactor * leagueFactor * formFactor
-  const aExp = apps * assistRate(player.position, ovr) * teamFactor * leagueFactor * formFactor
-
-  const goals = poisson(gExp, rng)
-  const assists = poisson(aExp, rng)
+  const goals = poisson(goalRate(player.position, ovr) * volume, rng)
+  const assists = poisson(assistRate(player.position, ovr) * volume, rng)
 
   const cleanRate = clamp(0.14 + (club.tier - 1) * 0.038 + (ovr - 60) * 0.004, 0.02, 0.6)
-  const { cleanSheets, goalsConceded: conceded } = player.position === 'GK'
-    ? keeperRun(apps, cleanRate, rng)
-    : { cleanSheets: 0, goalsConceded: 0 }
-
-  // Оценка: база от разницы с уровнем состава, плюс вклад результативных действий.
-  // База 6.6 — это «нормальный игрок основы»; ниже неё показатели начинают падать.
-  const contribution = apps > 0 ? (goals + assists * 0.7) / apps : 0
-  const baseRating =
-    6.6 +
-    (ovr - squadLevel(club.tier)) * 0.028 +
-    contribution * 1.4 +
-    (player.gauges.form - 60) * 0.006 +
-    // Настрой весит в оценке ровно столько же, сколько форма. Форма при этом
-    // остаётся сильнее: она вдобавок умножает голы и передачи. До этого настрой
-    // был мёртвым показателем — варианты «сжечь себя ради результата» не стоили
-    // ничего, потому что просевший настрой не отзывался нигде, кроме роста.
-    (player.gauges.morale - MORALE_LEVEL) * 0.006 +
-    // Раздевалка и пресса добавляют немного и по-разному. Авторитет считается
-    // без середины, как и в `determineRole`: он зарабатывается с нуля и после
-    // каждого перехода срезается, поэтому «средним» его значением был бы ноль,
-    // и любая середина превратилась бы в вечный штраф.
-    player.gauges.lockerRoom * 0.0025 +
-    // У прессы середина есть по самой шкале: ноль — это когда о вас не пишут.
-    player.gauges.mediaRep * 0.0012 +
-    (player.position === 'GK' && apps > 0 ? (cleanSheets / apps) * 1.1 : 0)
-  // Просевший настрой бьёт и по стабильности: отрезки разваливаются на провалы
-  // и всплески вместо ровной линии. Коэффициент крупный намеренно — разброс
-  // готовой оценки и без того в основном задан лотереей голов, и добавка
-  // помельче в нём просто утонула бы. Выше «нормального» ничего не меняется:
-  // счастливый игрок не становится предсказуемее обычного.
-  const spread = 0.22 + Math.max(0, MORALE_LEVEL - player.gauges.morale) * 0.006
-  const rating = clamp(round(rng.around(baseRating, spread), 2), 4.5, 9.6)
+  // Сухой матч засчитывается только тому, кто отстоял почти весь: вышедший на
+  // двадцать минут при 0:0 сухого матча себе не пишет.
+  const cleanSheet = gk && minutes >= 80 && rng.chance(cleanRate)
+  const goalsConceded = gk && !cleanSheet ? 1 + poisson(0.55, rng) : 0
 
   const aggression = player.position === 'CB' || player.position === 'CDM' ? 1.7 : 1
-  const yellow = poisson(apps * 0.09 * aggression, rng)
-  const red = rng.chance(clamp(apps * 0.004 * aggression, 0, 0.2)) ? 1 : 0
+  const yellow = rng.chance(clamp(0.09 * aggression * share, 0, 0.5)) ? 1 : 0
+  const red = rng.chance(clamp(0.004 * aggression * share, 0, 0.05))
+
+  // Короткий выход и вытянуть матч не успевает, и провалить: своё влияние на
+  // оценку игрок приносит вместе с минутами. Стягиваем камео не к базовым 6.6,
+  // а к «ровно отыграл» — от 6.6 форма и доверие уже падают, и стягивание к
+  // ней превращалось бы в тихий штраф всем, кто выходит на замену.
+  const weight = 0.55 + 0.45 * share
+  const core = CAMEO_ANCHOR + (baseRating(player, club) + (cleanSheet ? 1.1 : 0) - CAMEO_ANCHOR) * weight
+  // Просевший настрой бьёт и по стабильности: матчи разваливаются на провалы
+  // и всплески вместо ровной линии.
+  const spread = (0.22 + Math.max(0, MORALE_LEVEL - player.gauges.morale) * 0.006) * MATCH_SPREAD
+  const rating = clamp(round(rng.around(core + (goals + assists * 0.7) * 1.4, spread), 2), 4.5, 9.6)
+
+  return { ...fixture, minutes, started, goals, assists, cleanSheet, goalsConceded, yellow, red, rating }
+}
+
+/**
+ * Отрезок сезона — это календарь матчей и проход по нему. Раньше здесь был
+ * один бросок на все двадцать шесть игр; матчи нужны затем, чтобы травма
+ * случалась в конкретной игре, а игрок видел, с кем и сколько он сыграл.
+ */
+export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
+  const { player } = ctx
+  const available = clamp(BLOCK_MATCHES - ctx.blocksOut * BLOCK_MATCHES, 0, BLOCK_MATCHES)
+  const matches = buildFixtures(ctx.club, available, rng).map((f) => simulateMatch(ctx, f, rng))
+  const played = matches.filter((m) => m.minutes > 0)
+
+  const apps = played.length
+  const goals = played.reduce((sum, m) => sum + m.goals, 0)
+  const assists = played.reduce((sum, m) => sum + m.assists, 0)
+  const cleanSheets = played.reduce((sum, m) => sum + (m.cleanSheet ? 1 : 0), 0)
+  const goalsConceded = played.reduce((sum, m) => sum + m.goalsConceded, 0)
+  const yellow = played.reduce((sum, m) => sum + m.yellow, 0)
+  const red = played.reduce((sum, m) => sum + (m.red ? 1 : 0), 0)
+  // Средняя оценка взвешивается минутами, а не появлениями: иначе выход на
+  // двадцать минут весил бы столько же, сколько полный матч, и у любого, кто
+  // регулярно доигрывает со скамейки, средняя тихо ползла бы вниз.
+  const minutes = played.reduce((sum, m) => sum + m.minutes, 0)
+  const ratingSum = played.reduce((sum, m) => sum + m.rating * m.minutes, 0)
+  const rating = averageRating(ratingSum, minutes)
+  // Не сыграв ни минуты, оценку не заработать — но и провалить нечего. Ноль
+  // здесь означал бы худший отрезок в истории футбола: форма и доверие ушли бы
+  // в пол, и запасной уже никогда не выбрался бы из запасных. Берём то, как
+  // игрок выглядит сам по себе: за скамейку он расплачивается отдельно, через
+  // штраф за нехватку игровой практики.
+  const scored = apps > 0 ? rating : baseRating(player, ctx.club)
 
   // Много игр — падает свежесть; мало игр — падает форма и доверие.
   // Пороги ровно на «нормальном» уровне: середняк держится, слабый теряет место.
   const load = available > 0 ? apps / available : 0
   const fitnessDelta = round(6 - load * 22 + (player.age < 24 ? 3 : player.age > 31 ? -3 : 0), 1)
-  const formDelta = round((rating - 6.8) * 9 + (load < 0.25 ? -8 : 0), 1)
-  const trustDelta = round((rating - 6.75) * 7 + (load > 0.55 ? 3 : -3), 1)
-  const fanDelta = round((rating - 6.85) * 6 + goals * 0.9 + assists * 0.5 - red * 4, 1)
+  const formDelta = round((scored - 6.8) * 9 + (load < 0.25 ? -8 : 0), 1)
+  const trustDelta = round((scored - 6.75) * 7 + (load > 0.55 ? 3 : -3), 1)
+  const fanDelta = round((scored - 6.85) * 6 + goals * 0.9 + assists * 0.5 - red * 4, 1)
 
   return {
-    apps, goals, assists, cleanSheets, goalsConceded: conceded,
-    ratingSum: apps > 0 ? rating * apps : 0,
-    ratingCount: apps,
+    matches,
+    apps, goals, assists, cleanSheets, goalsConceded,
+    ratingSum,
+    ratingCount: minutes,
     yellow, red,
     fitnessDelta, formDelta, trustDelta, fanDelta,
   }

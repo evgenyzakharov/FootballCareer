@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
 import type { CareerState, Confederation, Gauges, Objective, Pace, Position, Role } from '../src/engine/types'
 import { averageRating, simulateBlock } from '../src/engine/performance'
+import { buildFixtures } from '../src/engine/fixtures'
 import { adjustObjective, makeObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
 import { createPlayer, playerOvr, squadLevel } from '../src/engine/player'
@@ -787,6 +788,110 @@ describe('движок карьеры', () => {
     const mediaSwing = blockRatings({ mediaRep: 100 }).mean - blockRatings({ mediaRep: -100 }).mean
     expect(lockerSwing).toBeLessThan(moraleSwing * 0.6)
     expect(mediaSwing).toBeLessThan(moraleSwing * 0.6)
+  })
+
+  /** Отрезок за одного и того же игрока: нужен нескольким проверкам подряд. */
+  function blockFor(position: Position, role: Role, seed: string, gauges: Partial<Gauges> = {}) {
+    const club = getClub('inter')
+    const base = createPlayer(
+      { lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position },
+      5,
+      new Rng(seed, 'player', 0),
+    )
+    const player = {
+      ...base,
+      age: 26,
+      gauges: {
+        form: 60, fitness: 85, morale: 65, coachTrust: 60,
+        fanLove: 55, mediaRep: 0, lockerRoom: 20, fame: 30,
+        ...gauges,
+      },
+    }
+    return simulateBlock({ player, club, role, minutesMult: 1, blocksOut: 0 }, new Rng(seed, 'block', 0))
+  }
+
+  it('отрезок складывается из отдельных матчей, а не из одного броска', () => {
+    for (const seed of ['m-1', 'm-2', 'm-3', 'm-4']) {
+      const result = blockFor('ST', 'starter', seed)
+      const played = result.matches.filter((m) => m.minutes > 0)
+
+      // Появление — это матч с ненулевыми минутами, и ничто другое.
+      expect(result.apps).toBe(played.length)
+      expect(result.goals).toBe(played.reduce((sum, m) => sum + m.goals, 0))
+      expect(result.assists).toBe(played.reduce((sum, m) => sum + m.assists, 0))
+
+      for (const match of result.matches) {
+        expect(match.minutes).toBeGreaterThanOrEqual(0)
+        expect(match.minutes).toBeLessThanOrEqual(90)
+        // Не вышел — нет ни оценки, ни статистики.
+        if (match.minutes === 0) {
+          expect(match.rating).toBe(0)
+          expect(match.goals + match.assists + match.yellow).toBe(0)
+        } else {
+          expect(match.rating).toBeGreaterThan(0)
+        }
+      }
+      // Выход со скамейки короче стартового: иначе «вышел на замену» ничего не значит.
+      const subs = played.filter((m) => !m.started)
+      for (const match of subs) expect(match.minutes).toBeLessThan(55)
+    }
+  })
+
+  it('средняя оценка за отрезок взвешена минутами', () => {
+    const result = blockFor('CAM', 'rotation', 'weighted')
+    const played = result.matches.filter((m) => m.minutes > 0)
+    const minutes = played.reduce((sum, m) => sum + m.minutes, 0)
+    expect(result.ratingCount).toBe(minutes)
+    expect(result.ratingSum).toBeCloseTo(played.reduce((sum, m) => sum + m.rating * m.minutes, 0), 6)
+  })
+
+  it('вратарь либо стоит весь матч, либо не выходит', () => {
+    for (const seed of ['gk-m-1', 'gk-m-2', 'gk-m-3']) {
+      const result = blockFor('GK', 'starter', seed)
+      for (const match of result.matches) {
+        // Вратаря не выпускают на двадцать минут — замена стоит весь матч.
+        expect([0, 90]).toContain(match.minutes)
+        // Сухой матч засчитывается только сыгранному, а в несухом есть мяч.
+        if (match.minutes === 0) expect(match.cleanSheet).toBe(false)
+        else expect(match.cleanSheet || match.goalsConceded > 0).toBe(true)
+        if (match.cleanSheet) expect(match.goalsConceded).toBe(0)
+      }
+    }
+  })
+
+  it('полевому игроку сухие матчи и пропущенные не пишут', () => {
+    const result = blockFor('CB', 'starter', 'field-keeper')
+    expect(result.cleanSheets).toBe(0)
+    expect(result.goalsConceded).toBe(0)
+  })
+
+  it('отрезок без единого матча не обнуляет форму и доверие', () => {
+    // Пока запасной не сыграл ни минуты, оценки у него нет. Если считать её
+    // нулём, форма и доверие проваливаются так, что выбраться уже нельзя.
+    const idle = blockFor('ST', 'reserve', 'idle', { fitness: 20 })
+    if (idle.apps === 0) {
+      expect(idle.formDelta).toBeGreaterThan(-20)
+      expect(idle.trustDelta).toBeGreaterThan(-15)
+    }
+    // Штраф за простой всё равно есть: без практики форма падает.
+    expect(idle.formDelta).toBeLessThan(0)
+  })
+
+  it('календарь собирается из настоящих соперников', () => {
+    const club = getClub('inter')
+    const fixtures = buildFixtures(club, 26, new Rng('cal', 'fixtures', 0))
+    expect(fixtures).toHaveLength(26)
+    for (const [i, fixture] of fixtures.entries()) {
+      // Сам с собой клуб не играет, и один соперник не идёт два матча подряд.
+      expect(fixture.opponentId).not.toBe(club.id)
+      if (i > 0) expect(fixture.opponentId).not.toBe(fixtures[i - 1].opponentId)
+      expect(findClub(fixture.opponentId)).not.toBeNull()
+    }
+    // Клуб высшего дивизиона играет и в лиге, и в кубке, и в еврокубке.
+    const kinds = new Set(fixtures.map((f) => f.competition))
+    expect(kinds.has('league')).toBe(true)
+    expect(kinds.has('cup')).toBe(true)
+    expect(kinds.has('continental')).toBe(true)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

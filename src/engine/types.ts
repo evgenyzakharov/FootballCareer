@@ -279,6 +279,28 @@ export interface FeedItem {
   tone: 'good' | 'bad' | 'neutral'
 }
 
+/**
+ * Итог одного матча. Минуты — главное поле: из них считаются и голы, и вес
+ * оценки, и «вышел на замену» вместо «сыграл».
+ */
+export interface MatchResult {
+  opponentId: string
+  home: boolean
+  competition: CompetitionKind
+  /** 0 — в заявку не попал или просидел на скамейке. */
+  minutes: number
+  started: boolean
+  goals: number
+  assists: number
+  /** Только у вратаря: сухой матч и пропущенные в нём. */
+  cleanSheet: boolean
+  goalsConceded: number
+  yellow: number
+  red: boolean
+  /** 0 — на поле не выходил, оценки нет. */
+  rating: number
+}
+
 export interface SeasonTally {
   apps: number
   goals: number
@@ -286,6 +308,12 @@ export interface SeasonTally {
   cleanSheets: number
   /** Пропущено мячей: считается только для вратаря. */
   goalsConceded: number
+  /**
+   * Оценка копится взвешенной по минутам: `ratingSum` — сумма оценок,
+   * помноженных на минуты, `ratingCount` — сами минуты. Средняя считается
+   * делением одного на другое, поэтому короткий выход на замену и весит
+   * меньше полного матча.
+   */
   ratingSum: number
   ratingCount: number
   yellow: number
