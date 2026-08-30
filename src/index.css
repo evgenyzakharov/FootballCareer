@@ -353,10 +353,23 @@ input { font: inherit; color: inherit; }
 .gauge { margin-bottom: 9px; }
 .gauge__head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
 .gauge__head span:last-child { color: var(--text-dim); font-variant-numeric: tabular-nums; }
-.gauge__track { height: 5px; background: var(--bg-input); border-radius: 999px; overflow: hidden; }
+.gauge__track { height: 5px; background: var(--bg-input); border-radius: 999px; overflow: hidden; position: relative; }
 .gauge__fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .3s ease; }
+/* У двусторонней шкалы ноль стоит посередине, и заливка идёт от него. */
+.gauge__track[data-bipolar='true'] { background: linear-gradient(90deg, var(--bg-input) 0 calc(50% - 1px), var(--line) calc(50% - 1px) calc(50% + 1px), var(--bg-input) calc(50% + 1px) 100%); }
+.gauge__track[data-bipolar='true'] .gauge__fill { position: absolute; top: 0; }
 .gauge__fill[data-level='low'] { background: var(--bad); }
 .gauge__fill[data-level='mid'] { background: var(--warn); }
+
+.gauge-group {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-faint);
+  margin: 2px 0 7px;
+}
+.gauge-grid + .gauge-group { margin-top: 14px; }
 
 .attr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
 .attr { display: flex; justify-content: space-between; font-size: 12.5px; }
@@ -442,28 +455,85 @@ input { font: inherit; color: inherit; }
 
 /* ─── Таймлайн ────────────────────────────────────────────────────────────── */
 
-/* Список матчей: та же таблица, что и в карьере, но плотнее — она стоит и
-   внутри карточки тура, где места мало. */
-.matches { overflow-x: auto; }
-.matches table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.matches th {
-  text-align: left;
-  font-weight: 600;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  color: var(--text-faint);
-  padding: 0 4px 4px;
+/* ─── Лента матчей ─────────────────────────────────────────────────────────
+   Строка на матч: оценка крупным чипом слева, обстоятельства словами,
+   события — метками справа. Таблицей это читалось как выгрузка из базы. */
+.feed-matches { display: flex; flex-direction: column; }
+.fx {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 2px;
+  border-top: 1px solid var(--line-soft);
 }
-.matches td { padding: 4px; border-top: 1px solid var(--line-soft); vertical-align: top; }
-.matches .num { text-align: right; font-variant-numeric: tabular-nums; }
-.matches__club { overflow-wrap: anywhere; }
-.matches__where { color: var(--text-faint); margin-left: 4px; }
-.matches__comp { display: block; color: var(--text-faint); font-size: 10.5px; margin-top: 1px; }
-.matches__sub { color: var(--text-faint); font-size: 10.5px; margin-left: 3px; }
-.matches__hurt { display: block; color: #fca5a5; font-size: 10.5px; }
-/* Пропущенный матч не должен спорить за внимание с сыгранным. */
-.matches tr[data-played='false'] td { color: var(--text-faint); }
+.fx:first-child { border-top: 0; }
+.fx__mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+}
+.fx__mark[data-tier='great'] { background: rgba(74, 222, 128, .16); border-color: rgba(74, 222, 128, .45); color: var(--accent); }
+.fx__mark[data-tier='good'] { background: rgba(74, 222, 128, .08); border-color: rgba(74, 222, 128, .22); color: #a7e8c0; }
+.fx__mark[data-tier='poor'] { background: rgba(248, 113, 113, .12); border-color: rgba(248, 113, 113, .35); color: var(--bad); }
+.fx__mark[data-tier='none'] { background: transparent; border-style: dashed; color: var(--text-faint); }
+.fx__body { min-width: 0; display: flex; flex-direction: column; }
+.fx__club { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.fx__meta { font-size: 11px; color: var(--text-faint); }
+.fx[data-played='false'] .fx__club { color: var(--text-faint); font-weight: 500; }
+.fx__tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.fx__tags .tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.fx__tags .tag[data-kind='good'] { border-color: rgba(74, 222, 128, .4); color: var(--accent); }
+.fx__tags .tag[data-kind='warn'] { border-color: rgba(251, 191, 36, .45); color: var(--warn); }
+.fx__tags .tag[data-kind='bad'] { border-color: rgba(248, 113, 113, .4); color: var(--bad); }
+.fx__tags .tag[data-kind='out'] { border-style: dashed; color: var(--text-faint); }
+
+/* ─── Форма за сезон ───────────────────────────────────────────────────────
+   Столбик на матч: высота и цвет — оценка, штриховка — пропущенный. */
+.form { margin-bottom: 12px; }
+.form__head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.form__mean { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.form__label { font-size: 11.5px; color: var(--text-dim); flex: 1; }
+.form__trend { font-size: 11.5px; }
+.form__trend[data-tone='good'] { color: var(--accent); }
+.form__trend[data-tone='bad'] { color: var(--bad); }
+.form__trend[data-tone='flat'] { color: var(--text-faint); }
+.form__strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 46px;
+  padding: 6px 8px 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(18, 64, 44, .35), rgba(18, 64, 44, 0));
+  overflow-x: auto;
+}
+.form__pip { flex: 1 0 5px; min-width: 5px; border-radius: 2px; background: #232b35; }
+.form__pip[data-tier='great'] { background: var(--accent); }
+.form__pip[data-tier='good'] { background: var(--accent-dim); }
+.form__pip[data-tier='ok'] { background: #3d5f4c; }
+.form__pip[data-tier='poor'] { background: var(--bad); }
+.form__pip[data-tier='none'] {
+  background: repeating-linear-gradient(45deg, var(--line-soft) 0 2px, transparent 2px 4px);
+  border: 1px solid var(--line-soft);
+}
 
 .timeline { max-height: 420px; overflow-y: auto; }
 .timeline table { width: 100%; border-collapse: collapse; font-size: 12.5px; }

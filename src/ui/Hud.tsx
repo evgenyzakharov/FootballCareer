@@ -121,16 +121,22 @@ export function Hud({ state }: { state: CareerState }) {
       </section>
 
       <Panel titleKey="panel.gauges">
-        {/* Обёртка нужна для мобильной раскладки: восемь полос в один столбец
-            занимают полэкрана, в два — вдвое меньше. */}
+        {/* Восемь одинаковых полос подряд не давали понять, на что смотреть.
+            Первая четвёрка решает, выйдет ли игрок на поле в ближайшем туре,
+            вторая — что с ним будет летом. Обёртка нужна и для мобильной
+            раскладки: в один столбец полосы занимают полэкрана. */}
+        <div className="gauge-group">{t({ key: 'panel.state_pitch' })}</div>
         <div className="gauge-grid">
           <Gauge labelKey="gauge.form" value={player.gauges.form} />
           <Gauge labelKey="gauge.fitness" value={player.gauges.fitness} />
           <Gauge labelKey="gauge.morale" value={player.gauges.morale} />
           <Gauge labelKey="gauge.coachTrust" value={player.gauges.coachTrust} />
+        </div>
+        <div className="gauge-group">{t({ key: 'panel.state_around' })}</div>
+        <div className="gauge-grid">
           <Gauge labelKey="gauge.fanLove" value={player.gauges.fanLove} />
-          <BipolarGauge labelKey="gauge.mediaRep" value={player.gauges.mediaRep} />
           <Gauge labelKey="gauge.lockerRoom" value={player.gauges.lockerRoom} />
+          <BipolarGauge labelKey="gauge.mediaRep" value={player.gauges.mediaRep} />
           <Gauge labelKey="gauge.fame" value={player.gauges.fame} />
         </div>
       </Panel>

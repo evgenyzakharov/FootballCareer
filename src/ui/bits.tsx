@@ -32,10 +32,14 @@ export function Gauge({ labelKey, value }: { labelKey: string; value: number }) 
   )
 }
 
-/** Двусторонний показатель (пресса от −100 до 100) рисуем от середины. */
+/**
+ * Двусторонний показатель (пресса от −100 до 100) растёт от середины, а не
+ * слева: ноль здесь — это «о вас не пишут», а не дно шкалы. Полоса, залитая
+ * слева направо, читалась как «мало» и врала про знак.
+ */
 export function BipolarGauge({ labelKey, value }: { labelKey: string; value: number }) {
   const t = useT()
-  const normalized = (value + 100) / 2
+  const half = Math.min(50, Math.abs(value) / 2)
   const level = value < -25 ? 'low' : value < 10 ? 'mid' : 'high'
   return (
     <div className="gauge">
@@ -43,8 +47,12 @@ export function BipolarGauge({ labelKey, value }: { labelKey: string; value: num
         <span>{t({ key: labelKey })}</span>
         <span>{value > 0 ? `+${Math.round(value)}` : Math.round(value)}</span>
       </div>
-      <div className="gauge__track">
-        <div className="gauge__fill" data-level={level} style={{ width: `${Math.max(2, normalized)}%` }} />
+      <div className="gauge__track" data-bipolar="true">
+        <div
+          className="gauge__fill"
+          data-level={level}
+          style={{ width: `${Math.max(1.5, half)}%`, left: value < 0 ? `${50 - half}%` : '50%' }}
+        />
       </div>
     </div>
   )

@@ -92,6 +92,12 @@ export interface InjuryRecord {
   matchesOut: number
 }
 
+/**
+ * Почему игрока не было на поле. Без этого пропущенный матч выглядел как
+ * строка прочерков, и травму нельзя было отличить от «не попал в заявку».
+ */
+export type Absence = 'injury' | 'ban' | 'squad'
+
 /** Повреждение, полученное в конкретном матче. */
 export interface InjuryHit {
   kind: string
@@ -311,6 +317,11 @@ export interface MatchResult {
   rating: number
   /** Повреждение, полученное в этом матче. */
   injury: InjuryHit | null
+  /**
+   * Почему матч пропущен. null — игрок выходил на поле. У матчей из сохранений,
+   * записанных до появления поля, здесь ничего нет — читать через `?? null`.
+   */
+  absence: Absence | null
 }
 
 export interface SeasonTally {

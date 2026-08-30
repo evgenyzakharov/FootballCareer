@@ -725,7 +725,7 @@ function runBlock(state: CareerState): CareerState {
     stage: state.stage,
     eventKey: 'block_report',
     channel: 'match',
-    title: { key: 'report.block.title', params: { club: club.name } },
+    title: { key: 'report.block.title', params: { club: club.name, round: season.roundsPlayed + 1 } },
     // У вратаря голы и передачи всегда нули: отрезок описывают сухие матчи и
     // пропущенные — те же цифры, что и в отчёте о сезоне.
     body: isGoalkeeper(state.player.position)

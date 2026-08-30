@@ -1,4 +1,4 @@
-import type { Club, InjuryHit, MatchResult, Pace, Player, Position, Role } from './types'
+import type { Absence, Club, InjuryHit, MatchResult, Pace, Player, Position, Role } from './types'
 import type { Fixture } from './fixtures'
 import { INJURY_TYPES, injuryMatches, injuryRisk } from './injuries'
 import { getLeague } from '../data/leagues'
@@ -249,9 +249,10 @@ function baseRating(player: Player, club: Club): number {
   )
 }
 
-function missedMatch(fixture: Fixture): MatchResult {
+function missedMatch(fixture: Fixture, absence: Absence): MatchResult {
   return {
     ...fixture,
+    absence,
     minutes: 0,
     started: false,
     goals: 0,
@@ -287,7 +288,7 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
   const roll = rng.float()
   const started = roll < involvement.start * availability
   const cameOn = !started && roll < (involvement.start + involvement.sub) * availability
-  if (!started && !cameOn) return missedMatch(fixture)
+  if (!started && !cameOn) return missedMatch(fixture, 'squad')
 
   // Чем выше роль, тем реже снимают до финального свистка.
   const full = gk || rng.chance(0.4 + roleRank(role) * 0.09)
@@ -349,6 +350,7 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
     red,
     rating,
     injury,
+    absence: null,
   }
 }
 
@@ -372,13 +374,13 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
     if (out > 0) {
       out--
       sidelined++
-      matches.push(missedMatch(fixture))
+      matches.push(missedMatch(fixture, 'injury'))
       continue
     }
     if (ban > 0) {
       ban--
       sidelined++
-      matches.push(missedMatch(fixture))
+      matches.push(missedMatch(fixture, 'ban'))
       continue
     }
     const match = simulateMatch(ctx, fixture, rng)
