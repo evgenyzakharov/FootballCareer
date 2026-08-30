@@ -34,22 +34,23 @@ describe('дисквалификация', () => {
     state = advanceUntil(state, (s) => s.phase === 'season')
 
     const injured = applyEffects(state, [{ t: 'injury', kind: 'meniscus', severity: 2 }])
-    expect(injured.player.blocksOut).toBe(1)
-    expect(injured.player.banBlocks).toBe(0)
+    // Срок берётся из вида повреждения, а не из тяжести: мениск — двенадцать матчей.
+    expect(injured.player.matchesOut).toBe(12)
+    expect(injured.player.banMatches).toBe(0)
 
-    const banned = applyEffects(state, [{ t: 'suspend', blocks: 4 }])
-    expect(banned.player.banBlocks).toBe(4)
-    expect(banned.player.blocksOut).toBe(0)
+    const banned = applyEffects(state, [{ t: 'suspend', matches: 104 }])
+    expect(banned.player.banMatches).toBe(104)
+    expect(banned.player.matchesOut).toBe(0)
   })
 
-  it('переживает межсезонье: бан на четыре блока стоит двух сезонов', () => {
+  it('переживает межсезонье: бан на два сезона столько и стоит', () => {
     let state = start('ban-carry')
     state = advanceUntil(state, (s) => s.phase === 'season')
-    state = applyEffects(state, [{ t: 'suspend', blocks: 4 }])
+    state = applyEffects(state, [{ t: 'suspend', matches: 104 }])
 
-    // Первый сезон закрыт — до починки бан здесь обнулялся вместе с blocksOut.
+    // Первый сезон закрыт — до починки бан здесь обнулялся вместе с травмой.
     state = advanceUntil(state, (s) => s.history.length >= 1)
-    expect(state.player.banBlocks).toBeGreaterThan(0)
+    expect(state.player.banMatches).toBeGreaterThan(0)
 
     state = advanceUntil(state, (s) => s.history.length >= 2)
     const [first, second] = state.history
@@ -60,17 +61,17 @@ describe('дисквалификация', () => {
   it('заканчивается: бан не становится вечным', () => {
     let state = start('ban-ends')
     state = advanceUntil(state, (s) => s.phase === 'season')
-    state = applyEffects(state, [{ t: 'suspend', blocks: 4 }])
-    state = advanceUntil(state, (s) => s.player.banBlocks === 0 && s.history.length >= 2)
+    state = applyEffects(state, [{ t: 'suspend', matches: 104 }])
+    state = advanceUntil(state, (s) => s.player.banMatches === 0 && s.history.length >= 2)
 
-    expect(state.player.banBlocks).toBe(0)
+    expect(state.player.banMatches).toBe(0)
     expect(state.phase).not.toBe('retired')
   })
 
   it('после бана игрок снова получает матчи', () => {
     let state = start('ban-return')
     state = advanceUntil(state, (s) => s.phase === 'season')
-    state = applyEffects(state, [{ t: 'suspend', blocks: 2 }])
+    state = applyEffects(state, [{ t: 'suspend', matches: 52 }])
     state = advanceUntil(state, (s) => s.history.length >= 3)
 
     // Первый сезон выбит баном, дальше матчи обязаны появиться.

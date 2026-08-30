@@ -1,5 +1,6 @@
 import type { CareerState, Currency, Locale } from './types'
 import { STATE_VERSION } from './career'
+import { BLOCK_MATCHES } from './performance'
 
 const STATE_KEY = 'football-career:state'
 const LOCALE_KEY = 'football-career:locale'
@@ -75,6 +76,30 @@ const MIGRATIONS: Record<number, (state: RawState) => RawState> = {
       ? (state.history as Array<Record<string, unknown>>).map(withKeeper)
       : state.history
     return { ...state, history, version: 6 }
+  },
+
+  // v6 → v7. Травмы и дисквалификации переехали с полусезонов на матчи:
+  // полусезон был слишком крупной меркой, в ней лёгкое повреждение стоило
+  // ноль, а растяжение — полгода. Старые счётчики переводим по курсу «блок —
+  // это двадцать шесть матчей»: это ровно то, чем они и были.
+  6: (state) => {
+    const raw = { ...(state.player as Record<string, unknown>) }
+    const blocks = (value: unknown) => (typeof value === 'number' ? value : 0) * BLOCK_MATCHES
+    const injuries = Array.isArray(raw.injuries)
+      ? (raw.injuries as Array<Record<string, unknown>>).map((i) => {
+        const { blocksOut, ...rest } = i
+        return { ...rest, matchesOut: blocks(blocksOut) }
+      })
+      : raw.injuries
+    const player: Record<string, unknown> = {
+      ...raw,
+      matchesOut: blocks(raw.blocksOut),
+      banMatches: blocks(raw.banBlocks),
+      injuries,
+    }
+    delete player.blocksOut
+    delete player.banBlocks
+    return { ...state, player, version: 7 }
   },
 }
 

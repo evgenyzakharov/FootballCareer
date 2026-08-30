@@ -3,6 +3,7 @@ import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadSta
 import type { CareerState, Confederation, Gauges, Objective, Pace, Position, Role } from '../src/engine/types'
 import { averageRating, simulateBlock } from '../src/engine/performance'
 import { buildFixtures } from '../src/engine/fixtures'
+import { INJURY_TYPES, injuryMatches } from '../src/engine/injuries'
 import { adjustObjective, makeObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
 import { createPlayer, playerOvr, squadLevel } from '../src/engine/player'
@@ -747,7 +748,7 @@ describe('движок карьеры', () => {
     const ratings: number[] = []
     for (let i = 0; i < 600; i++) {
       const result = simulateBlock(
-        { player, club, role: 'starter', minutesMult: 1, blocksOut: 0 },
+        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0 },
         new Rng('sens', 'block', i),
       )
       if (result.ratingCount > 0) ratings.push(result.ratingSum / result.ratingCount)
@@ -807,7 +808,7 @@ describe('движок карьеры', () => {
         ...gauges,
       },
     }
-    return simulateBlock({ player, club, role, minutesMult: 1, blocksOut: 0 }, new Rng(seed, 'block', 0))
+    return simulateBlock({ player, club, role, minutesMult: 1, matchesOut: 0, banMatches: 0 }, new Rng(seed, 'block', 0))
   }
 
   it('отрезок складывается из отдельных матчей, а не из одного броска', () => {
@@ -850,7 +851,9 @@ describe('движок карьеры', () => {
       const result = blockFor('GK', 'starter', seed)
       for (const match of result.matches) {
         // Вратаря не выпускают на двадцать минут — замена стоит весь матч.
-        expect([0, 90]).toContain(match.minutes)
+        // Раньше срока он уходит только с повреждением.
+        if (match.injury) expect(match.minutes).toBeLessThanOrEqual(90)
+        else expect([0, 90]).toContain(match.minutes)
         // Сухой матч засчитывается только сыгранному, а в несухом есть мяч.
         if (match.minutes === 0) expect(match.cleanSheet).toBe(false)
         else expect(match.cleanSheet || match.goalsConceded > 0).toBe(true)
@@ -892,6 +895,86 @@ describe('движок карьеры', () => {
     expect(kinds.has('league')).toBe(true)
     expect(kinds.has('cup')).toBe(true)
     expect(kinds.has('continental')).toBe(true)
+  })
+
+  it('травма меряется матчами, и лёгкая тоже чего-то стоит', () => {
+    // Раньше срок считался полусезонами, и лёгкое повреждение округлялось до
+    // нуля: ушиб не стоил игроку вообще ничего.
+    for (const type of INJURY_TYPES) {
+      expect(injuryMatches(type.kind, type.severity)).toBeGreaterThan(0)
+    }
+    expect(injuryMatches('muscle_strain', 1)).toBeLessThan(6)
+    expect(injuryMatches('meniscus', 2)).toBeGreaterThan(injuryMatches('muscle_strain', 1))
+    // Кресты — это по-прежнему полсезона и больше.
+    expect(injuryMatches('acl', 3)).toBeGreaterThan(26)
+    // Незнакомый движку вид повреждения всё равно чего-то стоит.
+    expect(injuryMatches('space_madness', 2)).toBeGreaterThan(0)
+  })
+
+  it('травма и дисквалификация съедают матчи, а не отрезок целиком', () => {
+    const club = getClub('inter')
+    const base = createPlayer(
+      { lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CM' },
+      5,
+      new Rng('out', 'player', 0),
+    )
+    const player = { ...base, age: 26, gauges: { ...base.gauges, fitness: 90, form: 60 } }
+    const result = simulateBlock(
+      { player, club, role: 'starter', minutesMult: 1, matchesOut: 5, banMatches: 3 },
+      new Rng('out', 'block', 0),
+    )
+
+    // Первые восемь матчей выбиты, а дальше игрок выходит на поле — раньше
+    // любой срок сжигал весь полусезон целиком.
+    for (const match of result.matches.slice(0, 8)) expect(match.minutes).toBe(0)
+    expect(result.matches.slice(8).some((m) => m.minutes > 0)).toBe(true)
+    expect(result.apps).toBeGreaterThan(0)
+    // Срок закончился внутри отрезка — на следующий он не переносится.
+    expect(result.banMatchesLeft).toBe(0)
+  })
+
+  it('повреждение в матче обрывает его и выбивает игрока на срок', () => {
+    const club = getClub('inter')
+    const base = createPlayer(
+      { lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CM' },
+      5,
+      new Rng('hurt', 'player', 0),
+    )
+    // Изношенный ветеран ломается часто: нужен отрезок, где травма точно есть.
+    const player = { ...base, age: 34, gauges: { ...base.gauges, fitness: 10 } }
+    let checked = 0
+    for (let i = 0; i < 40 && checked < 5; i++) {
+      const result = simulateBlock(
+        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0 },
+        new Rng('hurt', 'block', i),
+      )
+      const hurtAt = result.matches.findIndex((m) => m.injury !== null)
+      if (hurtAt === -1) continue
+      checked++
+      // Сломавшийся матч не доигран, а следующие пропущены.
+      expect(result.matches[hurtAt].minutes).toBeLessThan(90)
+      expect(result.injury).not.toBeNull()
+      const after = result.matches.slice(hurtAt + 1)
+      const cost = injuryMatches(result.matches[hurtAt].injury!.kind, result.matches[hurtAt].injury!.severity)
+      const missedAfter = after.filter((m) => m.minutes === 0).length
+      expect(missedAfter + result.matchesOutLeft).toBeGreaterThanOrEqual(Math.min(cost, after.length))
+    }
+    expect(checked).toBeGreaterThan(0)
+  })
+
+  it('лечение укорачивает назначенный срок, а не назначает новый', () => {
+    let state = setIdentity(newCareer('heal'), {
+      lastName: 'ТЕСТОВ', shirt: 4, foot: 'right', countryCode: 'ITA', position: 'CM',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+
+    const injured = applyEffects(state, [{ t: 'injury', kind: 'meniscus', severity: 2 }])
+    expect(injured.player.matchesOut).toBe(injuryMatches('meniscus', 2))
+
+    // Карточка лечения решает, как возвращаться, — травму она уже не наносит.
+    const rushed = applyEffects(injured, [{ t: 'heal', mult: 0.5 }])
+    expect(rushed.player.matchesOut).toBe(Math.round(injuryMatches('meniscus', 2) * 0.5))
+    expect(rushed.player.injuries).toHaveLength(injured.player.injuries.length)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

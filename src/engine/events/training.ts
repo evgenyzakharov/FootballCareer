@@ -204,7 +204,8 @@ export const TRAINING_EVENTS: EventDef[] = [
         if (c.rng.chance(0.28)) {
           return {
             outcome: 'caught',
-            effects: [suspend(2), gauge('mediaRep', -45), gauge('fanLove', -25), flag('doping_ban'), gauge('morale', -20)],
+            // Допинговый бан отсчитывают годами, а не турами.
+            effects: [suspend(34), gauge('mediaRep', -45), gauge('fanLove', -25), flag('doping_ban'), gauge('morale', -20)],
             headline: true,
             tone: 'bad',
           }
@@ -238,7 +239,7 @@ export const TRAINING_EVENTS: EventDef[] = [
     resolve: (c, id) => {
       if (id === 'deny') {
         if (c.rng.chance(0.4)) {
-          return { outcome: 'exposed', effects: [suspend(1), gauge('mediaRep', -35), gauge('fanLove', -20)], headline: true, tone: 'bad' }
+          return { outcome: 'exposed', effects: [suspend(26), gauge('mediaRep', -35), gauge('fanLove', -20)], headline: true, tone: 'bad' }
         }
         return { outcome: 'buried', effects: [gauge('mediaRep', -8)], tone: 'neutral' }
       }

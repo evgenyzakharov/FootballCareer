@@ -88,8 +88,14 @@ export interface InjuryRecord {
   age: number
   kind: string
   severity: Severity
-  /** Сколько игровых блоков пропущено. */
-  blocksOut: number
+  /** Сколько матчей пропущено. */
+  matchesOut: number
+}
+
+/** Повреждение, полученное в конкретном матче. */
+export interface InjuryHit {
+  kind: string
+  severity: Severity
 }
 
 export interface Player {
@@ -105,13 +111,13 @@ export interface Player {
   potential: number
   traits: string[]
   injuries: InjuryRecord[]
-  /** Блоков пропуска из-за травмы. Лечится в межсезонье. */
-  blocksOut: number
+  /** Матчей пропуска из-за травмы. Межсезонье лечит часть срока. */
+  matchesOut: number
   /**
-   * Блоков дисквалификации. В отличие от травмы межсезонье её не снимает:
-   * бан на два блока — это реально пропущенный сезон.
+   * Матчей дисквалификации. В отличие от травмы межсезонье её не снимает:
+   * бан отбывают матчами, поэтому годичный он и стоит года.
    */
-  banBlocks: number
+  banMatches: number
   money: number
 }
 
@@ -165,7 +171,9 @@ export interface Effect_Attr { t: 'attr'; key: AttrKey; delta: number }
 export interface Effect_Gauge { t: 'gauge'; key: keyof Gauges; delta: number }
 export interface Effect_Money { t: 'money'; delta: number }
 export interface Effect_Injury { t: 'injury'; kind: string; severity: Severity }
-export interface Effect_Suspend { t: 'suspend'; blocks: number }
+export interface Effect_Suspend { t: 'suspend'; matches: number }
+/** Лечение: множитель к оставшемуся сроку травмы. 0.6 — вернуться раньше. */
+export interface Effect_Heal { t: 'heal'; mult: number }
 export interface Effect_Trait { t: 'trait'; add?: string; remove?: string }
 export interface Effect_Flag { t: 'flag'; key: string; delta: number }
 export interface Effect_TrophyOdds { t: 'trophyOdds'; comp: CompetitionKind; mult: number }
@@ -188,7 +196,7 @@ export interface Effect_Objective { t: 'objective'; direction: 'up' | 'down' }
 
 export type Effect =
   | Effect_Attr | Effect_Gauge | Effect_Money | Effect_Injury | Effect_Suspend
-  | Effect_Trait | Effect_Flag | Effect_TrophyOdds | Effect_Transfer
+  | Effect_Trait | Effect_Flag | Effect_TrophyOdds | Effect_Transfer | Effect_Heal
   | Effect_Relationship | Effect_Schedule | Effect_Retire | Effect_Nationality
   | Effect_Position | Effect_Stat | Effect_Potential | Effect_Minutes | Effect_Release
   | Effect_Objective | Effect_Wage
@@ -299,6 +307,8 @@ export interface MatchResult {
   red: boolean
   /** 0 — на поле не выходил, оценки нет. */
   rating: number
+  /** Повреждение, полученное в этом матче. */
+  injury: InjuryHit | null
 }
 
 export interface SeasonTally {

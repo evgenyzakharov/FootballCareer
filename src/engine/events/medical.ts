@@ -1,35 +1,6 @@
-import { H, attr, flag, gauge, injury, later, minutes, money, odds, rel, trait } from './context'
+import { H, attr, flag, gauge, heal, injury, later, minutes, money, odds, rel, trait } from './context'
 import type { EventDef } from './context'
 import type { Severity } from '../types'
-import { clamp } from '../rng'
-
-/** Тип травмы → тяжесть. Тяжесть определяет, сколько блоков игрок вне игры. */
-export const INJURY_TYPES: Array<{ kind: string; severity: Severity; weight: number }> = [
-  { kind: 'muscle_strain', severity: 1, weight: 26 },
-  { kind: 'hamstring', severity: 1, weight: 22 },
-  { kind: 'ankle_knock', severity: 1, weight: 20 },
-  { kind: 'bruised_rib', severity: 1, weight: 10 },
-  { kind: 'torn_muscle', severity: 2, weight: 14 },
-  { kind: 'meniscus', severity: 2, weight: 10 },
-  { kind: 'broken_hand', severity: 2, weight: 6 },
-  { kind: 'acl', severity: 3, weight: 4 },
-  { kind: 'tibia_fracture', severity: 3, weight: 2 },
-  { kind: 'achilles', severity: 3, weight: 2 },
-]
-
-export const BLOCKS_OUT: Record<Severity, number> = { 1: 0, 2: 1, 3: 2 }
-
-/**
- * Риск травмы за блок. Растёт от нагрузки, падает от свежести;
- * после тяжёлой травмы остаётся выше — отсюда «хрустальные» карьеры.
- */
-export function injuryRisk(fitness: number, age: number, priorSevere: number): number {
-  const base = 0.16
-  const fromFitness = (100 - fitness) * 0.0022
-  const fromAge = age > 30 ? (age - 30) * 0.012 : age < 19 ? 0.02 : 0
-  const fromHistory = priorSevere * 0.05
-  return clamp(base + fromFitness + fromAge + fromHistory, 0.04, 0.6)
-}
 
 export const MEDICAL_EVENTS: EventDef[] = [
   {
@@ -46,6 +17,8 @@ export const MEDICAL_EVENTS: EventDef[] = [
         { id: 'specialist', cost: 250_000, hints: [H.moneyDown, H.fitnessUp] },
       ],
     }),
+    // Повреждение уже случилось в матче и срок уже назначен: карточка решает
+    // не «сломался ли», а как возвращаться. Поэтому здесь лечение, а не травма.
     resolve: (c, id) => {
       const severity = Number(c.payload.severity ?? 1) as Severity
       const kind = String(c.payload.kind ?? 'muscle_strain')
@@ -60,18 +33,18 @@ export const MEDICAL_EVENTS: EventDef[] = [
         }
         return {
           outcome: 'rushed_ok',
-          effects: [injury(kind, severity), gauge('coachTrust', 8), gauge('fanLove', 8), gauge('fitness', -10)],
+          effects: [heal(0.5), gauge('coachTrust', 8), gauge('fanLove', 8), gauge('fitness', -10)],
           tone: 'good',
         }
       }
       if (id === 'specialist') {
         return {
           outcome: 'specialist',
-          effects: [injury(kind, Math.max(1, severity - 1) as Severity), money(-250_000), gauge('fitness', 6)],
+          effects: [heal(0.7), money(-250_000), gauge('fitness', 6)],
           tone: 'good',
         }
       }
-      return { outcome: 'protocol', effects: [injury(kind, severity), gauge('fitness', 4)], tone: 'neutral' }
+      return { outcome: 'protocol', effects: [gauge('fitness', 4)], tone: 'neutral' }
     },
   },
   {

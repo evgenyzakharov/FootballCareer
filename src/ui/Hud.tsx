@@ -88,12 +88,12 @@ export function Hud({ state }: { state: CareerState }) {
             })}
           />
         )}
-        {(player.banBlocks > 0 || player.blocksOut > 0) && (
+        {(player.banMatches > 0 || player.matchesOut > 0) && (
           <KeyValue
             labelKey="hud.status"
             value={t({
-              key: player.banBlocks > 0 ? 'hud.status_suspended' : 'hud.status_injured',
-              params: { blocks: player.banBlocks > 0 ? player.banBlocks : player.blocksOut },
+              key: player.matchesOut > 0 ? 'hud.status_injured' : 'hud.status_suspended',
+              params: { matches: player.matchesOut > 0 ? player.matchesOut : player.banMatches },
             })}
           />
         )}

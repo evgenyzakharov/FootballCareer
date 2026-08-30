@@ -110,7 +110,9 @@ export const flag = (key: string, delta = 1): Effect => ({ t: 'flag', key, delta
 export const trait = (add: string): Effect => ({ t: 'trait', add })
 export const rel = (role: RelationRole, delta: number): Effect => ({ t: 'relationship', role, delta })
 export const injury = (kind: string, severity: Severity): Effect => ({ t: 'injury', kind, severity })
-export const suspend = (blocks: number): Effect => ({ t: 'suspend', blocks })
+export const suspend = (matches: number): Effect => ({ t: 'suspend', matches })
+/** Лечение: множитель к оставшемуся сроку. Меньше единицы — вернуться раньше. */
+export const heal = (mult: number): Effect => ({ t: 'heal', mult })
 export const odds = (comp: CompetitionKind, mult: number): Effect => ({ t: 'trophyOdds', comp, mult })
 export const potential = (delta: number): Effect => ({ t: 'potential', delta })
 export const minutes = (mult: number): Effect => ({ t: 'minutes', mult })

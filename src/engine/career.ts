@@ -17,7 +17,7 @@ import { getCountry } from '../data/countries'
 import { getLeague } from '../data/leagues'
 import { buildCard, getEvent, pickEvent, resolveCard } from './events'
 import type { EventCtx } from './events'
-import { BLOCKS_OUT, INJURY_TYPES, injuryRisk } from './events/medical'
+import { SUMMER_RECOVERY, injuryMatches } from './injuries'
 import { adjustObjective, makeObjective } from './events/structural'
 import { academyOffers, clubWantsToRenew, generateOffers } from './offers'
 import {
@@ -29,7 +29,7 @@ import type { ManagerStyle } from './relationships'
  * Версия формы состояния. Растёт при любом несовместимом изменении схемы;
  * подъём версии обязан сопровождаться миграцией в `save.ts`.
  */
-export const STATE_VERSION = 6
+export const STATE_VERSION = 7
 
 const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'review']
 
@@ -61,7 +61,7 @@ export function newCareer(seed: string, startYear = 2026, pace: Pace = 'busy'): 
       age: START_AGE,
       attrs: { pace: 40, shooting: 40, passing: 40, dribbling: 40, defending: 40, physical: 40, mental: 40, goalkeeping: 40 },
       gauges: { form: 60, fitness: 88, morale: 70, coachTrust: 42, fanLove: 50, mediaRep: 0, lockerRoom: 18, fame: 3 },
-      potential: 70, traits: [], injuries: [], blocksOut: 0, banBlocks: 0, money: 0,
+      potential: 70, traits: [], injuries: [], matchesOut: 0, banMatches: 0, money: 0,
     },
     contract: null,
     season: null,
@@ -148,19 +148,23 @@ function applyEffect(state: CareerState, effect: Effect): CareerState {
     case 'potential':
       return { ...state, player: { ...player, potential: clamp(player.potential + effect.delta, 40, 99) } }
     case 'injury': {
-      const blocks = BLOCKS_OUT[effect.severity]
+      const matches = injuryMatches(effect.kind, effect.severity)
       return {
         ...state,
         player: {
           ...player,
-          blocksOut: player.blocksOut + blocks,
-          injuries: [...player.injuries, { age: player.age, kind: effect.kind, severity: effect.severity, blocksOut: blocks }],
+          matchesOut: player.matchesOut + matches,
+          injuries: [...player.injuries, { age: player.age, kind: effect.kind, severity: effect.severity, matchesOut: matches }],
           gauges: { ...player.gauges, fitness: clamp(player.gauges.fitness - effect.severity * 8, 0, 100) },
         },
       }
     }
+    case 'heal':
+      // Лечение укорачивает уже назначенный срок, а не назначает новый: сама
+      // травма случилась в матче, карточка решает только, как возвращаться.
+      return { ...state, player: { ...player, matchesOut: Math.max(0, Math.round(player.matchesOut * effect.mult)) } }
     case 'suspend':
-      return { ...state, player: { ...player, banBlocks: player.banBlocks + effect.blocks } }
+      return { ...state, player: { ...player, banMatches: player.banMatches + effect.matches } }
     case 'trait': {
       let traits = player.traits
       if (effect.add && !traits.includes(effect.add)) traits = [...traits, effect.add]
@@ -431,8 +435,6 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
         beats.push({ t: 'event', key: 'first_call_up' })
       }
       beats.push(...randomBeats(next, 'autumn'))
-      const hit = rollInjury(next)
-      if (hit) beats.push({ t: 'event', key: 'injury_hit', payload: hit })
       beats.push({ t: 'sim' })
       break
     }
@@ -442,8 +444,6 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
     }
     case 'spring': {
       beats.push(...randomBeats(next, 'spring'))
-      const hit = rollInjury(next)
-      if (hit) beats.push({ t: 'event', key: 'injury_hit', payload: hit })
       beats.push({ t: 'sim' })
       break
     }
@@ -492,15 +492,6 @@ function shouldCallUp(state: CareerState): boolean {
     established: false,
   })
   return rngFor(state, 'callup').chance(p)
-}
-
-function rollInjury(state: CareerState): Record<string, string | number> | null {
-  const severe = state.player.injuries.filter((i) => i.severity === 3).length
-  const p = injuryRisk(state.player.gauges.fitness, state.player.age, severe)
-  const rng = rngFor(state, 'injury')
-  if (!rng.chance(p)) return null
-  const type = rng.weighted(INJURY_TYPES.map((item) => ({ item, weight: item.weight })))
-  return { kind: type.kind, severity: type.severity }
 }
 
 // ─── Насос: превращаем биты в карточки ──────────────────────────────────────
@@ -572,12 +563,19 @@ function runBlock(state: CareerState): CareerState {
   if (!club) return runIdleBlock(state, season)
 
   const rng = rngFor(state, `block:${season.blocksPlayed}`)
-  // Травма и дисквалификация выбивают блок одинаково, но списываются отдельно.
-  const injured = state.player.blocksOut > 0
-  const banned = state.player.banBlocks > 0
-  const blocksOut = injured || banned ? 1 : 0
+  // Травма и дисквалификация теперь выбивают матчи, а не полусезон целиком:
+  // сколько именно, решает сама симуляция, проходя по календарю.
+  const injured = state.player.matchesOut > 0
+  const banned = state.player.banMatches > 0
   const result = simulateBlock(
-    { player: state.player, club, role: season.role, minutesMult: season.minutesMult, blocksOut },
+    {
+      player: state.player,
+      club,
+      role: season.role,
+      minutesMult: season.minutesMult,
+      matchesOut: state.player.matchesOut,
+      banMatches: state.player.banMatches,
+    },
     rng,
   )
 
@@ -598,9 +596,22 @@ function runBlock(state: CareerState): CareerState {
     season: { ...season, tally, blocksPlayed: season.blocksPlayed + 1 },
     player: {
       ...state.player,
-      blocksOut: Math.max(0, state.player.blocksOut - 1),
-      banBlocks: Math.max(0, state.player.banBlocks - 1),
+      matchesOut: result.matchesOutLeft,
+      banMatches: result.banMatchesLeft,
+      // Повреждение, полученное в матче, уже стоило игроку пропусков внутри
+      // отрезка — в историю оно попадает здесь, а не через эффект карточки.
+      injuries: result.injury
+        ? [...state.player.injuries, {
+          age: state.player.age,
+          kind: result.injury.kind,
+          severity: result.injury.severity,
+          matchesOut: injuryMatches(result.injury.kind, result.injury.severity),
+        }]
+        : state.player.injuries,
     },
+  }
+  if (result.injury) {
+    next = applyEffect(next, { t: 'gauge', key: 'fitness', delta: -result.injury.severity * 8 })
   }
   next = applyEffects(next, [
     { t: 'gauge', key: 'fitness', delta: result.fitnessDelta },
@@ -641,7 +652,12 @@ function runBlock(state: CareerState): CareerState {
     options: [],
     details: blockDetails(result, injured, banned),
   }
-  return { ...next, card }
+  // Серьёзное повреждение — это ещё и решение, как возвращаться. Лёгкое
+  // проходит строкой в отчёте: карточка на каждый ушиб только утомляла бы.
+  const queue: Beat[] = result.injury && result.injury.severity >= 2
+    ? [{ t: 'event', key: 'injury_hit', payload: { kind: result.injury.kind, severity: result.injury.severity } }, ...next.queue]
+    : next.queue
+  return { ...next, card, queue }
 }
 
 /** Отрезок без клуба: матчей нет, форма тает, о вас забывают. */
@@ -650,10 +666,12 @@ function runIdleBlock(state: CareerState, season: NonNullable<CareerState['seaso
     ...state,
     season: { ...season, blocksPlayed: season.blocksPlayed + 1 },
     // Срок дисквалификации течёт и без клуба — иначе бан стал бы вечным.
+    // Без клуба матчей нет, но сроки идут: лечиться и отбывать бан можно и
+    // свободным агентом, иначе они стали бы вечными.
     player: {
       ...state.player,
-      blocksOut: Math.max(0, state.player.blocksOut - 1),
-      banBlocks: Math.max(0, state.player.banBlocks - 1),
+      matchesOut: Math.max(0, state.player.matchesOut - BLOCK_MATCHES),
+      banMatches: Math.max(0, state.player.banMatches - BLOCK_MATCHES),
     },
   }
   next = applyEffects(next, [
@@ -680,6 +698,15 @@ function blockDetails(result: ReturnType<typeof simulateBlock>, injured: boolean
   const lines: Text[] = []
   if (banned) lines.push({ key: 'report.block.suspended' })
   else if (injured) lines.push({ key: 'report.block.missed' })
+  if (result.injury) {
+    lines.push({
+      key: 'report.block.injury',
+      params: {
+        kind: { key: `injury.${result.injury.kind}` },
+        matches: injuryMatches(result.injury.kind, result.injury.severity),
+      },
+    })
+  }
   if (result.apps === 0) lines.push({ key: 'report.block.no_minutes' })
   if (result.red > 0) lines.push({ key: 'report.block.red', params: { n: result.red } })
   if (result.yellow >= 5) lines.push({ key: 'report.block.cards', params: { n: result.yellow } })
@@ -986,10 +1013,10 @@ function develop(state: CareerState): CareerState {
     ...state.player,
     age: state.player.age + 1,
     attrs,
-    // Межсезонье лечит: считаем его за один блок восстановления. Остаток
-    // тяжёлой травмы переносится на следующий сезон, а не обнуляется.
+    // Межсезонье лечит, но лето короче полусезона: остаток тяжёлой травмы
+    // честно переносится на следующий сезон, а не обнуляется.
     // Дисквалификация здесь не трогается — её отбывают матчами, а не летом.
-    blocksOut: Math.max(0, state.player.blocksOut - 1),
+    matchesOut: Math.max(0, state.player.matchesOut - SUMMER_RECOVERY),
     gauges: {
       ...state.player.gauges,
       fitness: clamp(state.player.gauges.fitness + 26 + (state.player.traits.includes('pro_diet') ? 6 : 0), 0, 100),

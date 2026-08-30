@@ -123,7 +123,7 @@ export const MATCH_EVENTS: EventDef[] = [
     resolve: (c, id) => {
       if (id === 'retaliate') {
         return c.rng.chance(0.6)
-          ? { outcome: 'sent_off', effects: [suspend(1), gauge('fanLove', 8), gauge('coachTrust', -14), gauge('mediaRep', -12)], headline: true, tone: 'bad' }
+          ? { outcome: 'sent_off', effects: [suspend(3), gauge('fanLove', 8), gauge('coachTrust', -14), gauge('mediaRep', -12)], headline: true, tone: 'bad' }
           : { outcome: 'got_away', effects: [gauge('fanLove', 14), gauge('lockerRoom', 8), attr('physical', 1)], tone: 'neutral' }
       }
       if (id === 'wind_up') {
@@ -155,7 +155,8 @@ export const MATCH_EVENTS: EventDef[] = [
         return c.rng.chance(0.3)
           ? {
               outcome: 'caught',
-              effects: [suspend(4), money(amount), gauge('mediaRep', -60), gauge('fanLove', -50), flag('match_fixing_ban')],
+              // Договорной матч — это не дисквалификация на пару туров, а два сезона.
+              effects: [suspend(78), money(amount), gauge('mediaRep', -60), gauge('fanLove', -50), flag('match_fixing_ban')],
               headline: true,
               tone: 'bad',
             }
@@ -278,7 +279,7 @@ export const MATCH_EVENTS: EventDef[] = [
     resolve: (c, id) => {
       if (id === 'retaliate') {
         return c.rng.chance(0.45)
-          ? { outcome: 'sent_off', effects: [suspend(2), gauge('coachTrust', -12), gauge('fanLove', -8)], headline: true, tone: 'bad' }
+          ? { outcome: 'sent_off', effects: [suspend(3), gauge('coachTrust', -12), gauge('fanLove', -8)], headline: true, tone: 'bad' }
           : { outcome: 'evened', effects: [gauge('lockerRoom', 8), attr('physical', 1), gauge('mediaRep', -4)], tone: 'neutral' }
       }
       if (id === 'answer_with_goal') {

@@ -72,8 +72,8 @@ describe('сохранение', () => {
     // v1 → v2: залипший флаг снят, остальные на месте.
     expect(loaded!.flags.free_agent).toBeUndefined()
     expect(loaded!.flags.doped).toBe(1)
-    // v2 → v3: появился счётчик дисквалификации.
-    expect(loaded!.player.banBlocks).toBe(0)
+    // v2 → v3: появился счётчик дисквалификации, v6 → v7 — он в матчах.
+    expect(loaded!.player.banMatches).toBe(0)
     expect(loaded!.seed).toBe(state.seed)
     expect(loaded!.player.lastName).toBe('ТЕСТОВ')
   })
@@ -87,9 +87,29 @@ describe('сохранение', () => {
 
     const loaded = loadState()
     expect(loaded!.version).toBe(STATE_VERSION)
-    expect(loaded!.player.banBlocks).toBe(0)
+    expect(loaded!.player.banMatches).toBe(0)
     // Накопленное в v2 остаётся травмой: отличить его от бана уже нельзя.
-    expect(loaded!.player.blocksOut).toBe(2)
+    // v6 → v7 перевёл два блока в матчи по двадцать шесть за блок.
+    expect(loaded!.player.matchesOut).toBe(52)
+  })
+
+  it('поднимает сохранение v6, переводя травмы и баны в матчи', () => {
+    const state = sampleState()
+    const player = { ...state.player } as Record<string, unknown>
+    delete player.matchesOut
+    delete player.banMatches
+    player.blocksOut = 1
+    player.banBlocks = 2
+    player.injuries = [{ age: 20, kind: 'acl', severity: 3, blocksOut: 2 }]
+    data.set('football-career:state', JSON.stringify({ ...state, player, version: 6 }))
+
+    const loaded = loadState()
+    expect(loaded!.version).toBe(STATE_VERSION)
+    // Блок — это двадцать шесть матчей: столько они и стоили.
+    expect(loaded!.player.matchesOut).toBe(26)
+    expect(loaded!.player.banMatches).toBe(52)
+    expect(loaded!.player.injuries[0].matchesOut).toBe(52)
+    expect((loaded!.player as unknown as Record<string, unknown>).blocksOut).toBeUndefined()
   })
 
   it('поднимает сохранение v3, добавляя год сезона и место в лиге', () => {

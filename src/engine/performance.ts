@@ -1,6 +1,7 @@
-import type { Club, MatchResult, Player, Position, Role } from './types'
+import type { Club, InjuryHit, MatchResult, Player, Position, Role } from './types'
 import type { Fixture } from './fixtures'
 import { buildFixtures } from './fixtures'
+import { INJURY_TYPES, injuryMatches, injuryRisk } from './injuries'
 import { getLeague } from '../data/leagues'
 import { playerOvr, squadLevel } from './player'
 import { Rng, clamp, round } from './rng'
@@ -115,6 +116,11 @@ function assistRate(position: Position, ovr: number): number {
 export interface BlockResult {
   /** Все матчи отрезка, включая пропущенные: из них собран весь остальной итог. */
   matches: MatchResult[]
+  /** Повреждение, полученное по ходу отрезка. Применяет его движок. */
+  injury: InjuryHit | null
+  /** Остаток срока травмы и дисквалификации после отрезка. */
+  matchesOutLeft: number
+  banMatchesLeft: number
   apps: number
   goals: number
   assists: number
@@ -135,9 +141,11 @@ export interface BlockContext {
   player: Player
   club: Club
   role: Role
-  /** Множитель минут: травмы, дисквалификации, решения игрока. */
+  /** Множитель минут: решения игрока и накопленная усталость. */
   minutesMult: number
-  blocksOut: number
+  /** Матчей вне игры на входе в отрезок: сначала травма, потом дисквалификация. */
+  matchesOut: number
+  banMatches: number
 }
 
 /**
@@ -208,6 +216,7 @@ function missedMatch(fixture: Fixture): MatchResult {
     yellow: 0,
     red: false,
     rating: 0,
+    injury: null,
   }
 }
 
@@ -237,7 +246,19 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
 
   // Чем выше роль, тем реже снимают до финального свистка.
   const full = gk || rng.chance(0.4 + roleRank(role) * 0.09)
-  const minutes = started ? (full ? 90 : rng.int(55, 85)) : rng.int(6, 34)
+  const planned = started ? (full ? 90 : rng.int(55, 85)) : rng.int(6, 34)
+
+  // Повреждение выпадает в конкретном матче, а не броском на весь полусезон.
+  // Сломавшийся не доигрывает, и дальше весь матч считается по тем минутам,
+  // которые он реально провёл на поле.
+  const severe = player.injuries.filter((i) => i.severity === 3).length
+  const hurt = rng.chance(injuryRisk(player.gauges.fitness, player.age, severe) * (planned / 90))
+  const injury: InjuryHit | null = hurt
+    ? (({ kind, severity }) => ({ kind, severity }))(
+      rng.weighted(INJURY_TYPES.map((item) => ({ item, weight: item.weight }))),
+    )
+    : null
+  const minutes = injury ? Math.max(5, Math.round(planned * rng.around(0.6, 0.35))) : planned
   const share = minutes / 90
 
   // Сильная команда создаёт больше момента, слабая — меньше.
@@ -271,7 +292,19 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
   const spread = (0.22 + Math.max(0, MORALE_LEVEL - player.gauges.morale) * 0.006) * MATCH_SPREAD
   const rating = clamp(round(rng.around(core + (goals + assists * 0.7) * 1.4, spread), 2), 4.5, 9.6)
 
-  return { ...fixture, minutes, started, goals, assists, cleanSheet, goalsConceded, yellow, red, rating }
+  return {
+    ...fixture,
+    minutes,
+    started,
+    goals,
+    assists,
+    cleanSheet,
+    goalsConceded,
+    yellow,
+    red,
+    rating,
+    injury,
+  }
 }
 
 /**
@@ -281,8 +314,36 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
  */
 export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const { player } = ctx
-  const available = clamp(BLOCK_MATCHES - ctx.blocksOut * BLOCK_MATCHES, 0, BLOCK_MATCHES)
-  const matches = buildFixtures(ctx.club, available, rng).map((f) => simulateMatch(ctx, f, rng))
+  const available = BLOCK_MATCHES
+  let out = ctx.matchesOut
+  let ban = ctx.banMatches
+  let injury: InjuryHit | null = null
+
+  const matches: MatchResult[] = []
+  for (const fixture of buildFixtures(ctx.club, available, rng)) {
+    // Сначала отбывается травма, потом дисквалификация: лечиться и сидеть в
+    // бане одновременно нельзя, иначе оба срока текли бы вдвое быстрее.
+    if (out > 0) {
+      out--
+      matches.push(missedMatch(fixture))
+      continue
+    }
+    if (ban > 0) {
+      ban--
+      matches.push(missedMatch(fixture))
+      continue
+    }
+    const match = simulateMatch(ctx, fixture, rng)
+    matches.push(match)
+    // Удаление — это пропуск ближайших матчей, а не просто цифра в графе.
+    if (match.red) ban += rng.int(1, 2)
+    if (match.injury) {
+      // Тяжесть повреждения ещё может измениться от того, как игрок будет
+      // лечиться, но выбывает он с этого матча — а не с конца полусезона.
+      injury = match.injury
+      out = injuryMatches(match.injury.kind, match.injury.severity)
+    }
+  }
   const played = matches.filter((m) => m.minutes > 0)
 
   const apps = played.length
@@ -315,6 +376,9 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
 
   return {
     matches,
+    injury,
+    matchesOutLeft: out,
+    banMatchesLeft: ban,
     apps, goals, assists, cleanSheets, goalsConceded,
     ratingSum,
     ratingCount: minutes,

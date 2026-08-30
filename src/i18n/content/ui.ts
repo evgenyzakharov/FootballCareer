@@ -88,8 +88,8 @@ export const UI: Content = {
   'hud.squad_bar': { ru: 'Уровень состава', en: 'Squad level' },
   'hud.squad_bar_value': { ru: '{level} · вы {gap}', en: '{level} · you {gap}' },
   'hud.status': { ru: 'Вне игры', en: 'Unavailable' },
-  'hud.status_injured': { ru: 'травма, {blocks} отр.', en: 'injured, {blocks} block(s)' },
-  'hud.status_suspended': { ru: 'дисквалификация, {blocks} отр.', en: 'suspended, {blocks} block(s)' },
+  'hud.status_injured': { ru: 'травма, {matches} матч.', en: 'injured, {matches} game(s)' },
+  'hud.status_suspended': { ru: 'дисквалификация, {matches} матч.', en: 'suspended, {matches} game(s)' },
 
   'panel.attrs': { ru: 'Навыки', en: 'Attributes' },
   'panel.gauges': { ru: 'Состояние', en: 'Condition' },
@@ -134,6 +134,10 @@ export const UI: Content = {
   'report.block.body_gk': {
     ru: '{apps} матчей, {clean} сухих, пропущено {conceded}. Средняя оценка — {rating}.',
     en: '{apps} matches, {clean} clean sheets, {conceded} conceded. Average rating {rating}.',
+  },
+  'report.block.injury': {
+    ru: 'Повреждение: {kind}. Вне игры — {matches} матчей.',
+    en: 'Injury: {kind}. Out for {matches} games.',
   },
   'report.block.missed': { ru: 'Отрезок пропущен из-за травмы.', en: 'The run was missed through injury.' },
   'report.block.suspended': { ru: 'Отрезок пропущен: вы дисквалифицированы.', en: 'The run was missed: you are suspended.' },
