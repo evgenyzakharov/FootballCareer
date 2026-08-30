@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
 import type { CareerState, Confederation, Gauges, Objective, Pace, Position, Role } from '../src/engine/types'
-import { averageRating, simulateBlock } from '../src/engine/performance'
+import {
+  ROUNDS_PER_SEASON, SEASON_MATCHES, averageRating, matchesBefore, matchesInRound, simulateBlock,
+} from '../src/engine/performance'
 import { buildFixtures } from '../src/engine/fixtures'
 import { INJURY_TYPES, injuryMatches } from '../src/engine/injuries'
 import { adjustObjective, makeObjective } from '../src/engine/events/structural'
@@ -748,7 +750,7 @@ describe('движок карьеры', () => {
     const ratings: number[] = []
     for (let i = 0; i < 600; i++) {
       const result = simulateBlock(
-        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0 },
+        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0, size: 26, playedBefore: 0, scheduledBefore: 0 },
         new Rng('sens', 'block', i),
       )
       if (result.ratingCount > 0) ratings.push(result.ratingSum / result.ratingCount)
@@ -808,7 +810,7 @@ describe('движок карьеры', () => {
         ...gauges,
       },
     }
-    return simulateBlock({ player, club, role, minutesMult: 1, matchesOut: 0, banMatches: 0 }, new Rng(seed, 'block', 0))
+    return simulateBlock({ player, club, role, minutesMult: 1, matchesOut: 0, banMatches: 0, size: 26, playedBefore: 0, scheduledBefore: 0 }, new Rng(seed, 'block', 0))
   }
 
   it('отрезок складывается из отдельных матчей, а не из одного броска', () => {
@@ -920,7 +922,7 @@ describe('движок карьеры', () => {
     )
     const player = { ...base, age: 26, gauges: { ...base.gauges, fitness: 90, form: 60 } }
     const result = simulateBlock(
-      { player, club, role: 'starter', minutesMult: 1, matchesOut: 5, banMatches: 3 },
+      { player, club, role: 'starter', minutesMult: 1, matchesOut: 5, banMatches: 3, size: 26, playedBefore: 0, scheduledBefore: 0 },
       new Rng('out', 'block', 0),
     )
 
@@ -945,7 +947,7 @@ describe('движок карьеры', () => {
     let checked = 0
     for (let i = 0; i < 40 && checked < 5; i++) {
       const result = simulateBlock(
-        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0 },
+        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0, size: 26, playedBefore: 0, scheduledBefore: 0 },
         new Rng('hurt', 'block', i),
       )
       const hurtAt = result.matches.findIndex((m) => m.injury !== null)
@@ -975,6 +977,60 @@ describe('движок карьеры', () => {
     const rushed = applyEffects(injured, [{ t: 'heal', mult: 0.5 }])
     expect(rushed.player.matchesOut).toBe(Math.round(injuryMatches('meniscus', 2) * 0.5))
     expect(rushed.player.injuries).toHaveLength(injured.player.injuries.length)
+  })
+
+  it('сезон режется на туры, но матчей в нём столько же', () => {
+    for (const pace of ['calm', 'normal', 'busy'] as Pace[]) {
+      const rounds = ROUNDS_PER_SEASON[pace]
+      const sizes = Array.from({ length: rounds }, (_, i) => matchesInRound(pace, i))
+      // Спокойный сезон не короче насыщенного: в нём просто крупнее отчёты.
+      expect(sizes.reduce((sum, n) => sum + n, 0)).toBe(SEASON_MATCHES)
+      for (const size of sizes) expect(size).toBeGreaterThan(0)
+      // Матчи до тура и есть сумма предыдущих туров.
+      expect(matchesBefore(pace, 0)).toBe(0)
+      expect(matchesBefore(pace, rounds)).toBe(SEASON_MATCHES)
+    }
+  })
+
+  it('за сезон приходит столько отчётов о туре, сколько туров в насыщенности', () => {
+    for (const pace of ['calm', 'normal', 'busy'] as Pace[]) {
+      let state = setIdentity(newCareer(`rounds-${pace}`, 2026, pace), {
+        lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CAM',
+      })
+      const rng = new Rng(`rounds-${pace}`, 'choices', 0)
+      let reports = 0
+      let guard = 0
+      // Считаем отчёты за первый полный сезон с клубом.
+      while (state.history.length === 0 && guard < 400) {
+        guard++
+        if (state.resolution) { state = ack(state); continue }
+        if (!state.card) break
+        if (state.card.eventKey === 'block_report') reports++
+        const available = state.card.options.filter((o) => !o.disabled)
+        state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
+      }
+      // Туры разложены по этапам методом наибольших остатков: сумма обязана
+      // сойтись, иначе часть матчей сезона просто не сыграется.
+      expect(reports).toBe(ROUNDS_PER_SEASON[pace])
+    }
+  })
+
+  it('тур двигает показатели на свою долю, а не как целый полусезон', () => {
+    const club = getClub('inter')
+    const base = createPlayer(
+      { lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CM' },
+      5,
+      new Rng('part', 'player', 0),
+    )
+    const player = { ...base, age: 26 }
+    const ctx = { player, club, role: 'starter' as Role, minutesMult: 1, matchesOut: 0, banMatches: 0 }
+    const small = simulateBlock({ ...ctx, size: 5, playedBefore: 0, scheduledBefore: 0 }, new Rng('part', 'b', 1))
+    const half = simulateBlock({ ...ctx, size: 26, playedBefore: 0, scheduledBefore: 0 }, new Rng('part', 'b', 1))
+
+    // Иначе за сезон из десяти туров свежесть ходила бы впятеро резче.
+    expect(Math.abs(small.fitnessDelta)).toBeLessThan(Math.abs(half.fitnessDelta))
+    expect(small.matches).toHaveLength(5)
+    expect(half.matches).toHaveLength(26)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

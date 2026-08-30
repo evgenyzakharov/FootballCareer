@@ -1,4 +1,4 @@
-import type { Club, InjuryHit, MatchResult, Player, Position, Role } from './types'
+import type { Club, InjuryHit, MatchResult, Pace, Player, Position, Role } from './types'
 import type { Fixture } from './fixtures'
 import { buildFixtures } from './fixtures'
 import { INJURY_TYPES, injuryMatches, injuryRisk } from './injuries'
@@ -6,8 +6,34 @@ import { getLeague } from '../data/leagues'
 import { playerOvr, squadLevel } from './player'
 import { Rng, clamp, round } from './rng'
 
-/** Матчей в одном игровом блоке (полсезона со всеми турнирами). */
+/** Матчей в полусезоне со всеми турнирами. Мерка, от которой считаются сдвиги
+ *  показателей: она же была размером одного хода до появления туров. */
 export const BLOCK_MATCHES = 26
+
+/** Матчей за сезон: лига, кубок и еврокубок вместе. */
+export const SEASON_MATCHES = BLOCK_MATCHES * 2
+
+/**
+ * На сколько туров режется сезон. Насыщенность уже управляет тем, сколько
+ * ситуаций выпадает игроку, — пусть она же управляет и тем, насколько мелко
+ * идёт время. Матчей за сезон при этом поровну: спокойный сезон не короче
+ * насыщенного, просто отчёты в нём крупнее.
+ */
+export const ROUNDS_PER_SEASON: Record<Pace, number> = { calm: 6, normal: 8, busy: 10 }
+
+/** Сколько матчей приходится на тур с этим номером. Остаток раздаётся первым. */
+export function matchesInRound(pace: Pace, index: number): number {
+  const rounds = ROUNDS_PER_SEASON[pace]
+  const base = Math.floor(SEASON_MATCHES / rounds)
+  return clamp(index, 0, rounds - 1) < SEASON_MATCHES % rounds ? base + 1 : base
+}
+
+/** Сколько матчей сезона прошло до тура с этим номером. */
+export function matchesBefore(pace: Pace, index: number): number {
+  let sum = 0
+  for (let i = 0; i < index; i++) sum += matchesInRound(pace, i)
+  return sum
+}
 
 const ROLE_ORDER: Role[] = ['reserve', 'bench', 'rotation', 'starter', 'star']
 
@@ -143,9 +169,14 @@ export interface BlockContext {
   role: Role
   /** Множитель минут: решения игрока и накопленная усталость. */
   minutesMult: number
-  /** Матчей вне игры на входе в отрезок: сначала травма, потом дисквалификация. */
+  /** Матчей вне игры на входе в тур: сначала травма, потом дисквалификация. */
   matchesOut: number
   banMatches: number
+  /** Матчей в туре. */
+  size: number
+  /** Сыграно и запланировано в сезоне до этого тура: по ним считается практика. */
+  playedBefore: number
+  scheduledBefore: number
 }
 
 /**
@@ -314,7 +345,7 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
  */
 export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const { player } = ctx
-  const available = BLOCK_MATCHES
+  const available = ctx.size
   let out = ctx.matchesOut
   let ban = ctx.banMatches
   let injury: InjuryHit | null = null
@@ -360,19 +391,32 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const ratingSum = played.reduce((sum, m) => sum + m.rating * m.minutes, 0)
   const rating = averageRating(ratingSum, minutes)
   // Не сыграв ни минуты, оценку не заработать — но и провалить нечего. Ноль
-  // здесь означал бы худший отрезок в истории футбола: форма и доверие ушли бы
-  // в пол, и запасной уже никогда не выбрался бы из запасных. Берём то, как
-  // игрок выглядит сам по себе: за скамейку он расплачивается отдельно, через
-  // штраф за нехватку игровой практики.
-  const scored = apps > 0 ? rating : baseRating(player, ctx.club)
+  // здесь означал бы худший тур в истории футбола: форма и доверие ушли бы в
+  // пол, и запасной уже никогда не выбрался бы из запасных. Берём «отыграл
+  // ровно на свой уровень» — от него ни форма, ни доверие не двигаются вовсе,
+  // а за скамейку игрок расплачивается отдельно, штрафом за нехватку практики.
+  // Собственный уровень игрока сюда не годится: у слабого он ниже нейтрального,
+  // и каждый тур на скамейке тихо утаскивал бы его ещё ниже.
+  const scored = apps > 0 ? rating : CAMEO_ANCHOR
 
-  // Много игр — падает свежесть; мало игр — падает форма и доверие.
-  // Пороги ровно на «нормальном» уровне: середняк держится, слабый теряет место.
+  // Усталость копится от нагрузки самого тура: сыграл много — сел без сил.
   const load = available > 0 ? apps / available : 0
-  const fitnessDelta = round(6 - load * 22 + (player.age < 24 ? 3 : player.age > 31 ? -3 : 0), 1)
-  const formDelta = round((scored - 6.8) * 9 + (load < 0.25 ? -8 : 0), 1)
-  const trustDelta = round((scored - 6.75) * 7 + (load > 0.55 ? 3 : -3), 1)
-  const fanDelta = round((scored - 6.85) * 6 + goals * 0.9 + assists * 0.5 - red * 4, 1)
+  // А вот «мало практики» считается по сезону целиком, а не по одному туру.
+  // Пороги подбирались на полусезон, где доля сыгранного почти не гуляет; в
+  // туре из пяти матчей она скачет так, что игрок ротации случайно проваливал
+  // порог в каждом пятом туре и получал штраф, которого раньше не видел.
+  const seasonLoad = ctx.scheduledBefore + available > 0
+    ? (ctx.playedBefore + apps) / (ctx.scheduledBefore + available)
+    : 0
+  // Сдвиги подобраны на полусезон, поэтому тур двигает показатели ровно на
+  // свою долю — иначе за сезон из десяти туров форма ходила бы впятеро резче,
+  // чем из двух. Голы и передачи не масштабируются: они считаются поштучно и
+  // складываются за сезон сами.
+  const part = available / BLOCK_MATCHES
+  const fitnessDelta = round((6 - load * 22 + (player.age < 24 ? 3 : player.age > 31 ? -3 : 0)) * part, 1)
+  const formDelta = round(((scored - 6.8) * 9 + (seasonLoad < 0.25 ? -8 : 0)) * part, 1)
+  const trustDelta = round(((scored - 6.75) * 7 + (seasonLoad > 0.55 ? 3 : -3)) * part, 1)
+  const fanDelta = round((scored - 6.85) * 6 * part + goals * 0.9 + assists * 0.5 - red * 4, 1)
 
   return {
     matches,

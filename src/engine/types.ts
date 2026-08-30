@@ -373,8 +373,8 @@ export interface CurrentSeason {
   awards: string[]
   /** Множители шансов на трофеи, накопленные решениями этого сезона. */
   oddsMult: Partial<Record<CompetitionKind, number>>
-  /** Сколько блоков сезона уже отыграно (0..2). */
-  blocksPlayed: number
+  /** Сколько туров сезона уже отыграно. Всего их `ROUNDS_PER_SEASON[pace]`. */
+  roundsPlayed: number
   /** Множитель минут на остаток сезона, накопленный решениями. */
   minutesMult: number
 }

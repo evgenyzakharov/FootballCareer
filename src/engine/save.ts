@@ -101,6 +101,17 @@ const MIGRATIONS: Record<number, (state: RawState) => RawState> = {
     delete player.banBlocks
     return { ...state, player, version: 7 }
   },
+
+  // v7 → v8. Сезон пошёл турами вместо двух половин: счётчик отыгранного
+  // переименован и стал считать туры. Сохранённая очередь битов при этом
+  // остаётся валидной — бит симуляции просто означает тур, а не полусезон.
+  7: (state) => {
+    if (!state.season) return { ...state, version: 8 }
+    const season = { ...(state.season as Record<string, unknown>) }
+    season.roundsPlayed = typeof season.blocksPlayed === 'number' ? season.blocksPlayed : 0
+    delete season.blocksPlayed
+    return { ...state, season, version: 8 }
+  },
 }
 
 /** Минимальная проверка формы: битый или чужой JSON не должен ронять игру. */

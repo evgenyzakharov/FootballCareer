@@ -5,7 +5,10 @@ import type {
 import { ATTR_KEYS, attrAgeBand, isGoalkeeper, marketValue, overall } from './attributes'
 import { MAX_AGE, START_AGE, createPlayer, playerOvr, squadLevel } from './player'
 import type { Identity } from './player'
-import { BLOCK_MATCHES, MORALE_LEVEL, averageRating, determineRole, keeperRun, simulateBlock } from './performance'
+import {
+  BLOCK_MATCHES, MORALE_LEVEL, ROUNDS_PER_SEASON, SEASON_MATCHES,
+  averageRating, determineRole, keeperRun, matchesBefore, matchesInRound, simulateBlock,
+} from './performance'
 import {
   NATIONAL_TOURNAMENT, callUpChance, leagueLift, nationalTrophyChance,
   rollClubTrophies, rollLeaguePosition, tournamentThisSeason,
@@ -29,7 +32,7 @@ import type { ManagerStyle } from './relationships'
  * Версия формы состояния. Растёт при любом несовместимом изменении схемы;
  * подъём версии обязан сопровождаться миграцией в `save.ts`.
  */
-export const STATE_VERSION = 7
+export const STATE_VERSION = 8
 
 const STAGES: Stage[] = ['preseason', 'autumn', 'winter', 'spring', 'run_in', 'review']
 
@@ -320,7 +323,7 @@ function startSeason(state: CareerState): CareerState {
       trophies: [],
       awards: [],
       oddsMult: {},
-      blocksPlayed: 0,
+      roundsPlayed: 0,
       minutesMult: rng.around(1, 0.05),
     },
     contract: state.contract ? { ...state.contract, objective } : null,
@@ -348,6 +351,54 @@ function rivalPressureFor(state: CareerState): number {
 
 /** Этапы, на которых вообще бывают случайные ситуации. */
 type PacedStage = Exclude<Stage, 'review'>
+
+/** Этапы, в которые играют матчи. Межсезонье и итоги сезона — не играют. */
+type PlayingStage = Exclude<PacedStage, 'preseason'>
+const PLAYING_STAGES: PlayingStage[] = ['autumn', 'winter', 'spring', 'run_in']
+
+/**
+ * Вес этапа в календаре: осень и весна длиннее зимней паузы и майской
+ * концовки, поэтому туров в них больше.
+ */
+const ROUND_WEIGHTS: Record<PlayingStage, number> = { autumn: 3, winter: 2, spring: 3, run_in: 2 }
+
+/**
+ * Сколько туров приходится на этап. Раздаём по весам методом наибольших
+ * остатков: сумма обязана в точности совпасть с числом туров сезона, иначе
+ * часть матчей просто не сыграется.
+ */
+function roundsInStage(pace: Pace, stage: PlayingStage): number {
+  const total = ROUNDS_PER_SEASON[pace]
+  const weightSum = PLAYING_STAGES.reduce((sum, s) => sum + ROUND_WEIGHTS[s], 0)
+  const exact = PLAYING_STAGES.map((s) => (ROUND_WEIGHTS[s] * total) / weightSum)
+  const counts = exact.map(Math.floor)
+  let left = total - counts.reduce((a, b) => a + b, 0)
+  const byRemainder = exact
+    .map((value, i) => ({ remainder: value - counts[i], i }))
+    .sort((a, b) => b.remainder - a.remainder || a.i - b.i)
+  for (const { i } of byRemainder) {
+    if (left <= 0) break
+    counts[i]++
+    left--
+  }
+  return counts[PLAYING_STAGES.indexOf(stage)]
+}
+
+/**
+ * Биты игрового этапа: туры вперемешку с ситуациями. Раскладывать их именно
+ * так — вся суть тура: раньше сезон приходил двумя кучами событий и двумя
+ * отчётами, теперь между ситуациями идут матчи.
+ */
+function playingBeats(state: CareerState, stage: PlayingStage): Beat[] {
+  const events = randomBeats(state, stage)
+  const rounds = roundsInStage(state.pace, stage)
+  const beats: Beat[] = []
+  for (let i = 0; i < rounds; i++) {
+    if (i < events.length) beats.push(events[i])
+    beats.push({ t: 'sim' })
+  }
+  return [...beats, ...events.slice(rounds)]
+}
 
 /**
  * Сколько случайных ситуаций даёт каждый этап при выбранной насыщенности:
@@ -434,23 +485,19 @@ function enterStage(state: CareerState, stage: Stage): CareerState {
       if ((next.flags.national_established ?? 0) === 0 && shouldCallUp(next)) {
         beats.push({ t: 'event', key: 'first_call_up' })
       }
-      beats.push(...randomBeats(next, 'autumn'))
-      beats.push({ t: 'sim' })
+      beats.push(...playingBeats(next, 'autumn'))
       break
     }
     case 'winter': {
-      beats.push(...randomBeats(next, 'winter'))
+      beats.push(...playingBeats(next, 'winter'))
       break
     }
     case 'spring': {
-      beats.push(...randomBeats(next, 'spring'))
-      beats.push({ t: 'sim' })
+      beats.push(...playingBeats(next, 'spring'))
       break
     }
     case 'run_in': {
-      // Концовку сезона оставляем разреженной: на неё и так приходятся отчёт
-      // о блоке и вся трансферная развязка.
-      beats.push(...randomBeats(next, 'run_in'))
+      beats.push(...playingBeats(next, 'run_in'))
       break
     }
     case 'review': {
@@ -562,7 +609,7 @@ function runBlock(state: CareerState): CareerState {
   const club = findClub(season.clubId)
   if (!club) return runIdleBlock(state, season)
 
-  const rng = rngFor(state, `block:${season.blocksPlayed}`)
+  const rng = rngFor(state, `block:${season.roundsPlayed}`)
   // Травма и дисквалификация теперь выбивают матчи, а не полусезон целиком:
   // сколько именно, решает сама симуляция, проходя по календарю.
   const injured = state.player.matchesOut > 0
@@ -575,6 +622,9 @@ function runBlock(state: CareerState): CareerState {
       minutesMult: season.minutesMult,
       matchesOut: state.player.matchesOut,
       banMatches: state.player.banMatches,
+      size: matchesInRound(state.pace, season.roundsPlayed),
+      playedBefore: season.tally.apps,
+      scheduledBefore: matchesBefore(state.pace, season.roundsPlayed),
     },
     rng,
   )
@@ -593,7 +643,7 @@ function runBlock(state: CareerState): CareerState {
 
   let next: CareerState = {
     ...state,
-    season: { ...season, tally, blocksPlayed: season.blocksPlayed + 1 },
+    season: { ...season, tally, roundsPlayed: season.roundsPlayed + 1 },
     player: {
       ...state.player,
       matchesOut: result.matchesOutLeft,
@@ -618,16 +668,23 @@ function runBlock(state: CareerState): CareerState {
     { t: 'gauge', key: 'form', delta: result.formDelta },
     { t: 'gauge', key: 'coachTrust', delta: result.trustDelta },
     { t: 'gauge', key: 'fanLove', delta: result.fanDelta },
-    { t: 'gauge', key: 'fame', delta: round((result.goals + result.assists) * 0.35 + (club.tier - 3) * 0.5, 1) },
+    // Голы и передачи считаются поштучно, а вот «о вас пишут просто потому,
+    // что вы в этом клубе» — величина на полусезон: её тур приносит по своей
+    // доле, иначе десять туров разгоняли бы известность впятеро.
+    {
+      t: 'gauge',
+      key: 'fame',
+      delta: round((result.goals + result.assists) * 0.35 + (club.tier - 3) * 0.5 * (result.matches.length / BLOCK_MATCHES), 1),
+    },
   ])
 
-  // Роль пересчитывается по ходу сезона: провалил блок — потерял место.
+  // Роль пересчитывается по ходу сезона: провалил тур — потерял место.
   const role = determineRole({ player: next.player, club, rivalPressure: rivalPressureFor(next) })
   next = { ...next, season: { ...next.season!, role } }
 
   const rating = averageRating(result.ratingSum, result.ratingCount)
   const card: Card = {
-    id: `block@${state.player.age}:${season.blocksPlayed}`,
+    id: `block@${state.player.age}:${season.roundsPlayed}`,
     kind: 'report',
     stage: state.stage,
     eventKey: 'block_report',
@@ -660,18 +717,21 @@ function runBlock(state: CareerState): CareerState {
   return { ...next, card, queue }
 }
 
-/** Отрезок без клуба: матчей нет, форма тает, о вас забывают. */
+/** Тур без клуба: матчей нет, форма тает, о вас забывают. */
 function runIdleBlock(state: CareerState, season: NonNullable<CareerState['season']>): CareerState {
+  // Год без клуба идёт половинами, а не турами: десять одинаковых карточек
+  // «матчей не было» подряд читать нечего, а спад должен остаться прежним.
+  const size = BLOCK_MATCHES
   let next: CareerState = {
     ...state,
-    season: { ...season, blocksPlayed: season.blocksPlayed + 1 },
+    season: { ...season, roundsPlayed: season.roundsPlayed + 1 },
     // Срок дисквалификации течёт и без клуба — иначе бан стал бы вечным.
     // Без клуба матчей нет, но сроки идут: лечиться и отбывать бан можно и
     // свободным агентом, иначе они стали бы вечными.
     player: {
       ...state.player,
-      matchesOut: Math.max(0, state.player.matchesOut - BLOCK_MATCHES),
-      banMatches: Math.max(0, state.player.banMatches - BLOCK_MATCHES),
+      matchesOut: Math.max(0, state.player.matchesOut - size),
+      banMatches: Math.max(0, state.player.banMatches - size),
     },
   }
   next = applyEffects(next, [
@@ -681,7 +741,7 @@ function runIdleBlock(state: CareerState, season: NonNullable<CareerState['seaso
     { t: 'gauge', key: 'morale', delta: -5 },
   ])
   const card: Card = {
-    id: `idle@${state.player.age}:${season.blocksPlayed}`,
+    id: `idle@${state.player.age}:${season.roundsPlayed}`,
     kind: 'report',
     stage: state.stage,
     eventKey: 'idle_report',
@@ -981,7 +1041,7 @@ function growthFactor(state: CareerState): number {
     return 0.2 * clamp((state.player.potential - playerOvr(state.player)) / 12, 0.08, 1.3)
   }
   const league = getLeague(club.leagueId)
-  const minutesRatio = clamp(season.tally.apps / (BLOCK_MATCHES * 2), 0, 1)
+  const minutesRatio = clamp(season.tally.apps / SEASON_MATCHES, 0, 1)
   const headroom = clamp((state.player.potential - playerOvr(state.player)) / 12, 0.08, 1.3)
   let factor = (0.35 + 0.65 * minutesRatio) * (0.85 + league.strength * 0.05) * headroom
   if (state.player.traits.includes('grinder')) factor *= 1.08
@@ -993,7 +1053,7 @@ function growthFactor(state: CareerState): number {
 function develop(state: CareerState): CareerState {
   const rng = rngFor(state, 'develop')
   const factor = growthFactor(state)
-  const minutesRatio = clamp((state.season?.tally.apps ?? 0) / (BLOCK_MATCHES * 2), 0, 1)
+  const minutesRatio = clamp((state.season?.tally.apps ?? 0) / SEASON_MATCHES, 0, 1)
   const attrs: Attributes = { ...state.player.attrs }
   const gk = isGoalkeeper(state.player.position)
 
