@@ -16,7 +16,7 @@ import { getLeague } from '../src/data/leagues'
 import {
   NATIONAL_TOURNAMENT, isOlympicYear, leagueLift, rollLeaguePosition, tournamentThisSeason,
 } from '../src/engine/competitions'
-import { MAX_SQUAD_GAP, academyOffers, clubWantsToRenew, generateOffers, wageFor } from '../src/engine/offers'
+import { academyOffers, clubWageCeiling, clubWantsToRenew, generateOffers, wageFor } from '../src/engine/offers'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
 function playCareer(
@@ -336,25 +336,36 @@ describe('движок карьеры', () => {
     expect(clubWantsToRenew({ ...state, contract: null }, 90, 'star')).toBe(false)
   })
 
-  it('клуб не удерживает того, кто его перерос', () => {
+  it('клуб платит по своим возможностям, а не по стоимости игрока', () => {
+    const small = getClub('alania')
+    const big = getClub('inter')
+
+    // Раньше зарплата считалась от одной только стоимости игрока: клуб второй
+    // лиги России предлагал восьмидесятому OVR почти миллион евро — в семьдесят
+    // раз больше, чем платил игроку своего уровня.
+    const ownLevel = wageFor(squadLevel(small.tier), 26, small)
+    const star = wageFor(80, 27, small)
+    expect(star).toBeGreaterThan(ownLevel)
+    expect(star).toBeLessThanOrEqual(Math.ceil(clubWageCeiling(small)))
+    // Разрыв между звездой и рядовым в команде — в разы, а не в десятки раз.
+    expect(star / ownLevel).toBeLessThan(6)
+
+    // Большому клубу потолок не мешает: он и так платит больше.
+    expect(wageFor(80, 27, big)).toBeLessThan(clubWageCeiling(big))
+    expect(clubWageCeiling(big)).toBeGreaterThan(clubWageCeiling(small) * 100)
+
+    // Переросшему клуб всё равно предлагает продлить — просто на свои деньги.
+    // Решение остаётся за игроком, и обе цифры он видит рядом.
     let state = setIdentity(newCareer('outgrown'), {
       lastName: 'ТЕСТОВ', shirt: 10, foot: 'right', countryCode: 'RUS', position: 'CAM',
     })
     state = ack(choose(state, state.card!.options[0].id))
     const club = findClub(state.contract!.clubId)!
-    const level = squadLevel(club.tier)
     const loved: CareerState = {
       ...state,
       player: { ...state.player, gauges: { ...state.player.gauges, coachTrust: 95, fanLove: 95 } },
     }
-
-    // Порог общий с рынком: кого клуб уже не может подписать, того он и не
-    // удерживает. Продление было единственной лазейкой мимо этой проверки —
-    // игрок на восемьдесят OVR годами доигрывал во второй лиге.
-    expect(clubWantsToRenew(loved, level + MAX_SQUAD_GAP, 'star')).toBe(true)
-    expect(clubWantsToRenew(loved, level + MAX_SQUAD_GAP + 1, 'star')).toBe(false)
-    // И никакая любовь трибун с доверием тренера этого не перебивает.
-    expect(clubWantsToRenew(loved, level + 30, 'star')).toBe(false)
+    expect(clubWantsToRenew(loved, squadLevel(club.tier) + 30, 'star')).toBe(true)
   })
 
   it('деньги показываются в рублях, когда игрок из России', () => {
@@ -1128,14 +1139,41 @@ describe('движок карьеры', () => {
   })
 
   it('травмированного не вызывают в сборную', () => {
-    for (const seed of ['hurt-nat-1', 'hurt-nat-2']) {
-      const state = playCareer(seed)
-      for (const season of state.history) {
-        // Сезон, закрытый с незалеченной травмой, не должен приносить матчей
-        // за сборную: летние сборы проходят мимо.
-        if (season.national.caps > 0) expect(season.tally.apps).toBeGreaterThan(0)
+    /** Доигрывает сезон до записи в историю и возвращает его итог. */
+    function finishSeasonWith(seed: string, patch: (s: CareerState) => CareerState) {
+      let state = setIdentity(newCareer(seed), {
+        lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CAM',
+      })
+      state = ack(choose(state, state.card!.options[0].id))
+      state = patch({ ...state, flags: { ...state.flags, national_established: 1 } })
+      const rng = new Rng(seed, 'choices', 0)
+      const target = state.history.length + 1
+      let guard = 0
+      while (state.history.length < target && guard < 600) {
+        guard++
+        if (state.resolution) { state = ack(state); continue }
+        if (!state.card) break
+        const available = state.card.options.filter((o) => !o.disabled)
+        state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
       }
+      return state.history[state.history.length - 1]
     }
+
+    // Сезон, который игрок доигрывает в лазарете, вызовов не приносит: летние
+    // сборы и турнир проходят мимо травмированного.
+    for (const seed of ['hurt-nat-1', 'hurt-nat-2', 'hurt-nat-3']) {
+      const hurt = finishSeasonWith(seed, (s) => ({
+        ...s,
+        player: { ...s.player, matchesOut: 90 },
+      }))
+      expect(hurt.national.caps).toBe(0)
+      expect(hurt.national.tournament).toBeNull()
+    }
+
+    // Контроль: здоровому вызовы приходят — иначе проверка выше ничего не стоит.
+    const healthy = ['ok-nat-1', 'ok-nat-2', 'ok-nat-3', 'ok-nat-4']
+      .map((seed) => finishSeasonWith(seed, (s) => s))
+    expect(healthy.some((season) => season.national.caps > 0)).toBe(true)
   })
 
   it('олимпиада идёт летом и только в свой год', () => {

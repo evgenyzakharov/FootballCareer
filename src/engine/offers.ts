@@ -40,13 +40,38 @@ export function expectedRole(ovr: number, tier: number): Role {
  * больше, чем во второй лиге России, и без этого множителя парень из академии
  * зарабатывал три миллиона рублей в год.
  */
-export function wageFor(ovr: number, age: number, club: Club | null): number {
+function askingWage(ovr: number, age: number, club: Club | null): number {
   const value = marketValue(ovr, age)
   const share = clamp(0.3 - (ovr - 45) * 0.0035, 0.1, 0.3)
   const tierFactor = 0.65 + ((club?.tier ?? 1) - 1) * 0.11
   const strength = club ? getLeague(club.leagueId).strength : 2
   const leagueFactor = 0.45 + (strength - 1) * 0.24
-  const wage = clamp(value * share * tierFactor * leagueFactor, 1_500, 45_000_000)
+  return value * share * tierFactor * leagueFactor
+}
+
+/**
+ * Во сколько раз лучший в составе получает больше игрока своего уровня. В
+ * футболе разрыв между звездой и рядовым в команде — в несколько раз, а не в
+ * десятки: платёжка клуба не растягивается бесконечно.
+ */
+const TOP_EARNER_MULT = 4
+
+/**
+ * Потолок клуба: больше этого он не заплатит никому. Без него зарплата считалась
+ * от одной только стоимости игрока, и клуб второй лиги России предлагал
+ * восьмидесятому OVR восемьсот тысяч евро — в семьдесят раз больше, чем платил
+ * игроку своего уровня. Клуб, который игрок перерос, теперь предлагает не
+ * запретительно много, а всё, что может, — и разница с чужим предложением
+ * становится видна прямо в трансферном окне.
+ */
+export function clubWageCeiling(club: Club): number {
+  return askingWage(squadLevel(club.tier), 26, club) * TOP_EARNER_MULT
+}
+
+export function wageFor(ovr: number, age: number, club: Club | null): number {
+  const asking = askingWage(ovr, age, club)
+  const capped = club ? Math.min(asking, clubWageCeiling(club)) : asking
+  const wage = clamp(capped, 1_500, 45_000_000)
   const mag = 10 ** Math.max(2, Math.floor(Math.log10(wage)) - 1)
   return Math.round(wage / mag) * mag
 }
@@ -111,12 +136,10 @@ function interest(club: Club, state: CareerState, ovr: number): number {
 export function clubWantsToRenew(state: CareerState, ovr: number, role: Role): boolean {
   const club = findClub(state.contract?.clubId ?? null)
   if (!club) return false
-  const gap = ovr - squadLevel(club.tier)
-  // Клуб не удерживает того, кто его перерос. Раньше проверка стояла только на
-  // рынке, и продление было лазейкой мимо неё: игрок на восемьдесят OVR мог
-  // годами доигрывать во второй лиге, куда его никто бы уже не подписал.
-  if (gap > MAX_SQUAD_GAP) return false
-  let score = gap * 0.9
+  // Переросшему клуб всё равно предложит продление — просто на свои деньги, а
+  // не на рыночные: потолок в `clubWageCeiling` не даст ему выписать столько,
+  // сколько игрок стоит. Решает игрок, видя обе цифры рядом.
+  let score = (ovr - squadLevel(club.tier)) * 0.9
   score += (state.player.gauges.coachTrust - 45) * 0.35
   score += (state.player.gauges.fanLove - 40) * 0.15
   score += (roleRank(role) - 1) * 6
