@@ -54,7 +54,11 @@ export function Timeline({ state }: { state: CareerState }) {
     }
   })
 
-  if (state.season && state.phase === 'season') {
+  // Закрытый сезон уже лежит в истории, но `state.season` держит его до начала
+  // следующего — от отчёта об итогах до трансферного окна. Без этой проверки
+  // он в это время показывался в таблице дважды.
+  const closed = new Set(state.history.map((season) => season.age))
+  if (state.season && state.phase === 'season' && !closed.has(state.season.age)) {
     const club = findClub(state.season.clubId)
     rows.push({
       key: 'current',

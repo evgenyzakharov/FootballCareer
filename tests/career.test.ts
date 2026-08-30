@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { Timeline } from '../src/ui/Timeline'
+import { seasonLabel } from '../src/ui/format'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
 import type { CareerState, Confederation, Gauges, Objective, Pace, Position, Role } from '../src/engine/types'
 import {
@@ -1331,6 +1335,34 @@ describe('движок карьеры', () => {
       expect(club.tier).toBeGreaterThanOrEqual(0)
       expect(club.tier).toBeLessThanOrEqual(6)
     }
+  })
+
+  it('закрытый сезон не показывается в таблице карьеры дважды', () => {
+    // Закрытый сезон уезжает в историю, но `state.season` держит его до начала
+    // следующего — всё время от отчёта об итогах до трансферного окна. В этом
+    // окне таблица карьеры показывала его двумя строками подряд.
+    let state = setIdentity(newCareer('twice'), {
+      lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'RUS', position: 'CAM',
+    })
+    const rng = new Rng('twice', 'choices', 0)
+    let guard = 0
+    let checked = 0
+    while (state.history.length < 3 && guard < 900) {
+      guard++
+      if (state.resolution) { state = ack(state); continue }
+      if (!state.card) break
+      // Проверяем ровно тот момент, когда сезон уже закрыт, а новый не начат.
+      if (state.season && state.history.some((h) => h.age === state.season!.age)) {
+        const html = renderToStaticMarkup(createElement(Timeline, { state }))
+        const label = seasonLabel(state.startYear, state.season.age)
+        const shown = html.split(label).length - 1
+        expect({ label, shown }).toEqual({ label, shown: 1 })
+        checked++
+      }
+      const available = state.card.options.filter((o) => !o.disabled)
+      state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
+    }
+    expect(checked).toBeGreaterThan(0)
   })
 
   it('положение относительно состава считается от текущего клуба', () => {
