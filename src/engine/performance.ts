@@ -1,6 +1,5 @@
 import type { Club, InjuryHit, MatchResult, Pace, Player, Position, Role } from './types'
 import type { Fixture } from './fixtures'
-import { buildFixtures } from './fixtures'
 import { INJURY_TYPES, injuryMatches, injuryRisk } from './injuries'
 import { getLeague } from '../data/leagues'
 import { playerOvr, squadLevel } from './player'
@@ -177,6 +176,12 @@ export interface BlockContext {
   /** Сыграно и запланировано в сезоне до этого тура: по ним считается практика. */
   playedBefore: number
   scheduledBefore: number
+  /**
+   * Календарь всего сезона. Тур берёт из него свой кусок подряд: круг
+   * чемпионата иначе не построить — соперников надо развести по сезону целиком,
+   * а не выбирать заново на каждые пять матчей.
+   */
+  fixtures: Fixture[]
 }
 
 /**
@@ -361,7 +366,7 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
 
   const matches: MatchResult[] = []
   let sidelined = 0
-  for (const fixture of buildFixtures(ctx.club, available, rng)) {
+  for (const fixture of ctx.fixtures.slice(ctx.scheduledBefore, ctx.scheduledBefore + available)) {
     // Сначала отбывается травма, потом дисквалификация: лечиться и сидеть в
     // бане одновременно нельзя, иначе оба срока текли бы вдвое быстрее.
     if (out > 0) {

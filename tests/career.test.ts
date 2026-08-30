@@ -4,15 +4,15 @@ import type { CareerState, Confederation, Gauges, Objective, Pace, Position, Rol
 import {
   ROUNDS_PER_SEASON, SEASON_MATCHES, averageRating, matchesBefore, matchesInRound, simulateBlock,
 } from '../src/engine/performance'
-import { buildFixtures } from '../src/engine/fixtures'
+import { seasonFixtures } from '../src/engine/fixtures'
 import { INJURY_TYPES, injuryMatches } from '../src/engine/injuries'
 import { adjustObjective, makeObjective } from '../src/engine/events/structural'
 import { Rng } from '../src/engine/rng'
 import { createPlayer, playerOvr, squadLevel } from '../src/engine/player'
 import { formatMoney, missingKeys, t } from '../src/i18n'
 import { ALL_EVENTS, buildCard, getEvent, resolveCard } from '../src/engine/events'
-import { findClub, getClub } from '../src/data/clubs'
-import { getLeague } from '../src/data/leagues'
+import { CLUBS, findClub, getClub } from '../src/data/clubs'
+import { LEAGUES, getLeague } from '../src/data/leagues'
 import {
   NATIONAL_TOURNAMENT, isOlympicYear, leagueLift, rollLeaguePosition, tournamentThisSeason,
 } from '../src/engine/competitions'
@@ -784,7 +784,8 @@ describe('движок карьеры', () => {
     const ratings: number[] = []
     for (let i = 0; i < 600; i++) {
       const result = simulateBlock(
-        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0, size: 26, playedBefore: 0, scheduledBefore: 0 },
+        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0, size: 26, playedBefore: 0, scheduledBefore: 0,
+        fixtures: seasonFixtures(club, 26, new Rng('sens', 'fixtures', 0)) },
         new Rng('sens', 'block', i),
       )
       if (result.ratingCount > 0) ratings.push(result.ratingSum / result.ratingCount)
@@ -844,7 +845,8 @@ describe('движок карьеры', () => {
         ...gauges,
       },
     }
-    return simulateBlock({ player, club, role, minutesMult: 1, matchesOut: 0, banMatches: 0, size: 26, playedBefore: 0, scheduledBefore: 0 }, new Rng(seed, 'block', 0))
+    return simulateBlock({ player, club, role, minutesMult: 1, matchesOut: 0, banMatches: 0, size: 26, playedBefore: 0, scheduledBefore: 0,
+        fixtures: seasonFixtures(club, 26, new Rng(seed, 'fixtures', 0)) }, new Rng(seed, 'block', 0))
   }
 
   it('отрезок складывается из отдельных матчей, а не из одного броска', () => {
@@ -916,21 +918,34 @@ describe('движок карьеры', () => {
     expect(idle.formDelta).toBeLessThan(0)
   })
 
-  it('календарь собирается из настоящих соперников', () => {
-    const club = getClub('inter')
-    const fixtures = buildFixtures(club, 26, new Rng('cal', 'fixtures', 0))
-    expect(fixtures).toHaveLength(26)
-    for (const [i, fixture] of fixtures.entries()) {
-      // Сам с собой клуб не играет, и один соперник не идёт два матча подряд.
-      expect(fixture.opponentId).not.toBe(club.id)
-      if (i > 0) expect(fixture.opponentId).not.toBe(fixtures[i - 1].opponentId)
-      expect(findClub(fixture.opponentId)).not.toBeNull()
+  it('календарь сезона — это круг чемпионата, а не случайные соперники', () => {
+    for (const clubId of ['inter', 'ipswich', 'alania', 'la-galaxy']) {
+      const club = getClub(clubId)
+      const fixtures = seasonFixtures(club, SEASON_MATCHES, new Rng('cal', clubId, 0))
+      expect(fixtures).toHaveLength(SEASON_MATCHES)
+
+      for (const [i, fixture] of fixtures.entries()) {
+        // Сам с собой клуб не играет, и один соперник не идёт два матча подряд.
+        expect(fixture.opponentId).not.toBe(club.id)
+        if (i > 0) expect(fixture.opponentId).not.toBe(fixtures[i - 1].opponentId)
+        expect(findClub(fixture.opponentId)).not.toBeNull()
+      }
+
+      // Раньше соперник выбирался заново на каждый матч, и за сезон один и тот
+      // же клуб попадался по восемь-десять раз. Теперь чемпионат идёт кругом:
+      // дома и в гостях, и лишние встречи бывают только по кубкам.
+      const league = fixtures.filter((f) => f.competition === 'league')
+      const met = new Map<string, number>()
+      for (const f of league) met.set(f.opponentId, (met.get(f.opponentId) ?? 0) + 1)
+      expect(Math.max(...met.values())).toBeLessThanOrEqual(4)
+      // Дома и в гостях примерно поровну.
+      const home = league.filter((f) => f.home).length
+      expect(Math.abs(home - league.length / 2)).toBeLessThan(league.length * 0.25)
     }
+
     // Клуб высшего дивизиона играет и в лиге, и в кубке, и в еврокубке.
-    const kinds = new Set(fixtures.map((f) => f.competition))
-    expect(kinds.has('league')).toBe(true)
-    expect(kinds.has('cup')).toBe(true)
-    expect(kinds.has('continental')).toBe(true)
+    const kinds = new Set(seasonFixtures(getClub('inter'), SEASON_MATCHES, new Rng('cal', 'k', 0)).map((f) => f.competition))
+    expect(kinds).toEqual(new Set(['league', 'cup', 'continental']))
   })
 
   it('травма меряется матчами, и лёгкая тоже чего-то стоит', () => {
@@ -956,7 +971,8 @@ describe('движок карьеры', () => {
     )
     const player = { ...base, age: 26, gauges: { ...base.gauges, fitness: 90, form: 60 } }
     const result = simulateBlock(
-      { player, club, role: 'starter', minutesMult: 1, matchesOut: 5, banMatches: 3, size: 26, playedBefore: 0, scheduledBefore: 0 },
+      { player, club, role: 'starter', minutesMult: 1, matchesOut: 5, banMatches: 3, size: 26, playedBefore: 0, scheduledBefore: 0,
+        fixtures: seasonFixtures(club, 26, new Rng('out', 'fixtures', 0)) },
       new Rng('out', 'block', 0),
     )
 
@@ -981,7 +997,8 @@ describe('движок карьеры', () => {
     let checked = 0
     for (let i = 0; i < 40 && checked < 5; i++) {
       const result = simulateBlock(
-        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0, size: 26, playedBefore: 0, scheduledBefore: 0 },
+        { player, club, role: 'starter', minutesMult: 1, matchesOut: 0, banMatches: 0, size: 26, playedBefore: 0, scheduledBefore: 0,
+        fixtures: seasonFixtures(club, 26, new Rng('hurt', 'fixtures', i)) },
         new Rng('hurt', 'block', i),
       )
       const hurtAt = result.matches.findIndex((m) => m.injury !== null)
@@ -1057,7 +1074,10 @@ describe('движок карьеры', () => {
       new Rng('part', 'player', 0),
     )
     const player = { ...base, age: 26 }
-    const ctx = { player, club, role: 'starter' as Role, minutesMult: 1, matchesOut: 0, banMatches: 0 }
+    const ctx = {
+      player, club, role: 'starter' as Role, minutesMult: 1, matchesOut: 0, banMatches: 0,
+      fixtures: seasonFixtures(club, 26, new Rng('part', 'fixtures', 0)),
+    }
     const small = simulateBlock({ ...ctx, size: 5, playedBefore: 0, scheduledBefore: 0 }, new Rng('part', 'b', 1))
     const half = simulateBlock({ ...ctx, size: 26, playedBefore: 0, scheduledBefore: 0 }, new Rng('part', 'b', 1))
 
@@ -1210,7 +1230,10 @@ describe('движок карьеры', () => {
       new Rng('rest', 'player', 0),
     )
     const player = { ...base, age: 26, gauges: { ...base.gauges, fitness: 50, form: 60 } }
-    const ctx = { player, club, role: 'starter' as Role, size: 26, playedBefore: 0, scheduledBefore: 0 }
+    const ctx = {
+      player, club, role: 'starter' as Role, size: 26, playedBefore: 0, scheduledBefore: 0,
+      fixtures: seasonFixtures(club, 26, new Rng('rest', 'fixtures', 0)),
+    }
 
     const injured = simulateBlock({ ...ctx, minutesMult: 1, matchesOut: 26, banMatches: 0 }, new Rng('rest', 'b', 0))
     expect(injured.apps).toBe(0)
@@ -1291,6 +1314,23 @@ describe('движок карьеры', () => {
       }
     }
     throw new Error('продление истёкшего контракта ни разу не выпало')
+  })
+
+  it('в каждой лиге столько клубов, сколько в ней команд', () => {
+    // Пока составы были неполными, за сезон один и тот же соперник попадался
+    // по три-четыре раза: календарь собирался из восьми названных клубов.
+    for (const league of LEAGUES) {
+      const clubs = CLUBS.filter((c) => c.leagueId === league.id)
+      expect({ league: league.id, clubs: clubs.length }).toEqual({ league: league.id, clubs: league.teams })
+    }
+    // Дубль идентификатора — это молча съеденный клуб: карта по id оставит один.
+    expect(new Set(CLUBS.map((c) => c.id)).size).toBe(CLUBS.length)
+    for (const club of CLUBS) {
+      expect(club.name.ru).not.toHaveLength(0)
+      expect(club.name.en).not.toHaveLength(0)
+      expect(club.tier).toBeGreaterThanOrEqual(0)
+      expect(club.tier).toBeLessThanOrEqual(6)
+    }
   })
 
   it('положение относительно состава считается от текущего клуба', () => {

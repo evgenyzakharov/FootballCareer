@@ -14,12 +14,7 @@ export interface Fixture {
   competition: CompetitionKind
 }
 
-/**
- * Соперники по чемпионату. В `clubs.ts` названы не все клубы лиги (от восьми
- * до двадцати при номинальном размере до двадцати девяти), поэтому за сезон
- * один и тот же соперник попадается чаще, чем в жизни — особенно в маленьких
- * лигах. Это цена имеющихся данных, а не замысел.
- */
+/** Соперники по чемпионату: все клубы лиги, кроме своего. */
 function leaguePool(club: Club): Club[] {
   return CLUBS.filter((c) => c.leagueId === club.leagueId && c.id !== club.id)
 }
@@ -65,26 +60,62 @@ function competitionKinds(club: Club, count: number): CompetitionKind[] {
 }
 
 /**
- * Календарь отрезка. Соперник не повторяется два матча подряд: подряд одна и
- * та же пара выглядит как ошибка, даже когда это просто маленький пул.
+ * Круг чемпионата: с каждым соперником по разу дома и по разу в гостях. Именно
+ * это и делает календарь похожим на настоящий — раньше соперник выбирался
+ * случайно на каждый матч, и за сезон один и тот же клуб попадался по восемь
+ * раз, сколько бы команд в лиге ни было.
  */
-export function buildFixtures(club: Club, count: number, rng: Rng): Fixture[] {
+function leagueSchedule(club: Club, rng: Rng): Fixture[] {
+  const pool = leaguePool(club)
+  const both = pool.flatMap((opponent) => [
+    { opponentId: opponent.id, home: true, competition: 'league' as CompetitionKind },
+    { opponentId: opponent.id, home: false, competition: 'league' as CompetitionKind },
+  ])
+  return rng.shuffle(both)
+}
+
+/** Кубок и еврокубок — это жеребьёвка, а не круг: соперник каждый раз новый. */
+function drawFixtures(pool: Club[], count: number, competition: CompetitionKind, rng: Rng): Fixture[] {
+  if (pool.length === 0 || count <= 0) return []
+  return Array.from({ length: count }, () => {
+    const opponent = rng.pick(pool)
+    return { opponentId: opponent.id, home: rng.chance(0.5), competition }
+  })
+}
+
+/**
+ * Календарь на весь сезон. Собирается целиком и один раз, а не по матчу на
+ * ходу: круг чемпионата иначе не построить. Туры потом берут из него свои
+ * куски подряд.
+ *
+ * Матчей в сезоне столько, сколько задано снаружи. Круг чемпионата короче —
+ * добираем вторым проходом по тому же кругу; длиннее — берём его начало.
+ */
+export function seasonFixtures(club: Club, count: number, rng: Rng): Fixture[] {
   if (count <= 0) return []
-  const pools: Record<string, Club[]> = {
-    league: leaguePool(club),
-    cup: cupPool(club),
-    continental: continentalPool(club),
+  const kinds = competitionKinds(club, count)
+  const cups = kinds.filter((k) => k === 'cup').length
+  const euro = kinds.filter((k) => k === 'continental').length
+  const leagueCount = kinds.length - cups - euro
+
+  const league: Fixture[] = []
+  while (league.length < leagueCount) league.push(...leagueSchedule(club, rng))
+  league.length = leagueCount
+
+  const rest = [
+    ...drawFixtures(cupPool(club), cups, 'cup', rng),
+    ...drawFixtures(continentalPool(club), euro, 'continental', rng),
+  ]
+
+  // Перемешиваем всё вместе и разводим повторы подряд: одна и та же пара два
+  // матча кряду выглядит как ошибка, даже когда это просто жеребьёвка.
+  const mixed = rng.shuffle([...league, ...rest])
+  for (let i = 1; i < mixed.length; i++) {
+    if (mixed[i].opponentId !== mixed[i - 1].opponentId) continue
+    const swap = mixed.findIndex(
+      (f, j) => j > i && f.opponentId !== mixed[i - 1].opponentId && f.opponentId !== mixed[j - 1].opponentId,
+    )
+    if (swap > i) [mixed[i], mixed[swap]] = [mixed[swap], mixed[i]]
   }
-  const kinds = rng.shuffle(competitionKinds(club, count))
-  const fixtures: Fixture[] = []
-  let previous: string | null = null
-  for (const competition of kinds) {
-    const pool = pools[competition] ?? pools.league
-    if (pool.length === 0) continue
-    let opponent = rng.pick(pool)
-    if (opponent.id === previous && pool.length > 1) opponent = rng.pick(pool.filter((c) => c.id !== previous))
-    previous = opponent.id
-    fixtures.push({ opponentId: opponent.id, home: rng.chance(0.5), competition })
-  }
-  return fixtures
+  return mixed
 }

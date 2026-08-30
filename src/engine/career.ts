@@ -19,6 +19,7 @@ import { findClub, getClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
 import { getLeague } from '../data/leagues'
 import { buildCard, getEvent, needsPitch, pickEvent, resolveCard } from './events'
+import { seasonFixtures } from './fixtures'
 import type { EventCtx } from './events'
 import { SUMMER_RECOVERY, injuryMatches } from './injuries'
 import { adjustObjective, makeObjective } from './events/structural'
@@ -646,6 +647,14 @@ function runBlock(state: CareerState): CareerState {
       size: matchesInRound(state.pace, season.roundsPlayed),
       playedBefore: season.tally.apps,
       scheduledBefore: matchesBefore(state.pace, season.roundsPlayed),
+      // Календарь собирается на весь сезон и одинаково для всех его туров:
+      // круг чемпионата иначе не построить. Клуб в метке потока не случайно —
+      // после январского перехода календарь честно становится другим.
+      fixtures: seasonFixtures(
+        club,
+        SEASON_MATCHES,
+        new Rng(state.seed, `fixtures:${state.player.age}:${club.id}`, 0),
+      ),
     },
     rng,
   )
