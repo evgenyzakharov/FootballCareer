@@ -614,10 +614,22 @@ function runBlock(state: CareerState): CareerState {
     eventKey: 'block_report',
     channel: 'match',
     title: { key: 'report.block.title', params: { club: club.name } },
-    body: {
-      key: 'report.block.body',
-      params: { apps: result.apps, goals: result.goals, assists: result.assists, rating: rating || 0 },
-    },
+    // У вратаря голы и передачи всегда нули: отрезок описывают сухие матчи и
+    // пропущенные — те же цифры, что и в отчёте о сезоне.
+    body: isGoalkeeper(state.player.position)
+      ? {
+        key: 'report.block.body_gk',
+        params: {
+          apps: result.apps,
+          clean: result.cleanSheets,
+          conceded: result.goalsConceded,
+          rating: rating || 0,
+        },
+      }
+      : {
+        key: 'report.block.body',
+        params: { apps: result.apps, goals: result.goals, assists: result.assists, rating: rating || 0 },
+      },
     options: [],
     details: blockDetails(result, injured, banned),
   }

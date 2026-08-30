@@ -126,6 +126,10 @@ export const UI: Content = {
     ru: '{apps} матчей, {goals} голов, {assists} передач. Средняя оценка — {rating}.',
     en: '{apps} games, {goals} goals, {assists} assists. Average rating {rating}.',
   },
+  'report.block.body_gk': {
+    ru: '{apps} матчей, {clean} сухих, пропущено {conceded}. Средняя оценка — {rating}.',
+    en: '{apps} matches, {clean} clean sheets, {conceded} conceded. Average rating {rating}.',
+  },
   'report.block.missed': { ru: 'Отрезок пропущен из-за травмы.', en: 'The run was missed through injury.' },
   'report.block.suspended': { ru: 'Отрезок пропущен: вы дисквалифицированы.', en: 'The run was missed: you are suspended.' },
   'report.block.no_minutes': { ru: 'Ни одного матча: вы вне заявки.', en: 'Not a single game: you were out of the squad.' },

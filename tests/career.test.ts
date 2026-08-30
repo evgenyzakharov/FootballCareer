@@ -648,6 +648,33 @@ describe('движок карьеры', () => {
     expect(gkReports).toBeGreaterThan(3)
   })
 
+  it('в отчёте об отрезке вратарь видит сухие и пропущенные', () => {
+    let gkBlocks = 0
+    let state = setIdentity(newCareer('gk-block'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 1,
+      foot: 'right',
+      countryCode: 'ITA',
+      position: 'GK',
+    })
+    const rng = new Rng('gk-block', 'player-choices', 0)
+    let guard = 0
+    while (state.phase !== 'retired' && guard < 4000) {
+      guard++
+      if (state.resolution) { state = ack(state); continue }
+      if (!state.card) break
+      if (state.card.eventKey === 'block_report') {
+        // Раньше отрезок отчитывался голами и передачами — у вратаря это нули.
+        expect(state.card.body.key).toBe('report.block.body_gk')
+        expect(state.card.body.params).toHaveProperty('conceded')
+        gkBlocks++
+      }
+      const available = state.card.options.filter((o) => !o.disabled)
+      state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
+    }
+    expect(gkBlocks).toBeGreaterThan(3)
+  })
+
   it('положение относительно состава считается от текущего клуба', () => {
     // Без клуба сравнивать не с чем.
     expect(squadStanding(newCareer('standing'))).toBeNull()
