@@ -1,6 +1,6 @@
 import type {
-  Attributes, Beat, Card, CareerState, Effect, NationalTally, Pace, Player, Role, SeasonRecord,
-  Stage, Text,
+  Attributes, Beat, Card, CareerState, Effect, Localized, NationalTally, Pace, Player, Role,
+  SeasonRecord, Stage, Text,
 } from './types'
 import { ATTR_KEYS, attrAgeBand, isGoalkeeper, marketValue, overall } from './attributes'
 import { MAX_AGE, START_AGE, createPlayer, playerOvr, squadLevel } from './player'
@@ -400,24 +400,32 @@ const STAGE_MONTHS: Record<PlayingStage, number[]> = {
 }
 
 /**
- * Месяц тура. Туры этапа раскладываются по его месяцам поровну: когда туров
- * меньше, чем месяцев, часть месяцев пропускается, но начало и конец этапа
- * остаются на своих местах. Спокойный сезон так же начинается в августе и
+ * Месяцы тура. Месяцы этапа делятся между его турами подряд, без пропусков:
+ * когда туров меньше, чем месяцев, тур забирает два — «август–сентябрь», —
+ * а не отдаёт лишний месяц в никуда. Остаток достаётся первым турам этапа:
+ * пауза и концовка сезона стоят на своих местах, растягивается начало.
+ *
+ * При насыщенном ритме туров ровно столько же, сколько месяцев, и каждый тур
+ * получает свой. Спокойный сезон всё так же начинается в августе и
  * заканчивается в мае, просто идёт крупнее.
  */
-export function monthOfRound(pace: Pace, stage: PlayingStage, roundsPlayed: number): number {
+export function monthsOfRound(pace: Pace, stage: PlayingStage, roundsPlayed: number): number[] {
   const months = STAGE_MONTHS[stage]
+  const total = roundsInStage(pace, stage)
+  if (total <= 1) return months
   const before = PLAYING_STAGES.slice(0, PLAYING_STAGES.indexOf(stage)).reduce(
     (sum, s) => sum + roundsInStage(pace, s),
     0,
   )
-  const total = roundsInStage(pace, stage)
   // Свободный агент проходит осень и весну одним битом, и после подписания
   // контракта посреди сезона счётчик туров не совпадает с этапом: держим
   // индекс внутри этапа, иначе месяц уехал бы за его границы.
-  const index = clamp(roundsPlayed - before, 0, Math.max(0, total - 1))
-  if (total <= 1) return months[months.length - 1]
-  return months[Math.round((index * (months.length - 1)) / (total - 1))]
+  const index = clamp(roundsPlayed - before, 0, total - 1)
+  const from = Math.ceil((index * months.length) / total)
+  const to = Math.ceil(((index + 1) * months.length) / total) - 1
+  // Туров больше, чем месяцев, быть не должно, но если веса этапов однажды
+  // разъедутся с календарём — лучше повторить месяц, чем показать пустоту.
+  return to >= from ? months.slice(from, to + 1) : [months[Math.min(from, months.length - 1)]]
 }
 
 /**
@@ -753,6 +761,8 @@ function runBlock(state: CareerState): CareerState {
   next = { ...next, season: { ...next.season!, role } }
 
   const rating = averageRating(result.ratingSum, result.ratingCount)
+  // Матчи идут только в игровых этапах, поэтому этап здесь всегда игровой.
+  const months = monthsOfRound(state.pace, state.stage as PlayingStage, season.roundsPlayed)
   const card: Card = {
     id: `block@${state.player.age}:${season.roundsPlayed}`,
     kind: 'report',
@@ -761,13 +771,7 @@ function runBlock(state: CareerState): CareerState {
     channel: 'match',
     // Тур подписывается месяцем, а не номером: «октябрь» говорит, где мы в
     // сезоне, а «тур 3» при разной насыщенности означает разное время года.
-    title: {
-      key: 'report.block.title',
-      params: {
-        club: club.name,
-        month: { key: `month.${monthOfRound(state.pace, state.stage as PlayingStage, season.roundsPlayed)}` },
-      },
-    },
+    title: blockTitle(club.name, months),
     // У вратаря голы и передачи всегда нули: отрезок описывают сухие матчи и
     // пропущенные — те же цифры, что и в отчёте о сезоне.
     body: isGoalkeeper(state.player.position)
@@ -799,6 +803,19 @@ function runBlock(state: CareerState): CareerState {
     ? [{ t: 'event', key: 'injury_hit', payload: { kind: worst.kind, severity: worst.severity } }, ...next.queue]
     : next.queue
   return { ...next, card, queue }
+}
+
+/** Подпись отчёта: «Клуб · октябрь» или «Клуб · август–сентябрь». */
+function blockTitle(club: Localized, months: number[]): Text {
+  if (months.length === 1) return { key: 'report.block.title', params: { club, month: { key: `month.${months[0]}` } } }
+  return {
+    key: 'report.block.title_span',
+    params: {
+      club,
+      from: { key: `month.${months[0]}` },
+      to: { key: `month.${months[months.length - 1]}` },
+    },
+  }
 }
 
 /** Тур без клуба: матчей нет, форма тает, о вас забывают. */

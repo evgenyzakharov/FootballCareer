@@ -49,9 +49,12 @@ export const UI: Content = {
   'card.stage': { ru: 'Этап', en: 'Stage' },
 
   'stage.preseason': { ru: 'Предсезонка', en: 'Preseason' },
-  'stage.autumn': { ru: 'Осень', en: 'Autumn' },
-  'stage.winter': { ru: 'Зима', en: 'Winter' },
-  'stage.spring': { ru: 'Весна', en: 'Spring' },
+  // Этапы названы по своим месяцам, а не по временам года: «Весна» на
+  // карточке за январь была неправдой, а зимняя пауза делит сезон надвое
+  // ровно там, где проходит граница этапов.
+  'stage.autumn': { ru: 'Старт сезона', en: 'Season start' },
+  'stage.winter': { ru: 'Перед паузой', en: 'Before the break' },
+  'stage.spring': { ru: 'После паузы', en: 'After the break' },
   'stage.run_in': { ru: 'Концовка сезона', en: 'Run-in' },
   'stage.review': { ru: 'Итоги сезона', en: 'Season review' },
 
@@ -167,6 +170,9 @@ export const UI: Content = {
 
   // ─── Отчёты ───────────────────────────────────────────────────────────────
   'report.block.title': { ru: '{club} · {month}', en: '{club} · {month}' },
+  // Отдельный ключ, а не месяц-параметр с подстановками: вложенный текст
+  // рендерится без своих параметров, и диапазон пришёл бы пустым.
+  'report.block.title_span': { ru: '{club} · {from}–{to}', en: '{club} · {from}–{to}' },
   'report.block.body': {
     ru: '{apps} матчей, {goals} голов, {assists} передач. Средняя оценка — {rating}.',
     en: '{apps} games, {goals} goals, {assists} assists. Average rating {rating}.',

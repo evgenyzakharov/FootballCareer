@@ -1035,6 +1035,12 @@ describe('движок карьеры', () => {
     expect(rushed.player.injuries).toHaveLength(injured.player.injuries.length)
   })
 
+  /** Месяцы сезона по-русски, в календарном порядке: с августа по май. */
+  const SEASON_MONTHS = [
+    'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь',
+    'январь', 'февраль', 'март', 'апрель', 'май',
+  ]
+
   it('сезон режется на туры, но матчей в нём столько же', () => {
     for (const pace of ['calm', 'normal', 'busy'] as Pace[]) {
       const rounds = ROUNDS_PER_SEASON[pace]
@@ -1056,18 +1062,27 @@ describe('движок карьеры', () => {
       const rng = new Rng(`rounds-${pace}`, 'choices', 0)
       let reports = 0
       let guard = 0
+      const months: string[] = []
       // Считаем отчёты за первый полный сезон с клубом.
       while (state.history.length === 0 && guard < 400) {
         guard++
         if (state.resolution) { state = ack(state); continue }
         if (!state.card) break
-        if (state.card.eventKey === 'block_report') reports++
+        if (state.card.eventKey === 'block_report') {
+          reports++
+          const title = t(state.card.title, 'ru')
+          for (const month of SEASON_MONTHS) if (title.includes(month)) months.push(month)
+        }
         const available = state.card.options.filter((o) => !o.disabled)
         state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
       }
       // Туры разложены по этапам методом наибольших остатков: сумма обязана
       // сойтись, иначе часть матчей сезона просто не сыграется.
       expect(reports).toBe(ROUNDS_PER_SEASON[pace])
+      // Месяцы делятся между турами подряд: при любой насыщенности сезон идёт
+      // с августа по май, без пропусков и без повторов. Когда туров меньше,
+      // чем месяцев, отчёт подписан диапазоном — «август–сентябрь».
+      expect(months).toEqual(SEASON_MONTHS)
     }
   })
 
