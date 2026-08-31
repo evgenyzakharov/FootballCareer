@@ -49,7 +49,8 @@ export function Retired({ state, onRestart }: { state: CareerState; onRestart: (
       </div>
 
       <div className="retired__cols">
-        <div><Timeline state={state} /></div>
+        {/* Законченную карьеру читают с начала, а не с конца. */}
+        <div><Timeline state={state} order="chronological" /></div>
         <div><Sidebar state={state} /></div>
       </div>
 

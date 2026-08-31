@@ -26,7 +26,14 @@ interface Row {
   current: boolean
 }
 
-export function Timeline({ state }: { state: CareerState }) {
+/**
+ * Порядок сезонов. По ходу карьеры сверху нужен последний: панель отвечает на
+ * «как я иду сейчас», а список длиннее экрана, и начало карьеры занимало его
+ * целиком. На экране завершения — наоборот, там читают историю с начала.
+ */
+type Order = 'recent' | 'chronological'
+
+export function Timeline({ state, order = 'recent' }: { state: CareerState; order?: Order }) {
   const t = useT()
   const locale = useLocale()
   const gk = state.player.position === 'GK'
@@ -80,6 +87,10 @@ export function Timeline({ state }: { state: CareerState }) {
     })
   }
 
+  // Строки собираются от первого сезона к последнему: текущий дописывается в
+  // конец. Разворачиваем готовый список, а не собираем в другом порядке.
+  const ordered = order === 'recent' ? [...rows].reverse() : rows
+
   return (
     <Panel titleKey="panel.timeline">
       <div className="timeline">
@@ -97,7 +108,7 @@ export function Timeline({ state }: { state: CareerState }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {ordered.map((row) => (
               <tr key={row.key} data-current={row.current}>
                 <td className="timeline__season">
                   {row.season}
