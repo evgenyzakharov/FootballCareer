@@ -387,6 +387,40 @@ function roundsInStage(pace: Pace, stage: PlayingStage): number {
 }
 
 /**
+ * Календарные месяцы этапа. Сезон идёт с августа по май, а этапы делят его
+ * ровно в тех же долях, что и туры (3 : 2 : 3 : 2), — поэтому при насыщенном
+ * ритме на каждый тур приходится свой месяц, и подпись отчёта совпадает с
+ * календарём один в один.
+ */
+const STAGE_MONTHS: Record<PlayingStage, number[]> = {
+  autumn: [8, 9, 10],
+  winter: [11, 12],
+  spring: [1, 2, 3],
+  run_in: [4, 5],
+}
+
+/**
+ * Месяц тура. Туры этапа раскладываются по его месяцам поровну: когда туров
+ * меньше, чем месяцев, часть месяцев пропускается, но начало и конец этапа
+ * остаются на своих местах. Спокойный сезон так же начинается в августе и
+ * заканчивается в мае, просто идёт крупнее.
+ */
+export function monthOfRound(pace: Pace, stage: PlayingStage, roundsPlayed: number): number {
+  const months = STAGE_MONTHS[stage]
+  const before = PLAYING_STAGES.slice(0, PLAYING_STAGES.indexOf(stage)).reduce(
+    (sum, s) => sum + roundsInStage(pace, s),
+    0,
+  )
+  const total = roundsInStage(pace, stage)
+  // Свободный агент проходит осень и весну одним битом, и после подписания
+  // контракта посреди сезона счётчик туров не совпадает с этапом: держим
+  // индекс внутри этапа, иначе месяц уехал бы за его границы.
+  const index = clamp(roundsPlayed - before, 0, Math.max(0, total - 1))
+  if (total <= 1) return months[months.length - 1]
+  return months[Math.round((index * (months.length - 1)) / (total - 1))]
+}
+
+/**
  * Биты игрового этапа: туры вперемешку с ситуациями. Раскладывать их именно
  * так — вся суть тура: раньше сезон приходил двумя кучами событий и двумя
  * отчётами, теперь между ситуациями идут матчи.
@@ -725,7 +759,15 @@ function runBlock(state: CareerState): CareerState {
     stage: state.stage,
     eventKey: 'block_report',
     channel: 'match',
-    title: { key: 'report.block.title', params: { club: club.name, round: season.roundsPlayed + 1 } },
+    // Тур подписывается месяцем, а не номером: «октябрь» говорит, где мы в
+    // сезоне, а «тур 3» при разной насыщенности означает разное время года.
+    title: {
+      key: 'report.block.title',
+      params: {
+        club: club.name,
+        month: { key: `month.${monthOfRound(state.pace, state.stage as PlayingStage, season.roundsPlayed)}` },
+      },
+    },
     // У вратаря голы и передачи всегда нули: отрезок описывают сухие матчи и
     // пропущенные — те же цифры, что и в отчёте о сезоне.
     body: isGoalkeeper(state.player.position)

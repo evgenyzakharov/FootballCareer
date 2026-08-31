@@ -130,6 +130,7 @@ export const UI: Content = {
   'match.continental2': { ru: 'еврокубок', en: 'continental' },
   'match.club_world_cup': { ru: 'клубный ЧМ', en: 'club world cup' },
   'match.league': { ru: 'лига', en: 'league' },
+  'match.round': { ru: 'тур {n}', en: 'round {n}' },
   'match.came_on': { ru: 'вышел на замену, {minutes}′', en: 'came on, {minutes}′' },
   'match.clean_sheet': { ru: 'на ноль', en: 'clean sheet' },
   'match.conceded': { ru: '−{n}', en: '−{n}' },
@@ -151,8 +152,21 @@ export const UI: Content = {
   'panel.no_matches': { ru: 'Сезон ещё не начался', en: 'The season has not started' },
   'timeline.current': { ru: 'Идёт сезон', en: 'In progress' },
 
+  // Месяцы сезона: с августа по май. Летних тут нет — в межсезонье
+  // отчётов о турах не бывает.
+  'month.1': { ru: 'январь', en: 'January' },
+  'month.2': { ru: 'февраль', en: 'February' },
+  'month.3': { ru: 'март', en: 'March' },
+  'month.4': { ru: 'апрель', en: 'April' },
+  'month.5': { ru: 'май', en: 'May' },
+  'month.8': { ru: 'август', en: 'August' },
+  'month.9': { ru: 'сентябрь', en: 'September' },
+  'month.10': { ru: 'октябрь', en: 'October' },
+  'month.11': { ru: 'ноябрь', en: 'November' },
+  'month.12': { ru: 'декабрь', en: 'December' },
+
   // ─── Отчёты ───────────────────────────────────────────────────────────────
-  'report.block.title': { ru: '{club} · тур {round}', en: '{club} · round {round}' },
+  'report.block.title': { ru: '{club} · {month}', en: '{club} · {month}' },
   'report.block.body': {
     ru: '{apps} матчей, {goals} голов, {assists} передач. Средняя оценка — {rating}.',
     en: '{apps} games, {goals} goals, {assists} assists. Average rating {rating}.',

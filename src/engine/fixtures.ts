@@ -12,6 +12,12 @@ export interface Fixture {
   opponentId: string
   home: boolean
   competition: CompetitionKind
+  /**
+   * Порядковый номер тура чемпионата. Только у матчей лиги: у кубка и
+   * еврокубка тура нет, там стадия. Проставляется по готовому календарю,
+   * поэтому совпадает с порядком игр в сезоне.
+   */
+  round?: number
 }
 
 /** Соперники по чемпионату: все клубы лиги, кроме своего. */
@@ -117,5 +123,10 @@ export function seasonFixtures(club: Club, count: number, rng: Rng): Fixture[] {
     )
     if (swap > i) [mixed[i], mixed[swap]] = [mixed[swap], mixed[i]]
   }
-  return mixed
+  // Нумеруем туры чемпионата по готовому календарю: кубковые и еврокубковые
+  // игры номера не получают и счёт не сдвигают.
+  let round = 0
+  return mixed.map((fixture) =>
+    fixture.competition === 'league' ? { ...fixture, round: ++round } : fixture,
+  )
 }

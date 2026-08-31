@@ -4,7 +4,8 @@ import { currentOvr, currentValue, squadStanding } from '../engine/career'
 import { averageRating } from '../engine/performance'
 import { findClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
-import { BipolarGauge, Chip, Empty, Gauge, KeyValue, Panel, Stat } from './bits'
+import { BipolarGauge, Empty, Gauge, KeyValue, Panel, Stat } from './bits'
+import { FormStrip, MatchList } from './Matches'
 import { ovrTier } from './format'
 import { useLocale, useMoney, useT } from './locale'
 
@@ -146,14 +147,22 @@ export function Hud({ state }: { state: CareerState }) {
 }
 
 /**
- * Навыки и черты живут отдельно от остальной панели игрока: в широкой
+ * Навыки и форма сезона живут отдельно от остальной панели игрока: в широкой
  * раскладке они уходят в верхнюю строку центральной колонки. Левая колонка
  * иначе не влезала в экран — состояние уезжало под сгиб.
+ *
+ * Наверху именно форма, а не черты: форма меняется каждый тур, и смотреть на
+ * неё нужно перед каждым решением, а черты за сезон могут не измениться ни
+ * разу — им хватает места в сайдбаре.
  */
 export function HudSkills({ state }: { state: CareerState }) {
   const t = useT()
   const player = state.player
   const gk = isGoalkeeper(player.position)
+  const played = state.season?.matches ?? []
+  // Три последних матча, свежие сверху: весь тур и так лежит в его карточке,
+  // а панель отвечает на «что было вчера» и «куда идёт сезон».
+  const recent = [...played].reverse().slice(0, 3)
 
   return (
     <>
@@ -168,15 +177,15 @@ export function HudSkills({ state }: { state: CareerState }) {
         </div>
       </Panel>
 
-      <Panel titleKey="panel.traits">
-        {player.traits.length === 0 ? (
-          <Empty textKey="panel.no_traits" />
+      {/* Отчёт о туре пролистывается и исчезает — здесь сезон остаётся на виду. */}
+      <Panel titleKey="panel.matches">
+        {played.length === 0 ? (
+          <Empty textKey="panel.no_matches" />
         ) : (
-          <div className="chips">
-            {player.traits.map((trait) => (
-              <Chip key={trait} tone="good">{t({ key: `trait.${trait}` })}</Chip>
-            ))}
-          </div>
+          <>
+            <FormStrip matches={played} />
+            <MatchList matches={recent} gk={gk} />
+          </>
         )}
       </Panel>
     </>

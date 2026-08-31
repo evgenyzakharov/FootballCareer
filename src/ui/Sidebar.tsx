@@ -3,7 +3,6 @@ import { isGoalkeeper } from '../engine/attributes'
 import { careerTotals } from '../engine/career'
 import { getCountry } from '../data/countries'
 import { Chip, Empty, KeyValue, Panel, Stat } from './bits'
-import { FormStrip, MatchList } from './Matches'
 import { seasonShort } from './format'
 import { useLocale, useT } from './locale'
 
@@ -27,10 +26,6 @@ export function Sidebar({ state }: { state: CareerState }) {
   // нет вовсе, а в отчёте о сезоне видно только текущий год.
   const totals = careerTotals(state)
   const gk = isGoalkeeper(state.player.position)
-  const played = state.season?.matches ?? []
-  // Три последних матча, свежие сверху: весь тур и так лежит в его карточке,
-  // а панель отвечает на «что было вчера» и «куда идёт сезон».
-  const recent = [...played].reverse().slice(0, 3)
 
   return (
     <>
@@ -54,15 +49,16 @@ export function Sidebar({ state }: { state: CareerState }) {
         )}
       </Panel>
 
-      {/* Отчёт о туре пролистывается и исчезает — здесь сезон остаётся на виду. */}
-      <Panel titleKey="panel.matches">
-        {played.length === 0 ? (
-          <Empty textKey="panel.no_matches" />
+      {/* Черты меняются раз в несколько сезонов — им хватает места в сайдбаре. */}
+      <Panel titleKey="panel.traits">
+        {state.player.traits.length === 0 ? (
+          <Empty textKey="panel.no_traits" />
         ) : (
-          <>
-            <FormStrip matches={played} />
-            <MatchList matches={recent} gk={gk} />
-          </>
+          <div className="chips">
+            {state.player.traits.map((trait) => (
+              <Chip key={trait} tone="good">{t({ key: `trait.${trait}` })}</Chip>
+            ))}
+          </div>
         )}
       </Panel>
 

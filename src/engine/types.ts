@@ -303,6 +303,11 @@ export interface MatchResult {
   opponentId: string
   home: boolean
   competition: CompetitionKind
+  /**
+   * Номер тура чемпионата. Есть только у матчей лиги и только у карьер,
+   * начатых после его появления, — читать через проверку на undefined.
+   */
+  round?: number
   /** 0 — в заявку не попал или просидел на скамейке. */
   minutes: number
   started: boolean

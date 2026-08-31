@@ -26,8 +26,14 @@ export function MatchList({ matches, gk }: { matches: MatchResult[]; gk: boolean
         const club = findClub(match.opponentId)
         const played = match.minutes > 0
         const where = t({ key: match.home ? 'match.home' : 'match.away' })
-        // Лигу не подписываем: она подразумевается, а кубок и еврокубок — нет.
-        const comp = match.competition === 'league' ? null : t({ key: `match.${match.competition}` })
+        // Лигу называем номером тура: слово «чемпионат» и так подразумевается,
+        // а номер ставит матч на место в сезоне. Кубок и еврокубок — словом.
+        const comp =
+          match.competition === 'league'
+            ? match.round
+              ? t({ key: 'match.round', params: { n: match.round } })
+              : null
+            : t({ key: `match.${match.competition}` })
         const how = match.started
           ? `${match.minutes}′`
           : t({ key: 'match.came_on', params: { minutes: match.minutes } })
