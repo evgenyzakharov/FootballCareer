@@ -211,6 +211,16 @@ try {
       // Размер под палец требуем только там, где ввод сенсорный.
       if (touch) check(`${screen}: кнопки не меньше 44px`, sc.tap.under44 === 0, `${sc.tap.under44} шт., минимум ${sc.tap.min}px`)
     }
+    // На широком экране карьера помещается в окно целиком: прокручиваются
+    // колонки, а не страница.
+    if (width > 1200) {
+      const career = report.screens.career
+      check(
+        'карьера помещается в один экран',
+        career?.verticalOverflow === false,
+        `scrollHeight ${career?.pageScrollHeight} > ${height}`,
+      )
+    }
     // Когда колонки складываются в одну, решение должно быть первым на экране.
     if (width <= 860) {
       check('карточка решения выше панели игрока', report.screens.career?.cardBeforeHud === true, `card@${report.screens.career?.cardTop} hud@${report.screens.career?.hudTop}`)

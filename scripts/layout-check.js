@@ -77,6 +77,10 @@
     const snapshot = {
       pageScrollWidth: doc.scrollWidth,
       horizontalOverflow: doc.scrollWidth > window.innerWidth + 1,
+      pageScrollHeight: doc.scrollHeight,
+      // На широком экране карьера обязана помещаться в окно целиком: длинное
+      // прокручивают колонки, а не страница.
+      verticalOverflow: doc.scrollHeight > window.innerHeight + 1,
       overflowing: overflowing(),
       tap: tapTargets(),
       innerScrollers: scrollers(),

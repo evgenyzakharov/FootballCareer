@@ -52,10 +52,15 @@ export default function App() {
     reset()
   }, [state, locale, reset])
 
+  // Экран карьеры на десктопе живёт в одном экране и прокручивается колонками,
+  // а не страницей. Остальные экраны — обычная лента: интро, выбор игрока и
+  // итоги карьеры читаются сверху вниз.
+  const careerScreen = state?.phase === 'academy' || state?.phase === 'season'
+
   return (
     <LocaleContext value={locale}>
       <CurrencyContext value={currency}>
-      <div className="app">
+      <div className={careerScreen ? 'app app--fixed' : 'app'}>
         <header className="topbar">
           <span className="topbar__brand">{tr('app.title')}</span>
           <span className="topbar__spacer" />

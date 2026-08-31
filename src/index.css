@@ -283,6 +283,45 @@ input { font: inherit; color: inherit; }
   .career__left { grid-column: 1; grid-row: 2; }
   .career__right { grid-column: 2; grid-row: 1 / span 2; }
 }
+/*
+ * Широкий экран: карьера целиком помещается в окно, а прокручиваются колонки,
+ * а не страница. Так карточка решения и состояние игрока всегда на месте, а
+ * листается только то, что длиннее экрана, — история карьеры и лента. Раньше
+ * страница уезжала вниз вся, и чтобы посмотреть трофеи, приходилось терять из
+ * виду сам выбор.
+ */
+@media (min-width: 1201px) {
+  .app--fixed { height: 100%; overflow: hidden; }
+  .app--fixed .career { min-height: 0; align-items: stretch; }
+  .app--fixed .career__left,
+  .app--fixed .career__center,
+  .app--fixed .career__right {
+    min-height: 0;
+    overflow-y: auto;
+    /* Докрутив колонку до конца, колесо не должно дёргать страницу. */
+    overscroll-behavior: contain;
+  }
+  /* Дисклеймер съедал полсотни пикселей высоты, которых и так нет. */
+  .app--fixed .footer-note { padding: 8px 18px 10px; }
+
+  /*
+   * Интервалы плотнее ровно настолько, чтобы состояние игрока помещалось в
+   * колонку целиком: восемь полос по паре пикселей и пара отступов между
+   * панелями — это и есть те сорок пикселей, из-за которых оно не влезало.
+   */
+  .app--fixed .panel { margin-bottom: 10px; }
+  .app--fixed .gauge { margin-bottom: 7px; }
+  .app--fixed .gauge-grid + .gauge-group { margin-top: 10px; }
+  .app--fixed .stat-row { margin-bottom: 9px; }
+  .app--fixed .kv { padding: 2px 0; }
+}
+
+/* Три обычные полосы прокрутки съели бы ширину колонок. */
+.career__left, .career__center, .career__right {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
 /* Одна колонка: сначала решение, потом состояние, потом история. */
 @media (max-width: 860px) {
   .career { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 10px; }
