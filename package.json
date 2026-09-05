@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "check:browser": "node scripts/browser-check.mjs",
     "balance": "tsx scripts/balance.ts",
-    "counts": "tsx scripts/counts.ts"
+    "counts": "tsx scripts/counts.ts",
+    "awards": "tsx scripts/awards.ts"
   },
   "dependencies": {
     "react": "^19.2.4",

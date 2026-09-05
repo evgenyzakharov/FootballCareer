@@ -13,7 +13,8 @@ npm run dev
 Прочее: `npm run build`, `npm test`, `npm run lint`, `npm run typecheck`,
 `npm run check:browser` — сквозной прогон интерфейса в headless-браузере,
 `npm run balance 80 [позиция]` — диагностика баланса,
-`npm run counts` — актуальные счётчики контента.
+`npm run counts` — актуальные счётчики контента,
+`npm run awards 120` — награды по амплуа и из чего они складываются.
 
 На пуш и pull request в `main` то же самое гоняет CI: линт, типы, тесты и
 сборку на Node 22 и 24, затем браузерные проверки
