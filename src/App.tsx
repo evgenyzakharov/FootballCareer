@@ -6,10 +6,10 @@ import { clearState, loadCurrency, loadLocale, loadState, saveCurrency, saveLoca
 import { t } from './i18n'
 import { CurrencyContext, LocaleContext } from './ui/locale'
 import { IdentityScreen } from './ui/Identity'
-import { Hud, HudSkills } from './ui/Hud'
+import { HudFacts } from './ui/Hud'
+import { SeasonBar } from './ui/Season'
 import { CardView, ResolutionView } from './ui/CardView'
-import { Timeline } from './ui/Timeline'
-import { Sidebar } from './ui/Sidebar'
+import { Dossier } from './ui/Dossier'
 import { Retired } from './ui/Retired'
 
 function randomSeed(): string {
@@ -117,13 +117,12 @@ export default function App() {
 
         {state && (state.phase === 'academy' || state.phase === 'season') && (
           <main className="career">
-            <div className="career__left">
-              <Hud state={state} />
-            </div>
-            <div className="career__center">
-              <div className="career__skills">
-                <HudSkills state={state} />
-              </div>
+            {/* Всё про «сейчас» — наверху во всю ширину: кто игрок, на каких
+                условиях он в клубе и как идёт сезон. Ниже только выбор и
+                досье, и обоим достаётся вся высота экрана. */}
+            <HudFacts state={state} />
+            <SeasonBar state={state} />
+            <div className="career__stage">
               {state.resolution ? (
                 <ResolutionView resolution={state.resolution} onNext={() => setState(ack(state))} />
               ) : state.card ? (
@@ -134,9 +133,8 @@ export default function App() {
                 />
               ) : null}
             </div>
-            <div className="career__right">
-              <Timeline state={state} />
-              <Sidebar state={state} />
+            <div className="career__dossier">
+              <Dossier state={state} />
             </div>
           </main>
         )}

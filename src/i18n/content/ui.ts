@@ -99,6 +99,10 @@ export const UI: Content = {
   'hud.status_injured': { ru: 'травма, {matches} матч.', en: 'injured, {matches} game(s)' },
   'hud.status_suspended': { ru: 'дисквалификация, {matches} матч.', en: 'suspended, {matches} game(s)' },
 
+  // Вкладки досье: там, где панель называлась длинно, у вкладки имя короче.
+  'tab.history': { ru: 'История', en: 'History' },
+  'tab.people': { ru: 'Люди', en: 'People' },
+  'season.now': { ru: 'Сезон {season}', en: 'Season {season}' },
   'panel.attrs': { ru: 'Навыки', en: 'Attributes' },
   'panel.gauges': { ru: 'Состояние', en: 'Condition' },
   'panel.traits': { ru: 'Черты', en: 'Traits' },

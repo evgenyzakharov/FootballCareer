@@ -86,31 +86,33 @@
       innerScrollers: scrollers(),
     }
     if (name === 'career') {
-      const cols = ['.career__left', '.career__center', '.career__right']
-      snapshot.order = cols
-        .map(function (sel) {
-          const el = document.querySelector(sel)
-          if (!el) return null
-          const r = el.getBoundingClientRect()
-          return { sel: sel, top: Math.round(r.top + window.scrollY), height: Math.round(r.height) }
-        })
-        .filter(Boolean)
+      const blocks = ['.facts', '.season', '.career__stage', '.career__dossier']
+      const top = function (sel) {
+        const el = document.querySelector(sel)
+        return el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : null
+      }
+      snapshot.order = blocks
+        .map(function (sel) { return { sel: sel, top: top(sel) } })
+        .filter(function (x) { return x.top !== null })
         .sort(function (a, b) { return a.top - b.top })
         .map(function (x) { return x.sel + '@' + x.top })
-      const card = document.querySelector('.career__center .card')
+      const card = document.querySelector('.career__stage .card')
       snapshot.cardTop = card ? Math.round(card.getBoundingClientRect().top + window.scrollY) : null
-      const hud = document.querySelector('.career__left .panel')
-      snapshot.hudTop = hud ? Math.round(hud.getBoundingClientRect().top + window.scrollY) : null
-      snapshot.cardBeforeHud = snapshot.cardTop !== null && snapshot.hudTop !== null
-        ? snapshot.cardTop < snapshot.hudTop
+      // На узком экране блоки складываются в один столбец, и первым должно
+      // быть то, что игрок сейчас выбирает, а не его рост и зарплата.
+      snapshot.factsTop = top('.facts')
+      snapshot.seasonTop = top('.season')
+      snapshot.dossierTop = top('.career__dossier')
+      snapshot.cardBeforeFacts = snapshot.cardTop !== null && snapshot.factsTop !== null
+        ? snapshot.cardTop < snapshot.factsTop
         : null
-      // Навыки живут в той же колонке, что карточка, и проверка против профиля
-      // их не видит: карточка может оказаться ниже них и всё равно пройти.
-      const skills = document.querySelector('.career__skills')
-      snapshot.skillsTop = skills ? Math.round(skills.getBoundingClientRect().top + window.scrollY) : null
-      snapshot.cardBeforeSkills = snapshot.cardTop !== null && snapshot.skillsTop !== null
-        ? snapshot.cardTop < snapshot.skillsTop
+      snapshot.cardBeforeSeason = snapshot.cardTop !== null && snapshot.seasonTop !== null
+        ? snapshot.cardTop < snapshot.seasonTop
         : null
+      // Вкладка досье показывается одна: если видно сразу несколько панелей,
+      // значит переключение сломалось и вернулась стопка на весь экран.
+      snapshot.visiblePanes = document.querySelectorAll('.dossier__body:not([hidden])').length
+      snapshot.tabs = document.querySelectorAll('.dossier .tab').length
     }
     report.screens[name] = snapshot
   }
@@ -131,14 +133,14 @@
       phase: phase,
       cards: cards,
       ticks: ticks,
-      hasCenter: !!document.querySelector('.career__center'),
-      hasCard: !!document.querySelector('.career__center .card'),
+      hasStage: !!document.querySelector('.career__stage'),
+      hasCard: !!document.querySelector('.career__stage .card'),
       hasIntro: !!document.querySelector('.intro .primary-btn'),
       hasName: !!document.getElementById('lastName'),
       done: !!document.getElementById('LAYOUTOUT'),
     }
     if (++ticks > 900) {
-      if (document.querySelector('.career__center')) measure('career')
+      if (document.querySelector('.career__stage')) measure('career')
       return finish()
     }
     if (phase === 0) {
@@ -159,7 +161,7 @@
       return setTimeout(tick, 25)
     }
 
-    const card = document.querySelector('.career__center .card')
+    const card = document.querySelector('.career__stage .card')
     if (card) {
       // Ждём, пока накопится история: пустой таймлайн ничего не проверяет.
       if (cards >= 16) {

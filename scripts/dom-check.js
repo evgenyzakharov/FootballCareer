@@ -120,7 +120,7 @@
     }
 
     // Основной цикл: карточка → выбор → результат → дальше.
-    const card = document.querySelector('.career__center .card')
+    const card = document.querySelector('.career__stage .card')
     if (card) {
       const tags = card.querySelectorAll('.card__tag')
       if (tags.length >= 2) {
@@ -136,7 +136,7 @@
           attrs: document.querySelectorAll('.attr').length,
           ovr: (document.querySelector('.ovr__value') || {}).textContent,
           club: (document.querySelector('.hud__meta:last-of-type') || {}).textContent,
-          kvRows: Array.prototype.map.call(document.querySelectorAll('.career__left .kv'), function (n) { return n.textContent }),
+          factRows: Array.prototype.map.call(document.querySelectorAll('.facts .fact'), function (n) { return n.textContent }),
           timelineRows: document.querySelectorAll('.timeline tbody tr').length,
           sampleTitles: Object.keys(seenEvents).slice(0, 6),
           sampleOptions: Array.prototype.map.call(card.querySelectorAll('.option__label'), function (n) { return n.textContent }),

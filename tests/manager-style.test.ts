@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { Hud } from '../src/ui/Hud'
+import { HudFacts } from '../src/ui/Hud'
 import { t } from '../src/i18n'
 import type { CareerState, Gauges, Position, Role } from '../src/engine/types'
 import { ack, choose, managerStyle, newCareer, setIdentity } from '../src/engine/career'
@@ -226,7 +226,7 @@ describe('стиль тренера в панели игрока', () => {
     expect(style).not.toBeNull()
     expect(manager).toBeDefined()
 
-    const html = renderToStaticMarkup(createElement(Hud, { state }))
+    const html = renderToStaticMarkup(createElement(HudFacts, { state }))
     expect(html).toContain(t({ key: 'hud.manager' }, 'ru'))
     expect(html).toContain(manager!.name.ru)
     expect(html).toContain(t({ key: `style.${style}` }, 'ru'))
@@ -234,7 +234,7 @@ describe('стиль тренера в панели игрока', () => {
 
   it('панель молчит о тренере, пока его нет', () => {
     const fresh = newCareer('style-hud-empty')
-    const html = renderToStaticMarkup(createElement(Hud, { state: fresh }))
+    const html = renderToStaticMarkup(createElement(HudFacts, { state: fresh }))
     expect(html).not.toContain(t({ key: 'hud.manager' }, 'ru'))
   })
 })

@@ -1,13 +1,32 @@
 import type { ReactNode } from 'react'
 import { useT } from './locale'
 
-export function Panel({ titleKey, children }: { titleKey: string; children: ReactNode }) {
+/**
+ * Заголовок необязателен: во вкладке досье он повторял бы имя самой вкладки,
+ * а два одинаковых слова подряд читаются как ошибка вёрстки.
+ */
+export function Panel({ titleKey, children }: { titleKey?: string; children: ReactNode }) {
   const t = useT()
   return (
     <section className="panel">
-      <h2 className="panel__title">{t({ key: titleKey })}</h2>
+      {titleKey && <h2 className="panel__title">{t({ key: titleKey })}</h2>}
       {children}
     </section>
+  )
+}
+
+/**
+ * Факт в верхней полосе: подпись сверху, значение под ней. От `Stat` отличается
+ * тем, что стоит в строке, а не в сетке, — полоса собирает десяток фактов о
+ * контракте и положении в клубе, и в колонке они переносились по два слова.
+ */
+export function Fact({ labelKey, value, tone }: { labelKey: string; value: ReactNode; tone?: 'good' | 'bad' }) {
+  const t = useT()
+  return (
+    <div className="fact">
+      <span className="fact__k">{t({ key: labelKey })}</span>
+      <span className="fact__v" data-tone={tone}>{value}</span>
+    </div>
   )
 }
 

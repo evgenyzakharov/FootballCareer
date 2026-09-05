@@ -221,11 +221,17 @@ try {
         `scrollHeight ${career?.pageScrollHeight} > ${height}`,
       )
     }
-    // Когда колонки складываются в одну, решение должно быть первым на экране.
+    // Когда блоки складываются в один столбец, решение должно быть первым.
     if (width <= 860) {
-      check('карточка решения выше панели игрока', report.screens.career?.cardBeforeHud === true, `card@${report.screens.career?.cardTop} hud@${report.screens.career?.hudTop}`)
-      check('карточка решения выше навыков', report.screens.career?.cardBeforeSkills === true, `card@${report.screens.career?.cardTop} skills@${report.screens.career?.skillsTop}`)
+      const career = report.screens.career
+      check('карточка решения выше полосы игрока', career?.cardBeforeFacts === true, `card@${career?.cardTop} facts@${career?.factsTop}`)
+      check('карточка решения выше полосы сезона', career?.cardBeforeSeason === true, `card@${career?.cardTop} season@${career?.seasonTop}`)
     }
+    // Досье показывает одну вкладку за раз: стопка панелей на весь экран - это
+    // ровно то, от чего вкладки и заводились.
+    const career = report.screens.career
+    check('досье показывает одну вкладку', career?.visiblePanes === 1, `видно панелей: ${career?.visiblePanes}`)
+    check('вкладки досье на месте', career?.tabs >= 6, `вкладок: ${career?.tabs}`)
   }
 } finally {
   browser.kill()

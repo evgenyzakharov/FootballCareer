@@ -1,16 +1,21 @@
 import type { CareerState } from '../engine/types'
-import { ATTR_KEYS, isDefender, isGoalkeeper } from '../engine/attributes'
+import { ATTR_KEYS, isGoalkeeper } from '../engine/attributes'
 import { currentOvr, currentValue, managerStyle, squadStanding } from '../engine/career'
 import { find, styleFit } from '../engine/relationships'
-import { averageRating } from '../engine/performance'
 import { findClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
-import { BipolarGauge, Empty, Gauge, KeyValue, Panel, Stat } from './bits'
-import { FormStrip } from './Matches'
+import { BipolarGauge, Fact, Gauge } from './bits'
 import { ovrTier } from './format'
 import { useLocale, useMoney, useT } from './locale'
 
-export function Hud({ state }: { state: CareerState }) {
+/**
+ * Кто игрок и на каких условиях он в клубе — одной полосой над всем экраном.
+ *
+ * Раньше это была колонка в триста пикселей, и «Читтадини · контроль мяча ·
+ * вам на руку» переносилось в ней тремя строками. В строке те же факты стоят
+ * рядом и читаются слева направо, а высвободившаяся колонка ушла под событие.
+ */
+export function HudFacts({ state }: { state: CareerState }) {
   const t = useT()
   const locale = useLocale()
   const money = useMoney()
@@ -18,10 +23,6 @@ export function Hud({ state }: { state: CareerState }) {
   const ovr = currentOvr(state)
   const club = findClub(state.season?.clubId ?? state.contract?.clubId ?? null)
   const standing = squadStanding(state)
-  const tally = state.season?.tally
-  const rating = tally ? averageRating(tally.ratingSum, tally.ratingCount) : 0
-  const gk = isGoalkeeper(player.position)
-  const defender = isDefender(player.position)
   const manager = find(state.relationships, 'manager')
   const style = managerStyle(state)
   // Манера тренера двигает минуты и продуктивность, поэтому игрок должен
@@ -30,71 +31,35 @@ export function Hud({ state }: { state: CareerState }) {
   const fit = style ? styleFit(style, player.position) : 0
 
   return (
-    <>
-      <section className="panel">
-        <div className="hud__top">
-          <div className="ovr" data-tier={ovrTier(ovr)}>
-            <div className="ovr__label">OVR</div>
-            <div className="ovr__value">{ovr}</div>
+    <section className="facts">
+      <div className="facts__ident">
+        <div className="ovr" data-tier={ovrTier(ovr)}>
+          <div className="ovr__label">OVR</div>
+          <div className="ovr__value">{ovr}</div>
+        </div>
+        <div className="hud__ident">
+          <div className="hud__name">
+            {player.lastName} <span className="hud__shirt">#{player.shirt}</span>
           </div>
-          <div className="hud__ident">
-            <div className="hud__name">
-              {player.lastName} <span style={{ color: 'var(--text-faint)' }}>#{player.shirt}</span>
-            </div>
-            <div className="hud__meta">
-              {getCountry(player.countryCode).name[locale]} · {t({ key: `pos.${player.position}` })}
-            </div>
-            <div className="hud__meta">
-              {club ? club.name[locale] : t({ key: 'hud.free_agent' })}
-              {state.season?.loan ? ` (${t({ key: 'hud.on_loan' })})` : ''}
-            </div>
+          <div className="hud__meta">
+            {getCountry(player.countryCode).name[locale]} · {t({ key: `pos.${player.position}` })}
+          </div>
+          <div className="hud__meta">
+            {club ? club.name[locale] : t({ key: 'hud.free_agent' })}
+            {state.season?.loan ? ` (${t({ key: 'hud.on_loan' })})` : ''}
           </div>
         </div>
+      </div>
 
-        <div className="stat-row">
-          <Stat labelKey="hud.age" value={player.age} />
-          <Stat labelKey="hud.value" value={money(currentValue(state))} />
-          <Stat labelKey="hud.money" value={money(player.money)} />
-        </div>
-
-        {/* У вратаря продуктивность — это сухие матчи и пропущенные, а не голы. */}
-        <div className="stat-row">
-          <Stat labelKey="hud.apps" value={tally?.apps ?? 0} />
-          {gk ? (
-            <>
-              <Stat labelKey="hud.clean_sheets" value={tally?.cleanSheets ?? 0} />
-              <Stat labelKey="hud.conceded" value={tally?.goalsConceded ?? 0} />
-            </>
-          ) : (
-            <>
-              <Stat labelKey="hud.goals" value={tally?.goals ?? 0} />
-              <Stat labelKey="hud.assists" value={tally?.assists ?? 0} />
-            </>
-          )}
-        </div>
-
-        {rating > 0 && (
-          <KeyValue
-            labelKey="hud.rating"
-            tone={rating >= 7.1 ? 'good' : rating < 6.5 ? 'bad' : 'neutral'}
-            value={rating.toFixed(2)}
-          />
-        )}
-
-        {defender && tally && (
-          <KeyValue
-            labelKey="hud.team_clean_sheets"
-            tone={tally.cleanSheets >= 8 ? 'good' : 'neutral'}
-            value={tally.cleanSheets}
-          />
-        )}
-        {state.season && (
-          <KeyValue labelKey="hud.role" value={t({ key: `role.${state.season.role}` })} />
-        )}
+      <div className="facts__list">
+        <Fact labelKey="hud.age" value={player.age} />
+        <Fact labelKey="hud.value" value={money(currentValue(state))} />
+        <Fact labelKey="hud.money" value={money(player.money)} />
+        {state.season && <Fact labelKey="hud.role" value={t({ key: `role.${state.season.role}` })} />}
         {standing && (
-          <KeyValue
+          <Fact
             labelKey="hud.squad_bar"
-            tone={standing.gap >= 2 ? 'good' : standing.gap <= -2 ? 'bad' : 'neutral'}
+            tone={standing.gap >= 2 ? 'good' : standing.gap <= -2 ? 'bad' : undefined}
             value={t({
               key: 'hud.squad_bar_value',
               params: {
@@ -105,9 +70,9 @@ export function Hud({ state }: { state: CareerState }) {
           />
         )}
         {manager && style && (
-          <KeyValue
+          <Fact
             labelKey="hud.manager"
-            tone={fit > 0 ? 'good' : fit < 0 ? 'bad' : 'neutral'}
+            tone={fit > 0 ? 'good' : fit < 0 ? 'bad' : undefined}
             value={t({
               key: 'hud.manager_value',
               params: {
@@ -118,26 +83,17 @@ export function Hud({ state }: { state: CareerState }) {
             })}
           />
         )}
-        {(player.banMatches > 0 || player.matchesOut > 0) && (
-          <KeyValue
-            labelKey="hud.status"
-            value={t({
-              key: player.matchesOut > 0 ? 'hud.status_injured' : 'hud.status_suspended',
-              params: { matches: player.matchesOut > 0 ? player.matchesOut : player.banMatches },
-            })}
-          />
-        )}
         {state.contract && (
           <>
-            <KeyValue labelKey="hud.wage" value={money(state.contract.wage)} />
-            <KeyValue
+            <Fact labelKey="hud.wage" value={money(state.contract.wage)} />
+            <Fact
               labelKey="hud.contract"
               value={t({ key: 'hud.contract_years', params: { years: state.contract.yearsLeft } })}
             />
           </>
         )}
         {state.contract?.objective && (
-          <KeyValue
+          <Fact
             labelKey="hud.objective"
             value={t({
               key: 'hud.objective_value',
@@ -148,69 +104,63 @@ export function Hud({ state }: { state: CareerState }) {
             })}
           />
         )}
-      </section>
-
-      <Panel titleKey="panel.gauges">
-        {/* Восемь одинаковых полос подряд не давали понять, на что смотреть.
-            Первая четвёрка решает, выйдет ли игрок на поле в ближайшем туре,
-            вторая — что с ним будет летом. Обёртка нужна и для мобильной
-            раскладки: в один столбец полосы занимают полэкрана. */}
-        <div className="gauge-group">{t({ key: 'panel.state_pitch' })}</div>
-        <div className="gauge-grid">
-          <Gauge labelKey="gauge.form" value={player.gauges.form} />
-          <Gauge labelKey="gauge.fitness" value={player.gauges.fitness} />
-          <Gauge labelKey="gauge.morale" value={player.gauges.morale} />
-          <Gauge labelKey="gauge.coachTrust" value={player.gauges.coachTrust} />
-        </div>
-        <div className="gauge-group">{t({ key: 'panel.state_around' })}</div>
-        <div className="gauge-grid">
-          <Gauge labelKey="gauge.fanLove" value={player.gauges.fanLove} />
-          <Gauge labelKey="gauge.lockerRoom" value={player.gauges.lockerRoom} />
-          <BipolarGauge labelKey="gauge.mediaRep" value={player.gauges.mediaRep} />
-          <Gauge labelKey="gauge.fame" value={player.gauges.fame} />
-        </div>
-      </Panel>
-
-    </>
+        {/* Травма и дисквалификация — новость дня: она стоит последней, потому
+            что появляется редко, и в этом месте её видно как что-то новое. */}
+        {(player.banMatches > 0 || player.matchesOut > 0) && (
+          <Fact
+            labelKey="hud.status"
+            tone="bad"
+            value={t({
+              key: player.matchesOut > 0 ? 'hud.status_injured' : 'hud.status_suspended',
+              params: { matches: player.matchesOut > 0 ? player.matchesOut : player.banMatches },
+            })}
+          />
+        )}
+      </div>
+    </section>
   )
 }
 
 /**
- * Навыки и форма сезона живут отдельно от остальной панели игрока: в широкой
- * раскладке они уходят в верхнюю строку центральной колонки. Левая колонка
- * иначе не влезала в экран — состояние уезжало под сгиб.
- *
- * Наверху именно форма, а не черты: форма меняется каждый тур, и смотреть на
- * неё нужно перед каждым решением, а черты за сезон могут не измениться ни
- * разу — им хватает места в сайдбаре.
+ * Восемь одинаковых полос подряд не давали понять, на что смотреть. Первая
+ * четвёрка решает, выйдет ли игрок на поле в ближайшем туре, вторая — что с
+ * ним будет летом.
  */
-export function HudSkills({ state }: { state: CareerState }) {
+export function GaugesBody({ state }: { state: CareerState }) {
+  const t = useT()
+  const { gauges } = state.player
+  return (
+    <>
+      <div className="gauge-group">{t({ key: 'panel.state_pitch' })}</div>
+      <div className="gauge-grid">
+        <Gauge labelKey="gauge.form" value={gauges.form} />
+        <Gauge labelKey="gauge.fitness" value={gauges.fitness} />
+        <Gauge labelKey="gauge.morale" value={gauges.morale} />
+        <Gauge labelKey="gauge.coachTrust" value={gauges.coachTrust} />
+      </div>
+      <div className="gauge-group">{t({ key: 'panel.state_around' })}</div>
+      <div className="gauge-grid">
+        <Gauge labelKey="gauge.fanLove" value={gauges.fanLove} />
+        <Gauge labelKey="gauge.lockerRoom" value={gauges.lockerRoom} />
+        <BipolarGauge labelKey="gauge.mediaRep" value={gauges.mediaRep} />
+        <Gauge labelKey="gauge.fame" value={gauges.fame} />
+      </div>
+    </>
+  )
+}
+
+export function SkillsBody({ state }: { state: CareerState }) {
   const t = useT()
   const player = state.player
   const gk = isGoalkeeper(player.position)
-  const played = state.season?.matches ?? []
-
   return (
-    <>
-      <Panel titleKey="panel.attrs">
-        <div className="attr-grid">
-          {ATTR_KEYS.filter((key) => (key === 'goalkeeping' ? gk : true)).map((key) => (
-            <div className="attr" key={key}>
-              <span className="attr__name">{t({ key: `attr.${key}` })}</span>
-              <span className="attr__value">{Math.round(player.attrs[key])}</span>
-            </div>
-          ))}
+    <div className="attr-grid">
+      {ATTR_KEYS.filter((key) => (key === 'goalkeeping' ? gk : true)).map((key) => (
+        <div className="attr" key={key}>
+          <span className="attr__name">{t({ key: `attr.${key}` })}</span>
+          <span className="attr__value">{Math.round(player.attrs[key])}</span>
         </div>
-      </Panel>
-
-      {/* Отчёт о туре пролистывается и исчезает — здесь сезон остаётся на виду. */}
-      <Panel titleKey="panel.matches">
-        {played.length === 0 ? (
-          <Empty textKey="panel.no_matches" />
-        ) : (
-          <FormStrip matches={played} position={player.position} />
-        )}
-      </Panel>
-    </>
+      ))}
+    </div>
   )
 }

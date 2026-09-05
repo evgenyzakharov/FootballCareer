@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { Hud } from '../src/ui/Hud'
+import { SeasonBar } from '../src/ui/Season'
 import { ack, choose, newCareer, setIdentity } from '../src/engine/career'
 import type { CurrentSeason, Position, SeasonTally } from '../src/engine/types'
 import { AWARD_KEYS, rollAwards, seasonScore } from '../src/engine/awards'
@@ -133,5 +133,5 @@ function render(position: Position): string {
     const available = state.card.options.filter((o) => !o.disabled)
     state = choose(state, available.length > 0 ? available[0].id : 'next')
   }
-  return renderToStaticMarkup(createElement(Hud, { state }))
+  return renderToStaticMarkup(createElement(SeasonBar, { state }))
 }

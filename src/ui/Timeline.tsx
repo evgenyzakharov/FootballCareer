@@ -35,7 +35,16 @@ interface Row {
  */
 type Order = 'recent' | 'chronological'
 
-export function Timeline({ state, order = 'recent' }: { state: CareerState; order?: Order }) {
+export function Timeline({
+  state,
+  order = 'recent',
+  bare = false,
+}: {
+  state: CareerState
+  order?: Order
+  /** Во вкладке досье рамка и заголовок уже есть — второй набор здесь лишний. */
+  bare?: boolean
+}) {
   const t = useT()
   const locale = useLocale()
   const gk = state.player.position === 'GK'
@@ -98,7 +107,7 @@ export function Timeline({ state, order = 'recent' }: { state: CareerState; orde
   const ordered = order === 'recent' ? [...rows].reverse() : rows
 
   return (
-    <Panel titleKey="panel.timeline">
+    <Panel titleKey={bare ? undefined : 'panel.timeline'}>
       <div className="timeline">
         <table>
           <thead>

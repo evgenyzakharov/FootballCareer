@@ -249,7 +249,17 @@ input { font: inherit; color: inherit; }
 
 .identity__actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
 
-/* ─── Карьера: три колонки ────────────────────────────────────────────────── */
+/* ─── Карьера: шапка, сцена и досье ────────────────────────────────────────
+ *
+ * Раньше здесь были три колонки, и каждая прокручивалась сама: панель игрока,
+ * событие и стопка из пяти панелей справа. Колонки набирали разную высоту, под
+ * короткой карточкой оставалась дыра в пол-экрана, а в трёхсот пикселях
+ * ширины «Читтадини · контроль мяча · вам на руку» переносилось трижды.
+ *
+ * Теперь всё про «сейчас» лежит наверху во всю ширину — условия контракта и
+ * ход сезона, — а под ними ровно две области: выбор и досье. Обе одной высоты,
+ * пустых зон между ними нет.
+ */
 
 .career {
   flex: 1;
@@ -258,10 +268,107 @@ input { font: inherit; color: inherit; }
   margin: 0 auto;
   padding: 16px;
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 340px;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 14px;
   align-items: start;
 }
+
+.career > .facts,
+.career > .season { grid-column: 1 / -1; }
+
+.career__stage { min-width: 0; }
+.career__dossier { min-width: 0; }
+
+/* ─── Полоса фактов ────────────────────────────────────────────────────────
+   Кто игрок и на каких условиях он в клубе. В строке эти факты стоят рядом и
+   читаются слева направо; в колонке каждый второй переносился по два слова. */
+.facts {
+  display: flex;
+  align-items: center;
+  gap: 14px 22px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+.facts__ident { display: flex; align-items: center; gap: 12px; padding-right: 22px; border-right: 1px solid var(--line-soft); }
+.facts__list { display: flex; align-items: center; gap: 14px 22px; flex-wrap: wrap; min-width: 0; }
+.fact { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.fact__k { font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-faint); white-space: nowrap; }
+.fact__v { font-size: 13.5px; font-weight: 600; }
+.fact__v[data-tone='good'] { color: #86efac; }
+.fact__v[data-tone='bad'] { color: #fca5a5; }
+.hud__shirt { color: var(--text-faint); font-weight: 500; }
+
+/* ─── Полоса сезона ────────────────────────────────────────────────────────
+   Сводка слева, форма по матчам справа: перед решением нужны ровно эти две
+   вещи — как идёт сезон и как идут последние матчи. */
+.season {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+.season__title { font-size: 13.5px; font-weight: 700; }
+.season__league { color: var(--text-faint); font-weight: 500; }
+.season__stats { display: flex; flex-wrap: wrap; gap: 9px 18px; margin-top: 9px; }
+.season__graph { min-width: 0; }
+.season__graph .form { margin-bottom: 0; }
+
+/* ─── Досье ────────────────────────────────────────────────────────────────
+   Вкладка на тему. Пять панелей стопкой не помещались в экран никогда: до
+   трофеев нужно было прокрутить историю за десять лет. */
+.dossier {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 14px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 12px;
+}
+.tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 7px 9px 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+}
+.tab:hover { color: var(--text); }
+.tab[aria-selected='true'] { color: var(--accent); border-bottom-color: var(--accent); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Пальцем в семь пикселей отступа не попасть: на сенсорном экране вкладка
+   вырастает до размера, за который её можно взять. */
+@media (max-width: 1200px), (pointer: coarse) {
+  .tab { min-height: 44px; padding-left: 12px; padding-right: 12px; }
+}
+.dossier__body {
+  min-height: 0;
+  overflow-y: auto;
+  /* Полосу прокрутки резервируем заранее: иначе она наезжает на числа шкал. */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+/* Внутри досье рамка уже есть: вложенная панель рисовала бы карточку в карточке. */
+.dossier__body .panel { background: transparent; border: none; padding: 0; margin-bottom: 0; }
+/* Восемь показателей в две колонки помещаются целиком, без прокрутки. */
+.dossier__body .gauge-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
 
 /*
  * Центральная колонка: сверху навыки и черты, под ними карточка решения.
@@ -271,66 +378,49 @@ input { font: inherit; color: inherit; }
 .career__center { display: flex; flex-direction: column; gap: 16px; }
 .career__skills { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 
-/*
- * Средняя ширина: две колонки. Карточка и панель игрока встают друг под другом
- * в первой, история и лента занимают вторую на всю высоту. Если панель игрока
- * растянуть на всю ширину под карточкой, рядом с короткой карточкой остаётся
- * пустая дыра в пол-экрана — так и было до этой правки.
- */
+/* Средняя ширина: досье ужимается, но остаётся рядом со сценой. */
 @media (max-width: 1200px) {
-  .career { grid-template-columns: minmax(0, 1fr) 320px; }
-  .career__center { grid-column: 1; grid-row: 1; }
-  .career__left { grid-column: 1; grid-row: 2; }
-  .career__right { grid-column: 2; grid-row: 1 / span 2; }
+  .career { grid-template-columns: minmax(0, 1fr) 340px; }
 }
+
 /*
- * Широкий экран: карьера целиком помещается в окно, а прокручиваются колонки,
- * а не страница. Так карточка решения и состояние игрока всегда на месте, а
- * листается только то, что длиннее экрана, — история карьеры и лента. Раньше
- * страница уезжала вниз вся, и чтобы посмотреть трофеи, приходилось терять из
- * виду сам выбор.
+ * Широкий экран: карьера целиком помещается в окно, прокручивается досье, а не
+ * страница. Так выбор всегда на месте, а листается только то, что длиннее
+ * экрана, — история карьеры и лента. Раньше страница уезжала вниз вся, и чтобы
+ * посмотреть трофеи, приходилось терять из виду сам выбор.
  */
 @media (min-width: 1201px) {
   .app--fixed { height: 100%; overflow: hidden; }
-  .app--fixed .career { min-height: 0; align-items: stretch; }
-  .app--fixed .career__left,
-  .app--fixed .career__center,
-  .app--fixed .career__right {
+  .app--fixed .career { min-height: 0; align-items: stretch; grid-template-rows: auto auto minmax(0, 1fr); }
+  .app--fixed .career__stage {
     min-height: 0;
     overflow-y: auto;
-    /* Докрутив колонку до конца, колесо не должно дёргать страницу. */
+    /* Докрутив область до конца, колесо не должно дёргать страницу. */
     overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
   }
+  .app--fixed .career__dossier { min-height: 0; height: 100%; }
+  .app--fixed .dossier { height: 100%; }
+  .app--fixed .dossier__body { overscroll-behavior: contain; }
   /* Дисклеймер съедал полсотни пикселей высоты, которых и так нет. */
   .app--fixed .footer-note { padding: 8px 18px 10px; }
-
-  /*
-   * Интервалы плотнее ровно настолько, чтобы состояние игрока помещалось в
-   * колонку целиком: восемь полос по паре пикселей и пара отступов между
-   * панелями — это и есть те сорок пикселей, из-за которых оно не влезало.
-   */
-  .app--fixed .panel { margin-bottom: 10px; }
-  .app--fixed .gauge { margin-bottom: 7px; }
-  .app--fixed .gauge-grid + .gauge-group { margin-top: 10px; }
-  .app--fixed .stat-row { margin-bottom: 9px; }
-  .app--fixed .kv { padding: 2px 0; }
 }
 
-/* Три обычные полосы прокрутки съели бы ширину колонок. */
-.career__left, .career__center, .career__right {
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
-}
-
-/* Одна колонка: сначала решение, потом состояние, потом история. */
+/*
+ * Одна колонка: сначала решение, потом всё остальное. На телефоне первым без
+ * прокрутки должно быть видно то, что игрок сейчас выбирает, а не его рост и
+ * зарплата — их он посмотрит, когда захочет.
+ */
 @media (max-width: 860px) {
   .career { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 10px; }
-  .career__center { grid-column: auto; grid-row: auto; order: 1; gap: 10px; }
-  /* Навыки в один столбец занимают полэкрана, поэтому уходят под карточку:
-     решение должно быть первым, что видно без прокрутки. */
-  .career__skills { grid-template-columns: minmax(0, 1fr); gap: 10px; order: 1; }
-  .career__left { grid-column: auto; grid-row: auto; order: 2; }
-  .career__right { grid-column: auto; grid-row: auto; order: 3; }
+  .career__stage { order: 1; }
+  .career > .facts { order: 2; }
+  .career > .season { order: 3; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .career__dossier { order: 4; }
+  .facts__ident { border-right: none; padding-right: 0; }
+  /* В узкой колонке две колонки шкал не помещаются: подписи режутся. */
+  .dossier__body .gauge-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 .panel {
