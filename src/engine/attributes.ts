@@ -141,8 +141,12 @@ export function marketValue(ovr: number, age: number): number {
     if (o > hi) base = hiValue
   }
   const raw = base * ageValueFactor(age)
-  // Округляем до «человеческих» чисел, как в трансферных новостях.
-  const mag = 10 ** Math.max(4, Math.floor(Math.log10(raw)) - 1)
+  // Округляем до «человеческих» чисел, как в трансферных новостях. Нижний
+  // порядок — тысяча: с десятью тысячами всё, что дешевле пяти, округлялось
+  // в ноль, и ветеран с низким OVR стоил ровно ничего. Заодно исчезла
+  // ступенька внизу, где вся вилка от пяти до пятнадцати тысяч выглядела
+  // одинаково.
+  const mag = 10 ** Math.max(3, Math.floor(Math.log10(raw)) - 1)
   return Math.round(raw / mag) * mag
 }
 

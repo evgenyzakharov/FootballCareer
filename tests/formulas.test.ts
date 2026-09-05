@@ -13,7 +13,7 @@ const AGES = Array.from({ length: 25 }, (_, i) => 16 + i)
 
 /** Порядок округления: цена в трансферных новостях — это две значащие цифры. */
 function magnitude(value: number): number {
-  return 10 ** Math.max(4, Math.floor(Math.log10(value)) - 1)
+  return 10 ** Math.max(3, Math.floor(Math.log10(value)) - 1)
 }
 
 describe('стоимость игрока', () => {
@@ -64,12 +64,17 @@ describe('стоимость игрока', () => {
   it('значения за границами таблицы не ломают цену', () => {
     expect(marketValue(20, 25)).toBe(marketValue(40, 25))
     expect(marketValue(120, 25)).toBe(marketValue(99, 25))
-    // На самом дне кривой цена округляется в ноль: 40 000 базы на 0.12 за
-    // возраст — это 4800, а нижний порядок округления 10 000. Край
-    // известный, пусть правка округления будет осознанной.
-    expect(marketValue(40, 36)).toBe(0)
-    expect(marketValue(50, 36)).toBe(10_000)
-    for (const age of AGES) expect(marketValue(40, age)).toBeGreaterThanOrEqual(0)
+    // На дне кривой цена остаётся деньгами: 40 000 базы на 0.12 за возраст —
+    // это 4800, и при нижнем порядке округления в 10 000 такой игрок стоил
+    // ровно ноль. Теперь порядок — тысяча.
+    expect(marketValue(40, 36)).toBe(5_000)
+    expect(marketValue(50, 36)).toBe(12_000)
+    for (const age of AGES) expect(marketValue(40, age)).toBeGreaterThan(0)
+    // Ни одно сочетание уровня и возраста не оставляет игрока без цены.
+    for (let ovr = 40; ovr <= 99; ovr++) {
+      for (const age of AGES) expect({ ovr, age, free: marketValue(ovr, age) === 0 })
+        .toEqual({ ovr, age, free: false })
+    }
   })
 
   it('опорные точки кривой стоимости', () => {
