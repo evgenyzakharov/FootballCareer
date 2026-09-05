@@ -554,8 +554,9 @@ input { font: inherit; color: inherit; }
 .form__trend[data-tone='bad'] { color: var(--bad); }
 .form__trend[data-tone='flat'] { color: var(--text-faint); }
 .form__strip {
+  position: relative;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 1px;
   min-height: 46px;
   padding: 6px 8px 5px;
@@ -563,18 +564,72 @@ input { font: inherit; color: inherit; }
   border-radius: var(--radius-sm);
   background: linear-gradient(180deg, rgba(18, 64, 44, .35), rgba(18, 64, 44, 0));
   /* Полоса ужимается под ширину панели, а не уезжает за край телефона:
-     столбиков за сезон полсотни, и прокручивать их незачем. */
-  overflow: hidden;
+     столбиков за сезон полсотни, и прокручивать их незачем. Подсказка при
+     этом должна вылезать наружу, поэтому обрезать содержимое нельзя. */
 }
-.form__pip { flex: 1 1 5px; min-width: 2px; border-radius: 2px; background: #232b35; }
+/*
+ * Ячейка матча — во всю высоту полосы: наводиться на пятипиксельный столбик
+ * провального матча мышью невозможно, а подсказка нужна как раз к нему.
+ */
+.form__slot {
+  flex: 1 1 5px;
+  min-width: 2px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.form__slot:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 3px; }
+.form__pip { width: 100%; border-radius: 2px; background: #232b35; }
 .form__pip[data-tier='great'] { background: var(--accent); }
 .form__pip[data-tier='good'] { background: var(--accent-dim); }
 .form__pip[data-tier='ok'] { background: #3d5f4c; }
 .form__pip[data-tier='poor'] { background: var(--bad); }
 .form__pip[data-tier='none'] {
-  background: repeating-linear-gradient(45deg, var(--line-soft) 0 2px, transparent 2px 4px);
-  border: 1px solid var(--line-soft);
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: transparent;
+  border: 1px dashed var(--line-soft);
+  border-bottom: none;
 }
+/* Значок ужимается вместе со столбцом: за плотный сезон их полсотни в ряд. */
+.form__icon { width: 100%; max-width: 11px; height: auto; display: block; margin-bottom: 2px; }
+
+/* ─── Подсказка по матчу ───────────────────────────────────────────────────
+   Показывается по наведению и с клавиатуры; списка матчей под полосой больше
+   нет — он отвечал про три игры из полусотни.
+
+   Подсказка привязана к полосе, а не к столбику, и встаёт под ней — там, где
+   раньше лежал список. Столбиков за сезон полсотни, они по пять пикселей, и
+   подсказка над своим столбиком уезжала за край экрана: соперник в ней
+   назван, так что искать, к какому именно столбику она относится, не нужно. */
+.tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  width: min(190px, 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #05070a;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .7);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s;
+  text-align: left;
+}
+.form__slot:hover .tip, .form__slot:focus-visible .tip { opacity: 1; }
+.tip__club { font-size: 12.5px; font-weight: 700; }
+.tip__meta { font-size: 11px; color: var(--text-faint); margin-bottom: 6px; }
+.tip__row { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; color: var(--text-dim); padding: 1px 0; }
+.tip__row b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tip__note { font-size: 11.5px; color: var(--text-dim); margin-top: 5px; }
+.tip__note[data-tone='bad'] { color: #fca5a5; }
+.tip__note[data-tone='warn'] { color: var(--warn); }
 
 .timeline { max-height: 420px; overflow-y: auto; }
 .timeline table { width: 100%; border-collapse: collapse; font-size: 12.5px; }

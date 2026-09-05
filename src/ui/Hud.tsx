@@ -6,7 +6,7 @@ import { averageRating } from '../engine/performance'
 import { findClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
 import { BipolarGauge, Empty, Gauge, KeyValue, Panel, Stat } from './bits'
-import { FormStrip, MatchList } from './Matches'
+import { FormStrip } from './Matches'
 import { ovrTier } from './format'
 import { useLocale, useMoney, useT } from './locale'
 
@@ -189,9 +189,6 @@ export function HudSkills({ state }: { state: CareerState }) {
   const player = state.player
   const gk = isGoalkeeper(player.position)
   const played = state.season?.matches ?? []
-  // Три последних матча, свежие сверху: весь тур и так лежит в его карточке,
-  // а панель отвечает на «что было вчера» и «куда идёт сезон».
-  const recent = [...played].reverse().slice(0, 3)
 
   return (
     <>
@@ -211,10 +208,7 @@ export function HudSkills({ state }: { state: CareerState }) {
         {played.length === 0 ? (
           <Empty textKey="panel.no_matches" />
         ) : (
-          <>
-            <FormStrip matches={played} />
-            <MatchList matches={recent} position={player.position} />
-          </>
+          <FormStrip matches={played} position={player.position} />
         )}
       </Panel>
     </>
