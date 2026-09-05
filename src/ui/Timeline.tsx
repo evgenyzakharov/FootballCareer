@@ -22,6 +22,8 @@ interface Row {
   assists: number
   cleanSheets: number
   goalsConceded: number
+  yellow: number
+  red: number
   marks: string
   current: boolean
 }
@@ -55,6 +57,8 @@ export function Timeline({ state, order = 'recent' }: { state: CareerState; orde
       assists: season.tally.assists,
       cleanSheets: season.tally.cleanSheets,
       goalsConceded: season.tally.goalsConceded,
+      yellow: season.tally.yellow,
+      red: season.tally.red,
       // Компактная отметка: сколько трофеев и наград взято за сезон.
       marks: '★'.repeat(Math.min(4, season.trophies.length)) + '✦'.repeat(Math.min(3, season.awards.length)),
       current: false,
@@ -82,6 +86,8 @@ export function Timeline({ state, order = 'recent' }: { state: CareerState; orde
       assists: state.season.tally.assists,
       cleanSheets: state.season.tally.cleanSheets,
       goalsConceded: state.season.tally.goalsConceded,
+      yellow: state.season.tally.yellow,
+      red: state.season.tally.red,
       marks: '★'.repeat(Math.min(4, state.season.trophies.length)),
       current: true,
     })
@@ -105,6 +111,12 @@ export function Timeline({ state, order = 'recent' }: { state: CareerState; orde
               {/* У вратаря голы и передачи всегда нули — столбцы другие. */}
               <th className="num">{t({ key: gk ? 'timeline.clean' : 'timeline.goals' })}</th>
               <th className="num">{t({ key: gk ? 'timeline.conceded' : 'timeline.assists' })}</th>
+              {/* Карточки отделены линией: это дисциплина, а не продуктивность,
+                  и без неё шесть чисел подряд читались одной строкой цифр. */}
+              <th className="num timeline__sep" title={t({ key: 'timeline.yellow_hint' })}>
+                {t({ key: 'timeline.yellow' })}
+              </th>
+              <th className="num" title={t({ key: 'timeline.red_hint' })}>{t({ key: 'timeline.red' })}</th>
             </tr>
           </thead>
           <tbody>
@@ -133,6 +145,10 @@ export function Timeline({ state, order = 'recent' }: { state: CareerState; orde
                 <td className="num">{row.apps}</td>
                 <td className="num">{gk ? row.cleanSheets : row.goals}</td>
                 <td className="num">{gk ? row.goalsConceded : row.assists}</td>
+                <td className="num timeline__sep" data-zero={row.yellow === 0}>{row.yellow}</td>
+                <td className="num" data-zero={row.red === 0} data-kind={row.red > 0 ? 'red' : undefined}>
+                  {row.red}
+                </td>
               </tr>
             ))}
           </tbody>

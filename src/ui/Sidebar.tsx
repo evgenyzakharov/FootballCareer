@@ -1,10 +1,25 @@
-import type { CareerState } from '../engine/types'
+import type { CareerState, League } from '../engine/types'
 import { isGoalkeeper } from '../engine/attributes'
 import { careerTotals } from '../engine/career'
+import { findClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
+import { getLeague } from '../data/leagues'
 import { Chip, Empty, KeyValue, Panel, Stat } from './bits'
-import { seasonShort } from './format'
+import { seasonEndYear, seasonShort } from './format'
 import { useLocale, useT } from './locale'
+
+/**
+ * Награды, которые разыгрываются внутри лиги, а не в мире: их название без
+ * лиги ничего не говорит. Золотой мяч и гол года мировые — им лига не нужна.
+ */
+const LEAGUE_AWARDS = new Set(['golden_boot', 'best_gk', 'best_defender', 'league_mvp', 'young_player'])
+
+/** В какой лиге игрок провёл сезон этого возраста. null — сезона нет в истории. */
+function leagueAt(state: CareerState, age: number): League | null {
+  const season = state.history.find((s) => s.age === age)
+  const club = findClub(season?.clubId ?? null)
+  return club ? getLeague(club.leagueId) : null
+}
 
 function stanceTone(stance: number): 'good' | 'bad' | 'neutral' {
   if (stance >= 25) return 'good'
@@ -26,6 +41,16 @@ export function Sidebar({ state }: { state: CareerState }) {
   // нет вовсе, а в отчёте о сезоне видно только текущий год.
   const totals = careerTotals(state)
   const gk = isGoalkeeper(state.player.position)
+  // Свежие турниры сверху: последний чемпионат помнят, а первый уже история.
+  const tournaments = [...state.history]
+    .reverse()
+    .filter((season): season is typeof season & { national: { tournament: string } } =>
+      season.national.tournament !== null)
+    .map((season) => ({
+      age: season.age,
+      tournament: season.national.tournament,
+      trophy: season.national.trophy,
+    }))
 
   return (
     <>
@@ -79,9 +104,26 @@ export function Sidebar({ state }: { state: CareerState }) {
               )}
             </div>
             <KeyValue labelKey="national.country" value={getCountry(state.player.countryCode).name[locale]} />
-            <KeyValue labelKey="national.tournaments" value={totals.nationalTournaments} />
-            {totals.nationalTrophies > 0 && (
-              <KeyValue labelKey="national.titles" tone="good" value={totals.nationalTrophies} />
+            {/*
+              Счётчик «Больших турниров: 1» не отвечал ни на один вопрос: какой
+              это был турнир, когда и чем кончился. Турниры мы ведём по сезонам,
+              поэтому здесь список, а отдельная строка с числом титулов больше
+              не нужна — победа отмечена в самой строке турнира.
+            */}
+            {tournaments.length > 0 && (
+              <>
+                <div className="gauge-group">{t({ key: 'national.tournaments' })}</div>
+                {tournaments.map((item) => (
+                  <div className="kv" key={`${item.age}-${item.tournament}`}>
+                    <span className="kv__k">
+                      {t({ key: `comp.${item.tournament}` })} {seasonEndYear(state.startYear, item.age)}
+                    </span>
+                    <span className="kv__v" data-tone={item.trophy ? 'good' : undefined}>
+                      {item.trophy ? t({ key: 'national.won' }) : t({ key: 'national.played' })}
+                    </span>
+                  </div>
+                ))}
+              </>
             )}
           </>
         )}
@@ -98,11 +140,21 @@ export function Sidebar({ state }: { state: CareerState }) {
                 {t({ key: `comp.${trophy.name}` })} {seasonShort(state.startYear, trophy.age)}
               </Chip>
             ))}
-            {state.awards.map((award, i) => (
-              <Chip key={`aw-${i}`} tone="risky">
-                {t({ key: `award.${award.key}` })} {seasonShort(state.startYear, award.age)}
-              </Chip>
-            ))}
+            {/*
+              Награду лиги без названия лиги прочитать нельзя: «Лучший игрок
+              лиги» одинаково выглядит и во Второй лиге А, и в Серии А, а это
+              разные истории. В самой награде лиги нет, только возраст, — она
+              берётся из сезона, в котором награда получена.
+            */}
+            {state.awards.map((award, i) => {
+              const league = LEAGUE_AWARDS.has(award.key) ? leagueAt(state, award.age) : null
+              return (
+                <Chip key={`aw-${i}`} tone="risky">
+                  {t({ key: `award.${award.key}` })}
+                  {league ? ` · ${league.name[locale]}` : ''} {seasonShort(state.startYear, award.age)}
+                </Chip>
+              )
+            })}
           </div>
         )}
       </Panel>

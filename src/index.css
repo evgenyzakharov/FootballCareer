@@ -646,7 +646,16 @@ input { font: inherit; color: inherit; }
   background: var(--bg-raised);
 }
 .timeline td { padding: 5px 4px; border-top: 1px solid var(--line-soft); vertical-align: top; }
-.timeline .num { text-align: right; font-variant-numeric: tabular-nums; }
+.timeline .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/*
+ * Карточки отделены от продуктивности линией: девять столбцов подряд читались
+ * одной строкой цифр, а «две жёлтых» и «две передачи» — разные новости.
+ */
+.timeline th.timeline__sep,
+.timeline td.timeline__sep { border-left: 1px solid var(--line-soft); padding-left: 8px; }
+/* Ноль в графе карточек — это отсутствие события, а не результат. */
+.timeline td.num[data-zero='true'] { color: var(--text-faint); }
+.timeline td.num[data-kind='red'] { color: #fca5a5; font-weight: 700; }
 .timeline__club { overflow-wrap: anywhere; }
 .timeline__season { white-space: nowrap; color: var(--text-dim); }
 .timeline__age { color: var(--text-faint); font-size: 10.5px; margin-left: 4px; }

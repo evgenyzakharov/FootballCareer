@@ -11,6 +11,15 @@ export function seasonLabel(startYear: number, age: number, startAge = 16): stri
   return `${year}/${String((year + 1) % 100).padStart(2, '0')}`
 }
 
+/**
+ * Год, которым заканчивается сезон. Турниры сборных играются летом после
+ * сезона, и подписывать их надо этим годом: «Чемпионат мира 2030», а не
+ * «сезон 2029/30» — в разговоре о турнире сезон клуба ни при чём.
+ */
+export function seasonEndYear(startYear: number, age: number, startAge = 16): number {
+  return startYear + (age - startAge) + 1
+}
+
 /** Короткая подпись сезона для чипов: «2026/27» → «’27». */
 export function seasonShort(startYear: number, age: number, startAge = 16): string {
   const endYear = startYear + (age - startAge) + 1

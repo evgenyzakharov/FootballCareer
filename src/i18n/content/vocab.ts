@@ -124,8 +124,8 @@ export const VOCAB: Content = {
   'comp.cup_USA': { ru: 'Открытый кубок США', en: 'US Open Cup' },
 
   // ─── Континентальные турниры ──────────────────────────────────────────────
-  'comp.ucl': { ru: 'Главный еврокубок', en: 'European Cup' },
-  'comp.uel': { ru: 'Второй еврокубок', en: 'European second tier' },
+  'comp.ucl': { ru: 'Лига чемпионов', en: 'Champions League' },
+  'comp.uel': { ru: 'Лига Европы', en: 'Europa League' },
   'comp.libertadores': { ru: 'Кубок Либертадорес', en: 'Copa Libertadores' },
   'comp.sudamericana': { ru: 'Южноамериканский кубок', en: 'Copa Sudamericana' },
   'comp.concacaf_cup': { ru: 'Кубок КОНКАКАФ', en: 'CONCACAF Cup' },
@@ -148,7 +148,8 @@ export const VOCAB: Content = {
   'award.golden_boot': { ru: 'Золотая бутса', en: 'Golden Boot' },
   'award.best_gk': { ru: 'Лучший вратарь года', en: 'Goalkeeper of the Year' },
   'award.best_defender': { ru: 'Защитник года', en: 'Defender of the Year' },
-  'award.league_mvp': { ru: 'Лучший игрок лиги', en: 'League MVP' },
+  // Слово «лиги» ушло из названия: лига теперь называется рядом с наградой.
+  'award.league_mvp': { ru: 'Лучший игрок', en: 'MVP' },
   'award.young_player': { ru: 'Лучший молодой игрок', en: 'Young Player of the Year' },
   'award.puskas': { ru: 'Гол года', en: 'Goal of the Year' },
 

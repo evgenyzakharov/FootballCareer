@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Timeline } from '../src/ui/Timeline'
+import { Sidebar } from '../src/ui/Sidebar'
 import { seasonLabel } from '../src/ui/format'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
 import type { CareerState, Confederation, Gauges, Objective, Pace, Position, Role } from '../src/engine/types'
@@ -1359,6 +1360,40 @@ describe('движок карьеры', () => {
       expect(club.tier).toBeGreaterThanOrEqual(0)
       expect(club.tier).toBeLessThanOrEqual(6)
     }
+  })
+
+  it('в таблице карьеры видны карточки, а не только результативность', () => {
+    // Жёлтые и красные движок считал с самого начала, но показать их было
+    // негде: дисквалификация посреди сезона выглядела как гром среди ясного
+    // неба, хотя карточки к ней и вели.
+    const state = playCareer('cards')
+    const html = renderToStaticMarkup(createElement(Timeline, { state }))
+    const seasons = state.history.length
+
+    expect(html).toContain(t({ key: 'timeline.yellow' }, 'ru'))
+    expect(html).toContain(t({ key: 'timeline.red' }, 'ru'))
+    // Столбцов ровно по сезону: без этого «нашлась строка Ж» ничего не значит.
+    expect(html.split('timeline__sep').length - 1).toBe(seasons + 1)
+    expect(state.history.some((season) => season.tally.yellow > 0)).toBe(true)
+  })
+
+  it('награда лиги названа вместе с лигой, а мировая — без неё', () => {
+    // «Лучший игрок лиги ’32» одинаково выглядел и во Второй лиге А, и в
+    // Серии А. Лиги в самой награде нет — она берётся из сезона по возрасту.
+    let checked = 0
+    for (const seed of ['awards-a', 'awards-b', 'awards-c', 'awards-d']) {
+      const state = playCareer(seed)
+      const html = renderToStaticMarkup(createElement(Sidebar, { state }))
+      for (const award of state.awards) {
+        if (award.key !== 'league_mvp') continue
+        const season = state.history.find((s) => s.age === award.age)
+        const club = findClub(season?.clubId ?? null)
+        if (!club) continue
+        expect(html).toContain(getLeague(club.leagueId).name.ru)
+        checked++
+      }
+    }
+    expect(checked).toBeGreaterThan(0)
   })
 
   it('закрытый сезон не показывается в таблице карьеры дважды', () => {
