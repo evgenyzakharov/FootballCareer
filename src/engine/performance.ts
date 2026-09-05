@@ -2,6 +2,7 @@ import type { Absence, Club, InjuryHit, MatchResult, Pace, Player, Position, Rol
 import type { Fixture } from './fixtures'
 import { isDefender } from './attributes'
 import { INJURY_TYPES, injuryMatches, injuryRisk } from './injuries'
+import { findClub } from '../data/clubs'
 import { getLeague } from '../data/leagues'
 import { playerOvr, squadLevel } from './player'
 import type { ManagerStyle } from './relationships'
@@ -275,9 +276,24 @@ function baseRating(player: Player, club: Club): number {
   )
 }
 
-function missedMatch(fixture: Fixture, absence: Absence): MatchResult {
+/**
+ * Счёт матча. Ожидаемые голы идут от разницы в силе составов: своя команда без
+ * игрока играет ровно так же, как с ним, — здесь считается матч, а не его
+ * вклад. Дома забивается чуть охотнее, в гостях — чуть реже.
+ */
+function scoreline(club: Club, fixture: Fixture, rng: Rng): { teamGoals: number; teamConceded: number } {
+  const opponent = findClub(fixture.opponentId)
+  const edge = (club.tier - (opponent?.tier ?? club.tier)) * 0.17 + (fixture.home ? 0.12 : -0.1)
+  return {
+    teamGoals: poisson(clamp(1.35 + edge, 0.35, 3.4), rng),
+    teamConceded: poisson(clamp(1.35 - edge, 0.35, 3.4), rng),
+  }
+}
+
+function missedMatch(fixture: Fixture, absence: Absence, club: Club, rng: Rng): MatchResult {
   return {
     ...fixture,
+    ...scoreline(club, fixture, rng),
     absence,
     minutes: 0,
     started: false,
@@ -321,7 +337,7 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
   const roll = rng.float()
   const started = roll < involvement.start * availability
   const cameOn = !started && roll < (involvement.start + involvement.sub) * availability
-  if (!started && !cameOn) return missedMatch(fixture, 'squad')
+  if (!started && !cameOn) return missedMatch(fixture, 'squad', club, rng)
 
   // Чем выше роль, тем реже снимают до финального свистка.
   const full = gk || rng.chance(0.4 + roleRank(role) * 0.09)
@@ -380,6 +396,13 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
   const spread = (0.22 + Math.max(0, MORALE_LEVEL - player.gauges.morale) * 0.006) * MATCH_SPREAD
   const rating = clamp(round(rng.around(core + (goals + assists * 0.7) * 1.4, spread), 2), 4.5, 9.6)
 
+  // Табло не может спорить с личной графой: больше команды игрок не забьёт, а
+  // сухой матч — это и есть ноль пропущенных. У вратаря пропущенные уже
+  // посчитаны выше, и второй бросок сделал бы из них два разных числа.
+  const board = scoreline(club, fixture, rng)
+  const teamGoals = Math.max(board.teamGoals, goals)
+  const teamConceded = cleanSheet ? 0 : gk ? goalsConceded : board.teamConceded
+
   return {
     ...fixture,
     minutes,
@@ -393,6 +416,8 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
     rating,
     injury,
     absence: null,
+    teamGoals,
+    teamConceded,
   }
 }
 
@@ -416,13 +441,13 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
     if (out > 0) {
       out--
       sidelined++
-      matches.push(missedMatch(fixture, 'injury'))
+      matches.push(missedMatch(fixture, 'injury', ctx.club, rng))
       continue
     }
     if (ban > 0) {
       ban--
       sidelined++
-      matches.push(missedMatch(fixture, 'ban'))
+      matches.push(missedMatch(fixture, 'ban', ctx.club, rng))
       continue
     }
     const match = simulateMatch(ctx, fixture, rng)
