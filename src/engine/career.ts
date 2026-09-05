@@ -1,6 +1,6 @@
 import type {
-  Attributes, Beat, Card, CareerState, Effect, Localized, NationalTally, Pace, Player, Role,
-  SeasonRecord, Stage, Text,
+  Attributes, Beat, Card, CareerState, Effect, Localized, NationalTally, NextStep, Pace, Player,
+  Role, SeasonRecord, Stage, Text,
 } from './types'
 import { ATTR_KEYS, attrAgeBand, isGoalkeeper, marketValue, overall } from './attributes'
 import { MAX_AGE, START_AGE, createPlayer, playerOvr, squadLevel } from './player'
@@ -649,7 +649,11 @@ function openBeat(state: CareerState, beat: Beat): CareerState {
       // движка, и для отложенных последствий: травмированному нечего решать ни
       // на поле, ни в сборной.
       const out = state.player.matchesOut > 0 || state.player.banMatches > 0
-      if (out && needsPitch(def.channel)) return state
+      // Продолжение сцены этот гейт пропускает: разговор, начатый до травмы,
+      // должен договориться, иначе он оборвётся на полуслове и игрок не
+      // поймёт, что произошло.
+      const chained = Number(beat.payload?.chain ?? 0) > 0
+      if (out && !chained && needsPitch(def.channel)) return state
       if (def.when && !def.when(ctx) && def.weight > 0) return state
       const card = buildCard(def, ctx)
       if (card.options.length === 0) return state
@@ -1280,6 +1284,7 @@ export function choose(state: CareerState, optionId: string): CareerState {
   let next: CareerState = { ...state, step: state.step + 1, card: null }
   next = applyEffects(next, resolution.effects)
   next = { ...next, resolution }
+  next = queueScene(next, resolution.next, payloadFromCard, optionId)
 
   if (resolution.headline) {
     next = {
@@ -1291,6 +1296,34 @@ export function choose(state: CareerState, optionId: string): CareerState {
     }
   }
   return next
+}
+
+/**
+ * Сколько ходов может занимать одна сцена. Страховка насоса от кольца
+ * A → B → A, а не игровое правило: длинных разговоров в контенте нет.
+ */
+const SCENE_STEPS = 3
+
+/**
+ * Продолжение сцены встаёт в начало очереди — следующей карточкой, а не через
+ * расписание последствий: реплика в разговоре не может приходить через
+ * полсезона. Выбор первого хода едет дальше сам, в `payload.from`.
+ */
+function queueScene(
+  state: CareerState,
+  next: NextStep | undefined,
+  payload: Record<string, string | number>,
+  optionId: string,
+): CareerState {
+  if (!next) return state
+  const depth = Number(payload.chain ?? 0)
+  if (depth + 1 >= SCENE_STEPS) return state
+  const beat: Beat = {
+    t: 'event',
+    key: next.key,
+    payload: { from: optionId, ...next.payload, chain: depth + 1 },
+  }
+  return { ...state, queue: [beat, ...state.queue] }
 }
 
 /** Карточка помнит свой контекст: травма, турнир, список академий. */

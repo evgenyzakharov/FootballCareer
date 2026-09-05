@@ -75,6 +75,7 @@ export function resolveCard(def: EventDef, ctx: EventCtx, optionId: string): Res
     headline: result.headline
       ? { key: `ev.${def.key}.hl.${result.outcome}`, params: result.params }
       : undefined,
+    next: result.next,
   }
 }
 

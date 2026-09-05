@@ -2,6 +2,7 @@ import type {
   AttrKey, CareerState, Club, CompetitionKind, Effect, EventChannel, Gauges, OptionEffectHint,
   Player, RelationRole, Role, Severity, Stage, TextParam,
 } from '../types'
+import type { NextStep } from '../types'
 import type { Rng } from '../rng'
 
 export interface EventCtx {
@@ -42,6 +43,11 @@ export interface EventResult {
   params?: Record<string, TextParam>
   /** Добавить строку в ленту новостей (ключ ev.<event>.hl.<outcome>). */
   headline?: boolean
+  /**
+   * Сцена не кончилась: этот шаг покажется сразу следующей карточкой. Для
+   * разговора в два хода — ответ собеседника и ваша реакция на него.
+   */
+  next?: NextStep
   tone?: 'good' | 'bad' | 'neutral'
 }
 
@@ -119,6 +125,15 @@ export const minutes = (mult: number): Effect => ({ t: 'minutes', mult })
 export const release = (): Effect => ({ t: 'release' })
 export const wageMult = (mult: number): Effect => ({ t: 'wage', mult })
 export const objective = (direction: 'up' | 'down'): Effect => ({ t: 'objective', direction })
+
+/**
+ * Продолжение той же сцены. В отличие от `later`, шаг не уходит в расписание
+ * последствий и не ждёт нужной стадии — он показывается сразу, следующей
+ * карточкой. Выбор первого хода доезжает сам, в `payload.from`.
+ */
+export function step(eventKey: string, payload?: Record<string, string | number>): NextStep {
+  return { key: eventKey, payload }
+}
 
 export function later(
   eventKey: string,

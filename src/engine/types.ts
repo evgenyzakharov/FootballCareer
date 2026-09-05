@@ -281,10 +281,22 @@ export type Beat =
 export type EventChannel =
   | 'training' | 'media' | 'locker' | 'transfer' | 'match' | 'life' | 'national' | 'medical' | 'board'
 
+/** Следующий шаг сцены: ключ события и что донести до него из первого хода. */
+export interface NextStep {
+  key: string
+  payload?: Record<string, string | number>
+}
+
 export interface Resolution {
   text: Text
   effects: Effect[]
   headline?: Text
+  /**
+   * Сцена продолжается: этот шаг покажется следующей карточкой. Лежит здесь,
+   * а не в очереди, чтобы сохранение посреди сцены знало, чем она
+   * заканчивается.
+   */
+  next?: NextStep
 }
 
 export interface FeedItem {

@@ -1,4 +1,4 @@
-import { H, attr, flag, gauge, later, minutes, money, rel, trait, wageMult } from './context'
+import { H, attr, flag, gauge, minutes, money, rel, step, trait, wageMult } from './context'
 import type { EventDef, EventResult, OptionDraft } from './context'
 import type { Effect } from '../types'
 import { getClub } from '../../data/clubs'
@@ -258,13 +258,23 @@ export const TRANSFER_EVENTS: EventDef[] = [
     resolve: (_c, id) => {
       if (id === 'listen') return { outcome: 'listen', effects: [flag('wants_out'), rel('agent', 12), gauge('coachTrust', -6)], tone: 'neutral' }
       if (id === 'refuse') return { outcome: 'refuse', effects: [rel('agent', -14), gauge('coachTrust', 8), gauge('lockerRoom', 6)], tone: 'good' }
-      return { outcome: 'change_agent', effects: [flag('new_agent'), rel('agent', -100), later('new_agent_arrives', 0, 'review')], tone: 'neutral' }
+      // Разговор с новым агентом идёт сразу, следующей карточкой: раньше он
+      // уезжал в расписание последствий и приходил в межсезонье, через
+      // десяток чужих ситуаций.
+      return {
+        outcome: 'change_agent',
+        effects: [flag('new_agent'), rel('agent', -100)],
+        next: step('new_agent_arrives'),
+        tone: 'neutral',
+      }
     },
   },
   {
     key: 'new_agent_arrives',
     channel: 'transfer',
-    stages: ['review'],
+    // Приходит только продолжением сцены, поэтому стадия у него та же, что у
+    // первого хода.
+    stages: ['winter'],
     once: false,
     weight: 0,
     build: () => ({ options: [

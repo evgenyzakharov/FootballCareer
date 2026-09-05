@@ -1,6 +1,18 @@
-import { H, attr, flag, gauge, later, minutes, money, rel, trait } from './context'
+import { H, attr, flag, gauge, later, minutes, money, rel, step, trait } from './context'
 import type { EventDef } from './context'
 import { find } from '../relationships'
+
+type ManagerReply = 'promise' | 'blunt' | 'door'
+
+/**
+ * Ответ тренера из первого хода сцены. Карточку собирают и вне сцены —
+ * например, проверкой переводов, — поэтому чужой payload не должен ронять
+ * сборку: без ответа считаем, что тренер ответил сухо.
+ */
+function replyOf(payload: Record<string, string | number>): ManagerReply {
+  const value = String(payload.reply)
+  return value === 'promise' || value === 'door' ? value : 'blunt'
+}
 
 export const LOCKER_EVENTS: EventDef[] = [
   {
@@ -281,5 +293,110 @@ export const LOCKER_EVENTS: EventDef[] = [
       }
       return { outcome: 'ask_loan', effects: [flag('wants_out'), gauge('coachTrust', -4), rel('agent', 8)], tone: 'neutral' }
     },
-  }
+  },
+  {
+    key: 'squad_place_talk',
+    channel: 'locker',
+    stages: ['autumn', 'winter'],
+    once: false,
+    weight: 8,
+    when: (c) =>
+      c.club !== null
+      && c.player.age >= 18
+      && (c.role === 'reserve' || c.role === 'bench' || c.role === 'rotation'),
+    build: (c) => ({
+      bodyParams: { name: find(c.state.relationships, 'manager')?.name ?? { key: 'npc.manager' } },
+      options: [
+        { id: 'demand', hints: [H.gamble, H.minutesUp] },
+        { id: 'ask', hints: [H.trustUp, H.safe] },
+        { id: 'silent', hints: [H.moraleDown, H.noEffect] },
+      ],
+    }),
+    resolve: (c, id) => {
+      if (id === 'silent') {
+        // Разговор не состоялся — и сцена на этом кончается. Продолжение
+        // возвращается не из каждого варианта: молчание тоже ответ.
+        return { outcome: 'silent', effects: [gauge('morale', -6), gauge('lockerRoom', 2)], tone: 'neutral' }
+      }
+      // Что ответит тренер, решает доверие. Тон вопроса сдвигает пороги:
+      // с требованием и обещание достаётся труднее, и до двери ближе.
+      const trust = c.player.gauges.coachTrust
+      const hard = id === 'demand'
+      const reply = trust >= (hard ? 60 : 50)
+        ? 'promise'
+        : trust >= (hard ? 35 : 22)
+          ? 'blunt'
+          : 'door'
+      if (hard) {
+        return {
+          outcome: 'demand',
+          effects: [gauge('coachTrust', -5), gauge('lockerRoom', -3)],
+          next: step('squad_place_answer', { reply }),
+          tone: 'neutral',
+        }
+      }
+      return {
+        outcome: 'ask',
+        effects: [gauge('coachTrust', 4), attr('mental', 1)],
+        next: step('squad_place_answer', { reply }),
+        tone: 'neutral',
+      }
+    },
+  },
+  {
+    key: 'squad_place_answer',
+    channel: 'locker',
+    // Второй ход той же сцены: в лотерею не попадает, приходит только
+    // продолжением, поэтому стадии у него те же, что у первого хода.
+    stages: ['autumn', 'winter'],
+    once: false,
+    weight: 0,
+    build: (c) => ({
+      bodyParams: {
+        name: find(c.state.relationships, 'manager')?.name ?? { key: 'npc.manager' },
+        reply: { key: `ev.squad_place_answer.reply_${replyOf(c.payload)}` },
+      },
+      options: [
+        { id: 'accept', hints: [H.trustUp, H.formUp] },
+        { id: 'push', hints: [H.gamble, H.minutesUp] },
+        { id: 'exit', hints: [H.leaveClub] },
+      ],
+    }),
+    resolve: (c, id) => {
+      const reply = replyOf(c.payload)
+      if (id === 'accept') {
+        if (reply === 'promise') {
+          return { outcome: 'accept', effects: [gauge('coachTrust', 10), gauge('form', 5), minutes(1.15)], tone: 'good' }
+        }
+        if (reply === 'blunt') {
+          return { outcome: 'accept', effects: [gauge('coachTrust', 6), attr('mental', 1)], tone: 'neutral' }
+        }
+        return { outcome: 'accept', effects: [gauge('coachTrust', 2), gauge('morale', -5)], tone: 'neutral' }
+      }
+      if (id === 'push') {
+        // Давить имеет смысл только тогда, когда дверь приоткрыта. В остальных
+        // случаях это разговор на повышенных тонах и трибуна в воскресенье.
+        if (reply === 'promise' && c.rng.chance(0.5)) {
+          return {
+            outcome: 'push_won',
+            effects: [gauge('coachTrust', 4), minutes(1.25), trait('competitor')],
+            headline: true,
+            tone: 'good',
+          }
+        }
+        return {
+          outcome: 'push_lost',
+          effects: [gauge('coachTrust', -12), gauge('lockerRoom', -4), minutes(0.8)],
+          tone: 'bad',
+        }
+      }
+      return {
+        outcome: 'exit',
+        effects: reply === 'door'
+          ? [flag('wants_out'), rel('agent', 12), gauge('coachTrust', -6), minutes(0.75)]
+          : [flag('wants_out'), rel('agent', 12), gauge('coachTrust', -6)],
+        tone: 'neutral',
+      }
+    },
+  },
 ]

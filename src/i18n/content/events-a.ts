@@ -409,4 +409,61 @@ export const EVENTS_A: Content = {
   'ev.reserve_demotion.res.go_public': { ru: 'Слова разошлись по заголовкам. Дверь закрылась плотнее.', en: 'Your words made the headlines. The door shut tighter.' },
   'ev.reserve_demotion.hl.go_public': { ru: 'Публично поспорил с тренером', en: 'Goes public against the manager' },
   'ev.reserve_demotion.res.ask_loan': { ru: 'Агент начал искать вариант с игровым временем.', en: 'Your agent started looking for somewhere you would actually play.' },
+
+  // ─── squad_place_talk → squad_place_answer (сцена в два хода) ─────────────
+  'ev.squad_place_talk.title': { ru: 'Разговор о месте в составе', en: 'A word about your place' },
+  'ev.squad_place_talk.body': {
+    ru: 'Третий месяц вы выходите с лавки. Дверь тренерской приоткрыта, {name} внутри один.',
+    en: 'Three months of coming off the bench. The manager door is ajar and {name} is alone inside.',
+  },
+  'ev.squad_place_talk.opt.demand': { ru: 'Потребовать место', en: 'Demand a place' },
+  'ev.squad_place_talk.opt.ask': { ru: 'Спросить, чего вам не хватает', en: 'Ask what you are missing' },
+  'ev.squad_place_talk.opt.silent': { ru: 'Уйти, ничего не сказав', en: 'Leave without a word' },
+  'ev.squad_place_talk.res.demand': {
+    ru: 'Вы сказали, что готовы играть и ждать больше не намерены. Планшет лёг на стол экраном вниз.',
+    en: 'You said you were ready and done waiting. The tablet went face down on the desk.',
+  },
+  'ev.squad_place_talk.res.ask': {
+    ru: 'Вы спросили прямо: чего не хватает. Пауза вышла длиннее, чем вы рассчитывали.',
+    en: 'You asked it straight: what is missing. The pause ran longer than you expected.',
+  },
+  'ev.squad_place_talk.res.silent': {
+    ru: 'Вы постояли в коридоре и ушли. Разговора не было.',
+    en: 'You stood in the corridor and walked away. The conversation never happened.',
+  },
+
+  'ev.squad_place_answer.title': { ru: 'Что ответил тренер', en: 'What the manager said' },
+  'ev.squad_place_answer.body': { ru: '{name}: «{reply}»', en: '{name}: “{reply}”' },
+  'ev.squad_place_answer.reply_promise': {
+    ru: 'Место не дарят. Но кубок твой: сыграешь там — вернёшься и в лигу.',
+    en: 'Places are not gifts. But the cup is yours: play there and you are back in the league side.',
+  },
+  'ev.squad_place_answer.reply_blunt': {
+    ru: 'Ты не держишь темп все девяносто. Работай, я замечу.',
+    en: 'You do not hold the tempo for ninety minutes. Work, and I will notice.',
+  },
+  'ev.squad_place_answer.reply_door': {
+    ru: 'Я на тебя не рассчитываю. Ищи клуб, где будешь играть.',
+    en: 'You are not in my plans. Go and find a club where you will play.',
+  },
+  'ev.squad_place_answer.opt.accept': { ru: 'Принять и работать', en: 'Take it and work' },
+  'ev.squad_place_answer.opt.push': { ru: 'Надавить ещё', en: 'Push harder' },
+  'ev.squad_place_answer.opt.exit': { ru: 'Просить, чтобы отпустили', en: 'Ask to be let go' },
+  'ev.squad_place_answer.res.accept': {
+    ru: 'Вы кивнули и вышли работать. Такие разговоры тренеры помнят дольше, чем громкие.',
+    en: 'You nodded and went back to work. Managers remember these talks longer than the loud ones.',
+  },
+  'ev.squad_place_answer.res.push_won': {
+    ru: 'Вы не отступили — и первым отвёл глаза не вы. В воскресенье вы вышли в старте.',
+    en: 'You did not back down, and you were not the one who looked away first. On Sunday you started.',
+  },
+  'ev.squad_place_answer.hl.push_won': { ru: 'Выбил себе место в составе', en: 'Talks his way into the side' },
+  'ev.squad_place_answer.res.push_lost': {
+    ru: 'Разговор кончился на повышенных тонах. В воскресенье вас не было даже в заявке.',
+    en: 'The talk ended in raised voices. On Sunday you were not even in the squad.',
+  },
+  'ev.squad_place_answer.res.exit': {
+    ru: 'Вы попросили не держать вас. Агенту позвонили в тот же вечер.',
+    en: 'You asked them not to hold on to you. Your agent got the call that evening.',
+  },
 }
