@@ -1,4 +1,5 @@
-import type { MatchResult } from '../engine/types'
+import type { MatchResult, Position } from '../engine/types'
+import { isDefender, isGoalkeeper } from '../engine/attributes'
 import { findClub } from '../data/clubs'
 import { useLocale, useT } from './locale'
 
@@ -15,7 +16,11 @@ function ratingTier(rating: number): 'poor' | 'ok' | 'good' | 'great' {
  * Таблицей это читалось как выгрузка из базы — глаз пересчитывал столбцы вместо
  * того, чтобы цепляться за провал и за лучший матч.
  */
-export function MatchList({ matches, gk }: { matches: MatchResult[]; gk: boolean }) {
+export function MatchList({ matches, position }: { matches: MatchResult[]; position: Position }) {
+  const gk = isGoalkeeper(position)
+  // Сухой матч отмечается и защитнику: он его тоже заработал. Пропущенные
+  // при этом остаются вратарской строкой.
+  const clean = gk || isDefender(position)
   const t = useT()
   const locale = useLocale()
   if (matches.length === 0) return null
@@ -56,7 +61,7 @@ export function MatchList({ matches, gk }: { matches: MatchResult[]; gk: boolean
                   {t({ key: `match.absence.${match.absence ?? 'squad'}` })}
                 </span>
               )}
-              {played && gk && match.cleanSheet && (
+              {played && clean && match.cleanSheet && (
                 <span className="tag" data-kind="good">{t({ key: 'match.clean_sheet' })}</span>
               )}
               {played && gk && !match.cleanSheet && (

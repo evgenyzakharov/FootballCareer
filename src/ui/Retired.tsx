@@ -1,4 +1,5 @@
 import type { CareerState } from '../engine/types'
+import { isDefender } from '../engine/attributes'
 import { careerTotals } from '../engine/career'
 import { Sidebar } from './Sidebar'
 import { Timeline } from './Timeline'
@@ -41,6 +42,10 @@ export function Retired({ state, onRestart }: { state: CareerState; onRestart: (
           <>
             <BigStat labelKey="hud.goals" value={totals.goals} />
             <BigStat labelKey="hud.assists" value={totals.assists} />
+            {/* Защитника карьера мерит не голами: сухие матчи — его цифра. */}
+            {isDefender(state.player.position) && (
+              <BigStat labelKey="hud.team_clean_sheets" value={totals.cleanSheets} />
+            )}
           </>
         )}
         <BigStat labelKey="hud.caps" value={totals.caps} />

@@ -2,12 +2,14 @@ import type { Club, CurrentSeason, Player } from './types'
 import { getLeague } from '../data/leagues'
 import { averageRating } from './performance'
 import { Rng, clamp } from './rng'
+import { isDefender } from './attributes'
 import { playerOvr } from './player'
 
 export const AWARD_KEYS = [
   'ballon_dor',
   'golden_boot',
   'best_gk',
+  'best_defender',
   'league_mvp',
   'young_player',
   'puskas',
@@ -54,10 +56,19 @@ export function rollAwards(player: Player, club: Club, season: CurrentSeason, rn
     if (rng.chance(p)) won.push('golden_boot')
   }
 
+  // Вратарь года и защитник года считаются по одной формуле от одних и тех же
+  // сухих матчей: это две награды за один и тот же ноль на табло, и
+  // расходиться в требованиях им не с чего. Порог держит награду редкой —
+  // шесть сухих за сезон набирает почти каждый, десять уже не всякий.
+  const cleanSheetAward = (): number =>
+    clamp((season.tally.cleanSheets - 6) / 14, 0, 0.5) * clamp(0.5 + (rating - 6.6), 0.2, 1.6)
+
   if (player.position === 'GK' && season.tally.apps >= 20) {
-    // Множитель по оценке был слишком жёстким: при 6.9 он резал шанс вдвое.
-    const p = clamp((season.tally.cleanSheets - 10) / 16, 0, 0.55) * clamp(0.5 + (rating - 6.6), 0.2, 1.6)
-    if (rng.chance(p)) won.push('best_gk')
+    if (rng.chance(cleanSheetAward())) won.push('best_gk')
+  }
+
+  if (isDefender(player.position) && season.tally.apps >= 20) {
+    if (rng.chance(cleanSheetAward())) won.push('best_defender')
   }
 
   if (season.tally.apps >= 18) {

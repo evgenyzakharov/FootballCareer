@@ -1,5 +1,6 @@
 import type { Absence, Club, InjuryHit, MatchResult, Pace, Player, Position, Role } from './types'
 import type { Fixture } from './fixtures'
+import { isDefender } from './attributes'
 import { INJURY_TYPES, injuryMatches, injuryRisk } from './injuries'
 import { getLeague } from '../data/leagues'
 import { playerOvr, squadLevel } from './player'
@@ -351,8 +352,12 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
 
   const cleanRate = clamp((0.14 + (club.tier - 1) * 0.038 + (ovr - 60) * 0.004) * style.cleanSheet, 0.02, 0.6)
   // Сухой матч засчитывается только тому, кто отстоял почти весь: вышедший на
-  // двадцать минут при 0:0 сухого матча себе не пишет.
-  const cleanSheet = gk && minutes >= 80 && rng.chance(cleanRate)
+  // двадцать минут при 0:0 сухого матча себе не пишет. Вратарю нужен почти
+  // полный матч, защитнику — большая его часть: ноль на табло держит линия,
+  // а не один человек.
+  const earnsClean = gk ? minutes >= 80 : isDefender(player.position) && minutes >= 60
+  const cleanSheet = earnsClean && rng.chance(cleanRate)
+  // Пропущенные остаются вратарской цифрой: полевому игроку их не вешают.
   const goalsConceded = gk && !cleanSheet ? 1 + poisson(0.55, rng) : 0
 
   const aggression = player.position === 'CB' || player.position === 'CDM' ? 1.7 : 1
@@ -364,7 +369,12 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
   // а к «ровно отыграл» — от 6.6 форма и доверие уже падают, и стягивание к
   // ней превращалось бы в тихий штраф всем, кто выходит на замену.
   const weight = 0.55 + 0.45 * share
-  const core = CAMEO_ANCHOR + (baseRating(player, club) + (cleanSheet ? 1.1 : 0) - CAMEO_ANCHOR) * weight
+  // Прибавку к оценке за сухой матч получает только вратарь: у него это
+  // личная работа. Защитнику тот же ноль на табло уже записан в актив, и
+  // если поднимать им ещё и оценку, одно событие потянет и величину сезона,
+  // и награды, и доверие — замер показал плюс 0.28 к средней оценке и
+  // втрое больше наград, чем нужно.
+  const core = CAMEO_ANCHOR + (baseRating(player, club) + (gk && cleanSheet ? 1.1 : 0) - CAMEO_ANCHOR) * weight
   // Просевший настрой бьёт и по стабильности: матчи разваливаются на провалы
   // и всплески вместо ровной линии.
   const spread = (0.22 + Math.max(0, MORALE_LEVEL - player.gauges.morale) * 0.006) * MATCH_SPREAD

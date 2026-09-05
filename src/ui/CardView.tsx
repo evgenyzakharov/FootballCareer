@@ -1,5 +1,4 @@
 import type { Card, Resolution } from '../engine/types'
-import { isGoalkeeper } from '../engine/attributes'
 import type { Position } from '../engine/types'
 import { MatchList } from './Matches'
 import { useT } from './locale'
@@ -37,7 +36,7 @@ export function CardView({
       <p className="card__body">{t(card.body)}</p>
 
       {card.matches && card.matches.length > 0 && (
-        <MatchList matches={card.matches} gk={isGoalkeeper(position)} />
+        <MatchList matches={card.matches} position={position} />
       )}
 
       {card.details && card.details.length > 0 && (

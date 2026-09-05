@@ -48,6 +48,17 @@ export function isGoalkeeper(position: Position): boolean {
 }
 
 /**
+ * Линия обороны и опорник. Сухой матч — величина командная, и в актив он
+ * идёт не только вратарю: без этого у защитных амплуа нет ни одной цифры,
+ * которой можно мерить сезон.
+ */
+const DEFENSIVE: Position[] = ['CB', 'LB', 'RB', 'CDM']
+
+export function isDefender(position: Position): boolean {
+  return DEFENSIVE.includes(position)
+}
+
+/**
  * Сдвиг «возрастного пика» по атрибуту. Скорость садится рано, чтение игры
  * растёт почти до конца — из-за этого 33-летний плеймейкер ещё полезен,
  * а 33-летний винжер уже нет.

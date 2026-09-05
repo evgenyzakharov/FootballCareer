@@ -147,6 +147,7 @@ export const VOCAB: Content = {
   'award.ballon_dor': { ru: 'Золотой мяч', en: 'Ballon d’Or' },
   'award.golden_boot': { ru: 'Золотая бутса', en: 'Golden Boot' },
   'award.best_gk': { ru: 'Лучший вратарь года', en: 'Goalkeeper of the Year' },
+  'award.best_defender': { ru: 'Защитник года', en: 'Defender of the Year' },
   'award.league_mvp': { ru: 'Лучший игрок лиги', en: 'League MVP' },
   'award.young_player': { ru: 'Лучший молодой игрок', en: 'Young Player of the Year' },
   'award.puskas': { ru: 'Гол года', en: 'Goal of the Year' },

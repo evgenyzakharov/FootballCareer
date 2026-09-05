@@ -90,6 +90,7 @@ export const UI: Content = {
   'hud.objective_value': { ru: '{kind}: {target}', en: '{kind}: {target}' },
   'hud.squad_bar': { ru: 'Уровень состава', en: 'Squad level' },
   'hud.squad_bar_value': { ru: '{level} · вы {gap}', en: '{level} · you {gap}' },
+  'hud.team_clean_sheets': { ru: 'Сухие матчи команды', en: 'Team clean sheets' },
   'hud.manager': { ru: 'Тренер', en: 'Manager' },
   'hud.manager_value': { ru: '{name} · {style}{fit}', en: '{name} · {style}{fit}' },
   'hud.style_suits': { ru: ' · вам на руку', en: ' · plays to your game' },

@@ -1,5 +1,5 @@
 import type { CareerState } from '../engine/types'
-import { ATTR_KEYS, isGoalkeeper } from '../engine/attributes'
+import { ATTR_KEYS, isDefender, isGoalkeeper } from '../engine/attributes'
 import { currentOvr, currentValue, managerStyle, squadStanding } from '../engine/career'
 import { find, styleFit } from '../engine/relationships'
 import { averageRating } from '../engine/performance'
@@ -21,6 +21,7 @@ export function Hud({ state }: { state: CareerState }) {
   const tally = state.season?.tally
   const rating = tally ? averageRating(tally.ratingSum, tally.ratingCount) : 0
   const gk = isGoalkeeper(player.position)
+  const defender = isDefender(player.position)
   const manager = find(state.relationships, 'manager')
   const style = managerStyle(state)
   // Манера тренера двигает минуты и продуктивность, поэтому игрок должен
@@ -80,6 +81,13 @@ export function Hud({ state }: { state: CareerState }) {
           />
         )}
 
+        {defender && tally && (
+          <KeyValue
+            labelKey="hud.team_clean_sheets"
+            tone={tally.cleanSheets >= 8 ? 'good' : 'neutral'}
+            value={tally.cleanSheets}
+          />
+        )}
         {state.season && (
           <KeyValue labelKey="hud.role" value={t({ key: `role.${state.season.role}` })} />
         )}
@@ -205,7 +213,7 @@ export function HudSkills({ state }: { state: CareerState }) {
         ) : (
           <>
             <FormStrip matches={played} />
-            <MatchList matches={recent} gk={gk} />
+            <MatchList matches={recent} position={player.position} />
           </>
         )}
       </Panel>

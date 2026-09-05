@@ -905,10 +905,18 @@ describe('движок карьеры', () => {
     }
   })
 
-  it('полевому игроку сухие матчи и пропущенные не пишут', () => {
-    const result = blockFor('CB', 'starter', 'field-keeper')
-    expect(result.cleanSheets).toBe(0)
-    expect(result.goalsConceded).toBe(0)
+  it('сухие матчи пишут защите, пропущенные — только вратарю', () => {
+    // Сухой матч — величина командная: ноль на табло держит линия обороны,
+    // а не один человек. Пропущенные при этом остаются вратарской цифрой.
+    const defender = blockFor('CB', 'starter', 'field-keeper')
+    expect(defender.cleanSheets).toBeGreaterThan(0)
+    expect(defender.goalsConceded).toBe(0)
+  })
+
+  it('нападающему сухих матчей не пишут', () => {
+    const striker = blockFor('ST', 'starter', 'field-keeper')
+    expect(striker.cleanSheets).toBe(0)
+    expect(striker.goalsConceded).toBe(0)
   })
 
   it('отрезок без единого матча не обнуляет форму и доверие', () => {
