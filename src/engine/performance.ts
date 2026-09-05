@@ -3,6 +3,8 @@ import type { Fixture } from './fixtures'
 import { INJURY_TYPES, injuryMatches, injuryRisk } from './injuries'
 import { getLeague } from '../data/leagues'
 import { playerOvr, squadLevel } from './player'
+import type { ManagerStyle } from './relationships'
+import { styleEffects } from './relationships'
 import { Rng, clamp, round } from './rng'
 
 /** Матчей в полусезоне со всеми турнирами. Мерка, от которой считаются сдвиги
@@ -194,6 +196,12 @@ export interface BlockContext {
   playedBefore: number
   scheduledBefore: number
   /**
+   * Манера тренера: она двигает и минуты, и продуктивность, и свежесть.
+   * `null` — законное состояние: академия, свободный агент, клуб без
+   * назначенного тренера. Тогда стиль не меняет ничего.
+   */
+  style?: ManagerStyle | null
+  /**
    * Календарь всего сезона. Тур берёт из него свой кусок подряд: круг
    * чемпионата иначе не построить — соперников надо развести по сезону целиком,
    * а не выбирать заново на каждые пять матчей.
@@ -295,7 +303,14 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
 
   // Свежесть и решения игрока двигают не длину матча, а шанс в него попасть:
   // уставшего чаще оставляют на скамейке, а не снимают на сороковой минуте.
-  const availability = clamp((0.65 + (player.gauges.fitness / 100) * 0.35) * ctx.minutesMult, 0, 1.4)
+  const style = styleEffects(ctx.style, player.position)
+  // Своего под стиль тренер ставит чаще, чужого — реже: это тот же
+  // канал, что и решения игрока, только рычаг не в его руках.
+  const availability = clamp(
+    (0.65 + (player.gauges.fitness / 100) * 0.35) * ctx.minutesMult * style.minutes,
+    0,
+    1.4,
+  )
   const gk = player.position === 'GK'
   // Вратаря не выпускают на двадцать минут: он либо стоит весь матч, либо не
   // играет вовсе. Поэтому его выходы со скамейки — это просто попадания в
@@ -331,10 +346,10 @@ export function simulateMatch(ctx: BlockContext, fixture: Fixture, rng: Rng): Ma
   const formFactor = 0.72 + (player.gauges.form / 100) * 0.56
   const volume = share * PER_MATCH_SCALE * teamFactor * leagueFactor * formFactor
 
-  const goals = poisson(goalRate(player.position, ovr) * volume, rng)
-  const assists = poisson(assistRate(player.position, ovr) * volume, rng)
+  const goals = poisson(goalRate(player.position, ovr) * volume * style.goals, rng)
+  const assists = poisson(assistRate(player.position, ovr) * volume * style.assists, rng)
 
-  const cleanRate = clamp(0.14 + (club.tier - 1) * 0.038 + (ovr - 60) * 0.004, 0.02, 0.6)
+  const cleanRate = clamp((0.14 + (club.tier - 1) * 0.038 + (ovr - 60) * 0.004) * style.cleanSheet, 0.02, 0.6)
   // Сухой матч засчитывается только тому, кто отстоял почти весь: вышедший на
   // двадцать минут при 0:0 сухого матча себе не пишет.
   const cleanSheet = gk && minutes >= 80 && rng.chance(cleanRate)
@@ -449,8 +464,11 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   // чем из двух. Голы и передачи не масштабируются: они считаются поштучно и
   // складываются за сезон сами.
   const part = available / BLOCK_MATCHES
+  // Манера тренера стоит свежести ровно в той мере, в какой игрок на поле:
+  // сидящий на скамейке от прессинга не устаёт.
+  const drain = styleEffects(ctx.style, player.position).fitnessDrain * load
   const fitnessDelta = round(
-    (6 - load * 22 + (player.age < 24 ? 3 : player.age > 31 ? -3 : 0)) * part + sidelined * REST_RECOVERY,
+    (6 - load * 22 - drain + (player.age < 24 ? 3 : player.age > 31 ? -3 : 0)) * part + sidelined * REST_RECOVERY,
     1,
   )
   const formDelta = round(((scored - 6.8) * 9 + (seasonLoad < 0.25 ? -8 : 0)) * part, 1)

@@ -1,6 +1,7 @@
 import type { CareerState } from '../engine/types'
 import { ATTR_KEYS, isGoalkeeper } from '../engine/attributes'
-import { currentOvr, currentValue, squadStanding } from '../engine/career'
+import { currentOvr, currentValue, managerStyle, squadStanding } from '../engine/career'
+import { find, styleFit } from '../engine/relationships'
 import { averageRating } from '../engine/performance'
 import { findClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
@@ -20,6 +21,12 @@ export function Hud({ state }: { state: CareerState }) {
   const tally = state.season?.tally
   const rating = tally ? averageRating(tally.ratingSum, tally.ratingCount) : 0
   const gk = isGoalkeeper(player.position)
+  const manager = find(state.relationships, 'manager')
+  const style = managerStyle(state)
+  // Манера тренера двигает минуты и продуктивность, поэтому игрок должен
+  // видеть и её, и то, как он в неё вписан: иначе просевшие минуты выглядят
+  // как случайность.
+  const fit = style ? styleFit(style, player.position) : 0
 
   return (
     <>
@@ -85,6 +92,20 @@ export function Hud({ state }: { state: CareerState }) {
               params: {
                 level: standing.level,
                 gap: standing.gap > 0 ? `+${standing.gap}` : `−${Math.abs(standing.gap)}`,
+              },
+            })}
+          />
+        )}
+        {manager && style && (
+          <KeyValue
+            labelKey="hud.manager"
+            tone={fit > 0 ? 'good' : fit < 0 ? 'bad' : 'neutral'}
+            value={t({
+              key: 'hud.manager_value',
+              params: {
+                name: manager.name,
+                style: { key: `style.${style}` },
+                fit: fit === 0 ? '' : { key: fit > 0 ? 'hud.style_suits' : 'hud.style_against' },
               },
             })}
           />

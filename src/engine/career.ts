@@ -600,6 +600,16 @@ function shouldCallUp(state: CareerState): boolean {
   return rngFor(state, 'callup').chance(p)
 }
 
+/**
+ * Манера тренера текущего клуба. Её спрашивают и симуляция, и интерфейс:
+ * тренера может не быть вовсе — в академии, без клуба или до назначения, —
+ * и это не ошибка, а законный `null`.
+ */
+export function managerStyle(state: CareerState): ManagerStyle | null {
+  const manager = find(state.relationships, 'manager')
+  return (manager?.meta?.style as ManagerStyle | undefined) ?? null
+}
+
 // ─── Насос: превращаем биты в карточки ──────────────────────────────────────
 
 export function pump(state: CareerState): CareerState {
@@ -684,6 +694,7 @@ function runBlock(state: CareerState): CareerState {
       club,
       role: season.role,
       minutesMult: season.minutesMult,
+      style: managerStyle(state),
       matchesOut: state.player.matchesOut,
       banMatches: state.player.banMatches,
       size: matchesInRound(state.pace, season.roundsPlayed),

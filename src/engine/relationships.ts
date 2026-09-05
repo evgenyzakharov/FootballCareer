@@ -24,6 +24,71 @@ export function styleFit(style: ManagerStyle, position: Position): number {
   return 0
 }
 
+/**
+ * Как стиль меняет саму игру, а не только доверие. Множители намеренно
+ * скромные: стиль уже влияет на игрока вторым путём — через доверие, роль и
+ * минуты, — и щедрые числа складывались бы с ним в перекос, при котором
+ * неподходящий тренер вычёркивал бы игрока из состава целиком.
+ *
+ * `fitnessDrain` — расход свежести за полусезон при полной занятости: столько
+ * стоит игроку манера тренера сверх обычной нагрузки.
+ */
+export interface StyleEffects {
+  /** Множитель шанса попасть в состав. */
+  minutes: number
+  goals: number
+  assists: number
+  /** Доля сухих матчей: касается вратаря. */
+  cleanSheet: number
+  fitnessDrain: number
+}
+
+const NEUTRAL_STYLE: StyleEffects = {
+  minutes: 1, goals: 1, assists: 1, cleanSheet: 1, fitnessDrain: 0,
+}
+
+// Базовые минуты у всех стилей единица, и это не заготовка: манера не решает,
+// сколько людей выходит на поле, — только кто именно. Минуты двигает
+// совместимость позиции, ниже.
+//
+// Средние по столбцам держатся около единицы намеренно: тренер достаётся
+// игроку случайно, и если бы средний стиль давал прибавку, вся выборка
+// карьер тихо поехала бы вверх. Стиль обязан решать, кому повезло с
+// тренером, а не поднимать всех разом.
+const STYLE_EFFECTS: Record<ManagerStyle, StyleEffects> = {
+  // Контроль мяча: пас важнее удара, темп ниже — и бегать приходится меньше.
+  possession: { minutes: 1, goals: 0.96, assists: 1.16, cleanSheet: 1.02, fitnessDrain: -2 },
+  // Прямой футбол: мяч быстро идёт вперёд, забивают чаще, но не с разыгрыша.
+  direct: { minutes: 1, goals: 1.12, assists: 0.9, cleanSheet: 0.93, fitnessDrain: 1 },
+  // Прессинг: главный расход — свежесть, всё остальное почти не меняется.
+  pressing: { minutes: 1, goals: 1.06, assists: 1.04, cleanSheet: 0.95, fitnessDrain: 6 },
+  // Игра от обороны: сзади сухо, впереди пусто.
+  defensive: { minutes: 1, goals: 0.86, assists: 0.9, cleanSheet: 1.1, fitnessDrain: -5 },
+}
+
+/**
+ * Стиль под конкретную позицию. Базовая таблица говорит, что тренер делает с
+ * командой, совместимость — насколько игрок вписан в этот план: свой играет
+ * больше и полезнее, чужой садится на скамейку и реже оказывается там, где
+ * забивают.
+ */
+export function styleEffects(style: ManagerStyle | null | undefined, position: Position): StyleEffects {
+  if (!style) return NEUTRAL_STYLE
+  const base = STYLE_EFFECTS[style]
+  const fit = styleFit(style, position)
+  // Штраф вдвое весомее премии, и это не игровое кокетство, а арифметика:
+  // подходящих позиций у стилей девятнадцать на девять неподходящих. При
+  // равных премии и штрафе средний игрок в среднем выигрывал бы, и по всей
+  // выборке карьер вылезала бы тихая инфляция матчей и голов.
+  const swing = (like: number) => (fit > 0 ? like : fit < 0 ? -like * 2 : 0)
+  return {
+    minutes: base.minutes * (1 + swing(0.06)),
+    goals: base.goals * (1 + swing(0.04)),
+    assists: base.assists * (1 + swing(0.04)),
+    cleanSheet: base.cleanSheet,
+    fitnessDrain: base.fitnessDrain,
+  }
+}
 function make(
   role: RelationRole,
   clubId: string | null,
