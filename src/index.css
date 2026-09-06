@@ -603,16 +603,17 @@ input { font: inherit; color: inherit; }
 .card__chosen-text { font-size: 13.5px; font-weight: 600; }
 
 /* ─── Лента сезона ─────────────────────────────────────────────────────────
-   Матч и событие идут одной колонкой, сверху вниз: прошедший матч — такая же
-   запись дневника, как разговор с тренером. Прожитое не исчезает с экрана, а
-   гаснет, и решение всегда остаётся последним. */
+   Матч и событие идут одной колонкой: прошедший матч — такая же запись
+   дневника, как разговор с тренером. Свежее наверху, прожитое уходит вниз и
+   гаснет, не исчезая; решение всегда первое, что видит глаз. */
 .stream { display: flex; flex-direction: column; gap: 8px; }
 
 .stream__item { transition: opacity .3s; animation: stream-in .22s ease-out; }
 .stream__item[data-state='past'] { opacity: .6; }
 
+/* Новая запись приходит сверху — оттуда же и въезжает. */
 @keyframes stream-in {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -681,7 +682,8 @@ input { font: inherit; color: inherit; }
 .stream__notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
 .stream__notes li { font-size: 12px; color: var(--text-faint); }
 
-.stream__skip { align-self: center; margin-top: 2px; }
+/* Кнопка стоит там же, где появляются матчи, — сверху. */
+.stream__skip { align-self: center; margin-bottom: 2px; }
 
 /* ─── Таймлайн ────────────────────────────────────────────────────────────── */
 

@@ -7,9 +7,13 @@ import { ingestCard, restore, type Ingested, type StreamItem } from './stream'
 import { useT } from './locale'
 
 /** Шаг показа матчей. */
-const STEP_MS = 250
+const STEP_MS = 700
 
-/** Сколько итог выбора стоит на экране один, прежде чем лента поедет дальше. */
+/**
+ * Сколько итог выбора стоит один, прежде чем лента поедет дальше. Из ленты он
+ * никуда не денется и после — гаснет, но остаётся; пауза нужна лишь затем,
+ * чтобы следующий матч не появился поверх него в ту же секунду.
+ */
 const PAUSE_MS = 700
 
 /**
@@ -120,7 +124,7 @@ export function SeasonStream({
   // Из одного и того же состояния движок двигается ровно один раз: в StrictMode
   // эффекты вызываются дважды, и без этого карьера прыгала бы через ход.
   const acted = useRef<CareerState | null>(null)
-  const endRef = useRef<HTMLDivElement>(null)
+  const topRef = useRef<HTMLDivElement>(null)
 
   // Показ очереди: по элементу за такт.
   useEffect(() => {
@@ -170,10 +174,11 @@ export function SeasonStream({
     }
   })
 
-  // Лента растёт вниз, и решение всегда в самом низу: без этого на телефоне
-  // оно уезжало бы под сгиб вместе с каждым новым матчем.
+  // Новое приходит наверх, и там же всегда стоит решение. Само по себе это не
+  // держит его на виду: вставка сверху сдвигает всё вниз, и читающий остаётся
+  // на прежнем месте — то есть на уже прожитом. Поэтому возвращаемся к началу.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end', behavior: instant ? 'auto' : 'smooth' })
+    topRef.current?.scrollIntoView({ block: 'start', behavior: instant ? 'auto' : 'smooth' })
   }, [view.items.length, instant])
 
   function pick(card: Card, optionId: string) {
@@ -224,20 +229,23 @@ export function SeasonStream({
     }
   }
 
-  const last = view.items.length - 1
+  // Лента читается сверху вниз, от свежего к прожитому: последнее случившееся
+  // и есть то, ради чего на неё смотрят. Порядок в `items` остаётся
+  // хронологическим — переворачивается только показ.
+  const ordered = view.items.slice().reverse()
   return (
     <div className="stream">
-      {view.items.map((item, i) => (
-        <div className="stream__item" key={item.key} data-state={i === last ? 'live' : 'past'}>
-          {render(item, i === last)}
-        </div>
-      ))}
+      <div ref={topRef} />
       {view.queue.length > 0 && (
         <button type="button" className="ghost-btn stream__skip" onClick={() => dispatch({ t: 'flush' })}>
           {t({ key: 'stream.skip' })}
         </button>
       )}
-      <div ref={endRef} />
+      {ordered.map((item, i) => (
+        <div className="stream__item" key={item.key} data-state={i === 0 ? 'live' : 'past'}>
+          {render(item, i === 0)}
+        </div>
+      ))}
     </div>
   )
 }
