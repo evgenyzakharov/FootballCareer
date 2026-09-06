@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "check:browser": "node scripts/browser-check.mjs",
     "balance": "tsx scripts/balance.ts",
+    "gauges": "tsx scripts/gauges.ts",
     "counts": "tsx scripts/counts.ts",
     "awards": "tsx scripts/awards.ts"
   },

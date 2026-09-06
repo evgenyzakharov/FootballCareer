@@ -5,14 +5,14 @@ import { Timeline } from '../src/ui/Timeline'
 import { Sidebar } from '../src/ui/Sidebar'
 import { seasonLabel } from '../src/ui/format'
 import {
-  FANS_ON_ARRIVAL, TRUST_ON_ARRIVAL,
+  FANS_ON_ARRIVAL, LOCKER_ON_ARRIVAL, TRUST_ON_ARRIVAL,
   ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding,
 } from '../src/engine/career'
 import type {
   CareerState, Confederation, Gauges, Objective, Pace, Position, Role, SeasonRecord,
 } from '../src/engine/types'
 import {
-  CAMEO_ANCHOR, DOGHOUSE, FORM_BY_RATING, FORM_PRACTICE, FORM_RUST, FROZEN_OUT,
+  DOGHOUSE, FORM_BY_RATING, FORM_NEUTRAL, FORM_PRACTICE, FORM_RUST, FROZEN_OUT,
   ROUNDS_PER_SEASON, SEASON_MATCHES,
   averageRating, determineRole, matchesBefore, matchesInRound, roleRank, simulateBlock,
 } from '../src/engine/performance'
@@ -378,10 +378,10 @@ describe('движок карьеры', () => {
       expect(moved.player.gauges.coachTrust).toBeLessThanOrEqual(TRUST_ON_ARRIVAL + 8)
       // Любовь трибун остаётся на прежней трибуне.
       expect(moved.player.gauges.fanLove).toBe(FANS_ON_ARRIVAL)
-      // От авторитета в раздевалке остаётся случайная доля — от трети до двух
-      // третей.
-      expect(moved.player.gauges.lockerRoom).toBeGreaterThanOrEqual(Math.round(80 * 0.35))
-      expect(moved.player.gauges.lockerRoom).toBeLessThanOrEqual(Math.round(80 * 0.65))
+      // Авторитет в раздевалке разыгрывается заново и от прежнего не зависит:
+      // восемьдесят очков, заработанные в другом клубе, здесь не значат ничего.
+      expect(moved.player.gauges.lockerRoom).toBeGreaterThanOrEqual(LOCKER_ON_ARRIVAL[0])
+      expect(moved.player.gauges.lockerRoom).toBeLessThanOrEqual(LOCKER_ON_ARRIVAL[1])
       lockers.push(moved.player.gauges.lockerRoom)
     }
     // Доля именно случайная, а не одна и та же на каждый переход.
@@ -1143,7 +1143,7 @@ describe('движок карьеры', () => {
       const block = blockFor('ST', 'starter', seed)
       if (block.apps / block.matches.length < FORM_PRACTICE) continue
       const rating = averageRating(block.ratingSum, block.ratingCount)
-      expect(block.formDelta).toBeCloseTo((rating - CAMEO_ANCHOR) * FORM_BY_RATING, 0)
+      expect(block.formDelta).toBeCloseTo((rating - FORM_NEUTRAL) * FORM_BY_RATING, 0)
     }
   })
 
@@ -1162,8 +1162,8 @@ describe('движок карьеры', () => {
         }
         const rating = averageRating(block.ratingSum, block.ratingCount)
         // Вплотную к нейтральной точке сдвиг тонет в округлении до десятой.
-        if (rating > 6.85) expect(block.moraleDelta).toBeGreaterThan(0)
-        if (rating < 6.75) expect(block.moraleDelta).toBeLessThan(0)
+        if (rating > FORM_NEUTRAL + 0.05) expect(block.moraleDelta).toBeGreaterThan(0)
+        if (rating < FORM_NEUTRAL - 0.05) expect(block.moraleDelta).toBeLessThan(0)
       }
     }
   })
