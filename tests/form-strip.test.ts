@@ -32,7 +32,9 @@ const BASE: MatchResult = {
 }
 
 function strip(matches: MatchResult[]): string {
-  return renderToStaticMarkup(createElement(FormStrip, { matches, position: 'CAM' }))
+  // Полоса размечает места под весь сезон: тесту хватает мест ровно под свои
+  // матчи, иначе разметка утонула бы в полусотне пустых столбиков.
+  return renderToStaticMarkup(createElement(FormStrip, { matches, position: 'CAM', total: matches.length, rating: 7 }))
 }
 
 describe('полоса формы', () => {

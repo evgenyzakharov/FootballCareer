@@ -1,6 +1,6 @@
 import type { CareerState } from '../engine/types'
 import { isDefender, isGoalkeeper } from '../engine/attributes'
-import { averageRating, tallyOf } from '../engine/performance'
+import { SEASON_MATCHES, averageRating, tallyOf } from '../engine/performance'
 import { findClub } from '../data/clubs'
 import { getLeague } from '../data/leagues'
 import { Empty, Fact } from './bits'
@@ -78,13 +78,10 @@ export function SeasonBar({ state, pending = 0 }: { state: CareerState; pending?
               )}
             </>
           )}
-          {rating > 0 && (
-            <Fact
-              labelKey="hud.rating"
-              tone={rating >= 7.1 ? 'good' : rating < 6.5 ? 'bad' : undefined}
-              value={rating.toFixed(2)}
-            />
-          )}
+          {/* Средняя оценка живёт над полосой формы и только там: два числа
+              рядом расходились — движок взвешивает оценку минутами, а полоса
+              считала простое среднее, и игрок видел 7.46 и 7.29 про один и тот
+              же сезон. Осталось то, по которому судят задачу на сезон. */}
           <Fact labelKey="timeline.yellow" value={tally.yellow} />
           <Fact labelKey="timeline.red" value={tally.red} />
         </div>
@@ -94,7 +91,7 @@ export function SeasonBar({ state, pending = 0 }: { state: CareerState; pending?
         {shown.length === 0 ? (
           <Empty textKey="panel.no_matches" />
         ) : (
-          <FormStrip matches={shown} position={player.position} />
+          <FormStrip matches={shown} position={player.position} total={SEASON_MATCHES} rating={rating} />
         )}
       </div>
     </section>

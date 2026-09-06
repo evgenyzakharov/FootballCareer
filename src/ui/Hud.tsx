@@ -32,6 +32,7 @@ export function HudFacts({ state }: { state: CareerState }) {
 
   return (
     <section className="facts">
+      <div className="facts__row">
       <div className="facts__ident">
         <div className="ovr" data-tier={ovrTier(ovr)}>
           <div className="ovr__label">OVR</div>
@@ -117,38 +118,42 @@ export function HudFacts({ state }: { state: CareerState }) {
           />
         )}
       </div>
+      </div>
+      <GaugesRow state={state} />
     </section>
   )
 }
 
 /**
- * Восемь одинаковых полос подряд не давали понять, на что смотреть. Первая
- * четвёрка решает, выйдет ли игрок на поле в ближайшем туре, вторая — что с
- * ним будет летом.
+ * Состояние игрока второй строкой шапки, а не вкладкой досье.
+ *
+ * Во вкладке оно было тем, за чем надо сходить, — а спрашивают его перед
+ * каждым решением: доверие тренера и свежесть объясняют половину того, что
+ * происходит на поле. Здесь оно стоит рядом с ролью в клубе и задачей на
+ * сезон, то есть там же, где и остальные ответы на «почему так».
+ *
+ * Восемь шкал в ряд читаются как одна строка, но делятся на две по смыслу:
+ * первые четыре решают, выйдет ли игрок на поле в ближайшем туре, остальные —
+ * что с ним будет летом. Граница между ними отмечена разделителем.
  */
-export function GaugesBody({ state }: { state: CareerState }) {
-  const t = useT()
+function GaugesRow({ state }: { state: CareerState }) {
   const { gauges } = state.player
   return (
-    <>
-      <div className="gauge-group">{t({ key: 'panel.state_pitch' })}</div>
-      <div className="gauge-grid">
-        <Gauge labelKey="gauge.form" value={gauges.form} />
-        <Gauge labelKey="gauge.fitness" value={gauges.fitness} />
-        <Gauge labelKey="gauge.morale" value={gauges.morale} />
-        <Gauge labelKey="gauge.coachTrust" value={gauges.coachTrust} />
-      </div>
-      <div className="gauge-group">{t({ key: 'panel.state_around' })}</div>
-      <div className="gauge-grid">
-        <Gauge labelKey="gauge.fanLove" value={gauges.fanLove} />
-        <Gauge labelKey="gauge.lockerRoom" value={gauges.lockerRoom} />
-        <BipolarGauge labelKey="gauge.mediaRep" value={gauges.mediaRep} />
-        <Gauge labelKey="gauge.fame" value={gauges.fame} />
-      </div>
-    </>
+    <div className="facts__state">
+      <Gauge labelKey="gauge.form" value={gauges.form} />
+      <Gauge labelKey="gauge.fitness" value={gauges.fitness} />
+      <Gauge labelKey="gauge.morale" value={gauges.morale} />
+      <Gauge labelKey="gauge.coachTrust" value={gauges.coachTrust} />
+      <span className="facts__state-split" aria-hidden="true" />
+      <Gauge labelKey="gauge.fanLove" value={gauges.fanLove} />
+      <Gauge labelKey="gauge.lockerRoom" value={gauges.lockerRoom} />
+      <BipolarGauge labelKey="gauge.mediaRep" value={gauges.mediaRep} />
+      <Gauge labelKey="gauge.fame" value={gauges.fame} />
+    </div>
   )
 }
 
+/** Навыки игрока: у полевого их семь, вратарская игра только у вратаря. */
 export function SkillsBody({ state }: { state: CareerState }) {
   const t = useT()
   const player = state.player

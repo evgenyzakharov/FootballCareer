@@ -165,6 +165,7 @@ export const UI: Content = {
   'match.absence.ban': { ru: 'дисквалификация', en: 'suspended' },
   'match.absence.squad': { ru: 'вне заявки', en: 'not in the squad' },
   'form.played': { ru: 'средняя · матчей: {n}', en: 'average · {n} games' },
+  'form.mean': { ru: 'средняя за сезон', en: 'season average' },
   'form.score': { ru: 'Счёт', en: 'Score' },
   'form.none': { ru: 'ни одного матча', en: 'no games yet' },
   'form.rising': { ru: 'идёт вверх', en: 'on the rise' },

@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { CareerState } from '../engine/types'
-import { GaugesBody, SkillsBody } from './Hud'
+import { SkillsBody } from './Hud'
 import { FeedBody, NationalBody, PeopleBody, TraitsBody, TrophiesBody } from './Sidebar'
 import { Timeline } from './Timeline'
 import { useT } from './locale'
@@ -26,7 +26,6 @@ const TABS: Tab[] = [
   { id: 'trophies', titleKey: 'panel.trophies', body: (state) => <TrophiesBody state={state} /> },
   { id: 'feed', titleKey: 'panel.feed', body: (state) => <FeedBody state={state} /> },
   { id: 'attrs', titleKey: 'panel.attrs', body: (state) => <SkillsBody state={state} /> },
-  { id: 'gauges', titleKey: 'panel.gauges', body: (state) => <GaugesBody state={state} /> },
   { id: 'traits', titleKey: 'panel.traits', body: (state) => <TraitsBody state={state} /> },
   { id: 'people', titleKey: 'tab.people', body: (state) => <PeopleBody state={state} /> },
 ]

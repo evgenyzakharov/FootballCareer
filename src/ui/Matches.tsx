@@ -259,7 +259,28 @@ function MatchTip({ match, position }: { match: MatchResult; position: Position 
  * матчей, а это то, чего в ней нет: весь сезон разом и куда он идёт. Подробности
  * матча приходят подсказкой по наведению, чтобы полоса оставалась полосой.
  */
-export function FormStrip({ matches, position }: { matches: MatchResult[]; position: Position }) {
+export function FormStrip({
+  matches,
+  position,
+  total,
+  rating,
+}: {
+  matches: MatchResult[]
+  position: Position
+  /**
+   * Сколько матчей в сезоне всего. Места под них размечаются сразу: иначе
+   * столбики стоят широкими в августе и сжимаются с каждым туром, и полоса
+   * каждый раз перерисовывается заново вместо того, чтобы заполняться.
+   */
+  total: number
+  /**
+   * Средняя оценка сезона. Приходит снаружи, а не считается здесь: движок
+   * взвешивает её минутами (выход на двадцать минут весит меньше полного
+   * матча), и своя, невзвешенная, средняя расходилась с той, по которой
+   * судят задачу на сезон и итоги карьеры.
+   */
+  rating: number
+}) {
   const t = useT()
   const played = matches.filter((m) => m.minutes > 0)
   // Полоса нужна и тому, кто не сыграл ни одного матча: сезон, проведённый в
@@ -267,20 +288,21 @@ export function FormStrip({ matches, position }: { matches: MatchResult[]; posit
   // была пустота. Средней и тренда у такого сезона нет, и врать их нельзя.
   if (matches.length === 0) return null
 
+  // Тренд — сравнение, а не показанное число: последние пять против всего
+  // остального. По нему и видно, идёт игрок вверх или вниз.
   const average = played.length > 0 ? played.reduce((sum, m) => sum + m.rating, 0) / played.length : 0
-  // Последние пять против всего остального: по ним и видно, идёт ли игрок вверх.
   const tail = played.slice(-5)
   const tailAverage = tail.length > 0 ? tail.reduce((sum, m) => sum + m.rating, 0) / tail.length : 0
   const trend = tailAverage - average
+  // Несыгранные матчи сезона: пустые места, которые заполнятся по ходу.
+  const empty = Math.max(0, total - matches.length)
 
   return (
     <div className="form">
       <div className="form__head">
-        {played.length > 0 && <span className="form__mean">{average.toFixed(2)}</span>}
+        {rating > 0 && <span className="form__mean">{rating.toFixed(2)}</span>}
         <span className="form__label">
-          {played.length > 0
-            ? t({ key: 'form.played', params: { n: played.length } })
-            : t({ key: 'form.none' })}
+          {played.length > 0 ? t({ key: 'form.mean' }) : t({ key: 'form.none' })}
         </span>
         {played.length > 0 && (
           <span className="form__trend" data-tone={trend >= 0.15 ? 'good' : trend <= -0.15 ? 'bad' : 'flat'}>
@@ -308,6 +330,9 @@ export function FormStrip({ matches, position }: { matches: MatchResult[]; posit
             </span>
           )
         })}
+        {Array.from({ length: empty }, (_, i) => (
+          <span className="form__slot" data-empty="true" key={`ahead-${i}`} aria-hidden="true" />
+        ))}
       </div>
     </div>
   )
