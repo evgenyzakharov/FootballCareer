@@ -17,7 +17,17 @@ export type StreamItem =
   | { t: 'resolution'; key: string; text: Text }
   | { t: 'report'; key: string; card: Card }
 
-/** Разбор карточки движка на элементы ленты. */
+/**
+ * Разбор карточки движка на элементы ленты.
+ *
+ * Ключи элементов складываются из порядкового номера разбора (`seq`), а не из
+ * одного лишь `card.id`. Id карточки — это `ключ@возраст:этап`, и он вовсе не
+ * уникален: `injury_hit@40:winter` приходит дважды, если игрок сломался в обоих
+ * турах зимы. Два одинаковых ключа ломают сверку React — узел остаётся в ленте
+ * с чужим состоянием, сверху повисает уже отвеченная карточка, нажать на ней
+ * нечего, и игра встаёт намертво. Ровно это и случалось примерно в каждой
+ * седьмой карьере.
+ */
 export interface Ingested {
   /** В ленту сразу. */
   now: StreamItem[]
@@ -91,19 +101,19 @@ export function isBig(match: MatchResult, position: Position): boolean {
  * после: сводка «5 матчей, 2 гола, средняя 7.1», показанная заранее,
  * пересказала бы тур раньше, чем игрок его увидит.
  */
-export function ingestCard(card: Card, position: Position): Ingested {
+export function ingestCard(card: Card, position: Position, seq: number): Ingested {
   const matches = card.matches ?? []
 
   if (card.kind === 'report' && matches.length > 0) {
     const items: StreamItem[] = matches.map((match, i) => ({
       t: 'match',
-      key: `${card.id}#m${i}`,
+      key: `${seq}:${card.id}#m${i}`,
       match,
       big: isBig(match, position),
     }))
     const divider: StreamItem = {
       t: 'divider',
-      key: `${card.id}#sum`,
+      key: `${seq}:${card.id}#sum`,
       title: card.title,
       body: card.body,
       details: card.details ?? [],
@@ -126,11 +136,11 @@ export function ingestCard(card: Card, position: Position): Ingested {
   // Отчёты без матчей — итоги сезона, рынок, год без клуба — остаются
   // карточками во всю ширину: им есть что сказать, и клик «дальше» там уместен.
   if (card.kind === 'report') {
-    return { now: [{ t: 'report', key: card.id, card }], queue: [], held: [], blocked: true, advance: false }
+    return { now: [{ t: 'report', key: `${seq}:${card.id}`, card }], queue: [], held: [], blocked: true, advance: false }
   }
 
   return {
-    now: [{ t: 'card', key: card.id, card, chosen: null }],
+    now: [{ t: 'card', key: `${seq}:${card.id}`, card, chosen: null }],
     queue: [],
     held: [],
     blocked: true,

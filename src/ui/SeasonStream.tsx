@@ -132,6 +132,9 @@ export function SeasonStream({
   // эффекты вызываются дважды, и без этого карьера прыгала бы через ход.
   const acted = useRef<CareerState | null>(null)
   const topRef = useRef<HTMLDivElement>(null)
+  // Порядковый номер разбора: из него собираются ключи элементов ленты. Брать
+  // их из `card.id` нельзя — он повторяется (см. `ingestCard`).
+  const seq = useRef(0)
 
   // Показ очереди: по элементу за такт.
   useEffect(() => {
@@ -160,7 +163,7 @@ export function SeasonStream({
     if (resolution) {
       if (seenResolution.current !== resolution) {
         seenResolution.current = resolution
-        dispatch({ t: 'resolution', key: `res#${view.items.length}`, text: resolution.text })
+        dispatch({ t: 'resolution', key: `${++seq.current}:res`, text: resolution.text })
         return
       }
       if (acted.current === state) return
@@ -177,7 +180,7 @@ export function SeasonStream({
 
     if (state.card && seenCard.current !== state.card) {
       seenCard.current = state.card
-      dispatch({ t: 'ingest', got: ingestCard(state.card, position) })
+      dispatch({ t: 'ingest', got: ingestCard(state.card, position, ++seq.current) })
     }
   })
 

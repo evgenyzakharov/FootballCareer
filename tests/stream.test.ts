@@ -73,7 +73,7 @@ describe('остановка на травме', () => {
 
 describe('разбор карточки тура', () => {
   it('матчи идут по одному, сводка — после них', () => {
-    const got = ingestCard(report([match(), match(), match()]), 'ST')
+    const got = ingestCard(report([match(), match(), match()]), 'ST', 1)
     expect(got.now).toEqual([])
     expect(got.queue.map((i) => i.t)).toEqual(['match', 'match', 'match', 'divider'])
     expect(got.held).toEqual([])
@@ -89,7 +89,7 @@ describe('разбор карточки тура', () => {
       match({ minutes: 0, absence: 'injury' }),
       match({ minutes: 0, absence: 'injury' }),
     ]
-    const got = ingestCard(report(matches), 'ST')
+    const got = ingestCard(report(matches), 'ST', 1)
     expect(got.queue).toHaveLength(2)
     // Сводка тура уходит в хвост вместе с пропущенными матчами: показать её
     // раньше карточки значило бы отчитаться о туре, который ещё не досмотрен.
@@ -97,14 +97,14 @@ describe('разбор карточки тура', () => {
   })
 
   it('травма в последнем матче тура ленту не делит', () => {
-    const got = ingestCard(report([match(), match({ injury: { kind: 'knee', severity: 3 } })]), 'ST')
+    const got = ingestCard(report([match(), match({ injury: { kind: 'knee', severity: 3 } })]), 'ST', 1)
     expect(got.held).toEqual([])
     expect(got.queue).toHaveLength(3)
   })
 
   it('отчёт без матчей остаётся карточкой с кликом', () => {
     const card = { ...report([]), matches: undefined }
-    const got = ingestCard(card, 'ST')
+    const got = ingestCard(card, 'ST', 1)
     expect(got.now.map((i) => i.t)).toEqual(['report'])
     expect(got.blocked).toBe(true)
     expect(got.advance).toBe(false)
@@ -118,15 +118,54 @@ describe('разбор карточки тура', () => {
       matches: undefined,
       options: [{ id: 'yes', label: { key: 'x' }, hints: [], disabled: false }],
     }
-    const got = ingestCard(card, 'ST')
+    const got = ingestCard(card, 'ST', 1)
     expect(got.now.map((i) => i.t)).toEqual(['card'])
     expect(got.blocked).toBe(true)
   })
 
   it('ключи элементов не повторяются', () => {
-    const got = ingestCard(report([match(), match(), match()]), 'ST')
+    const got = ingestCard(report([match(), match(), match()]), 'ST', 1)
     const keys = got.queue.map((i) => i.key)
     expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('одна и та же карточка при повторном разборе получает другие ключи', () => {
+    // Id карточки — это `ключ@возраст:этап`, и он повторяется: сломаться можно
+    // в обоих турах зимы, и оба раза придёт `injury_hit@40:winter`. Совпавшие
+    // ключи ломают сверку React — в ленте остаётся мёртвый узел с чужим
+    // содержимым, сверху повисает уже отвеченная карточка, и игра встаёт.
+    const card = { ...report([]), id: 'injury_hit@40:winter', kind: 'decision' as const, matches: undefined }
+    const first = ingestCard(card, 'ST', 1)
+    const second = ingestCard(card, 'ST', 2)
+    expect(first.now[0].key).not.toBe(second.now[0].key)
+  })
+
+  it('за всю карьеру ни один ключ не повторяется', () => {
+    // Тот же баг, но пойманный так, как он и случался: не на выдуманной паре
+    // карточек, а на живой карьере, где повтор id — вопрос времени.
+    let state = setIdentity(newCareer('keys'), {
+      lastName: 'ТЕСТОВ', shirt: 1, foot: 'right', countryCode: 'ITA', position: 'GK',
+    })
+    const rng = new Rng('keys', 'choices', 0)
+    const keys = new Set<string>()
+    const repeats: string[] = []
+    let seq = 0
+    let ingested = 0
+    for (let guard = 0; guard < 4000 && state.phase !== 'retired'; guard++) {
+      if (state.resolution) { state = ack(state); continue }
+      const card = state.card
+      if (!card) break
+      const got = ingestCard(card, state.player.position, ++seq)
+      ingested++
+      for (const item of [...got.now, ...got.queue, ...got.held]) {
+        if (keys.has(item.key)) repeats.push(item.key)
+        keys.add(item.key)
+      }
+      const options = card.options.filter((o) => !o.disabled)
+      state = choose(state, options.length > 0 ? options[rng.int(0, options.length - 1)].id : 'next')
+    }
+    expect(repeats).toEqual([])
+    expect(ingested).toBeGreaterThan(200)
   })
 })
 
@@ -213,7 +252,7 @@ describe('из чего складывается сводка сезона', () 
 
 describe('сколько лента ещё должна', () => {
   it('считает только матчи, разделители и карточки не в счёт', () => {
-    const got = ingestCard(report([match(), match(), match()]), 'ST')
+    const got = ingestCard(report([match(), match(), match()]), 'ST', 1)
     expect(got.queue).toHaveLength(4)
     expect(countMatches(got.queue)).toBe(3)
   })
@@ -224,7 +263,7 @@ describe('сколько лента ещё должна', () => {
       match({ injury: { kind: 'hamstring', severity: 3 } }),
       match({ minutes: 0, absence: 'injury' }),
     ]
-    const got = ingestCard(report(matches), 'ST')
+    const got = ingestCard(report(matches), 'ST', 1)
     expect(countMatches(got.queue) + countMatches(got.held)).toBe(3)
   })
 })
