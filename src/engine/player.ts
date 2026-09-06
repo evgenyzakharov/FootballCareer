@@ -1,9 +1,26 @@
-import type { AttrKey, Attributes, Foot, Player, Position } from './types'
+import type { AttrKey, Attributes, Foot, Gauges, Player, Position } from './types'
 import { ATTR_KEYS, emptyAttrs, isGoalkeeper, keyAttrs, overall } from './attributes'
 import { Rng, clamp } from './rng'
 
 export const START_AGE = 16
 export const MAX_AGE = 40
+
+/**
+ * Показатели шестнадцатилетнего: доверия почти нет, в раздевалке он никто, о
+ * нём не знает никто. Живут одним объектом, потому что читаются из двух мест —
+ * из готового игрока и из заглушки состояния до выбора личности, — и два
+ * набора чисел уже разъезжались между собой.
+ */
+export const STARTING_GAUGES: Gauges = {
+  form: 60,
+  fitness: 88,
+  morale: 72,
+  coachTrust: 42,
+  fanLove: 50,
+  mediaRep: 0,
+  lockerRoom: 18,
+  fame: 3,
+}
 
 export interface Identity {
   lastName: string
@@ -48,16 +65,7 @@ export function createPlayer(identity: Identity, clubTier: number, rng: Rng): Pl
     position: identity.position,
     age: START_AGE,
     attrs,
-    gauges: {
-      form: 60,
-      fitness: 88,
-      morale: 72,
-      coachTrust: 42,
-      fanLove: 50,
-      mediaRep: 0,
-      lockerRoom: 18,
-      fame: 3,
-    },
+    gauges: { ...STARTING_GAUGES },
     potential,
     traits: [],
     injuries: [],

@@ -4,12 +4,16 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { Timeline } from '../src/ui/Timeline'
 import { Sidebar } from '../src/ui/Sidebar'
 import { seasonLabel } from '../src/ui/format'
-import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
+import {
+  FANS_ON_ARRIVAL, TRUST_ON_ARRIVAL,
+  ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding,
+} from '../src/engine/career'
 import type {
   CareerState, Confederation, Gauges, Objective, Pace, Position, Role, SeasonRecord,
 } from '../src/engine/types'
 import {
-  DOGHOUSE, FROZEN_OUT, ROUNDS_PER_SEASON, SEASON_MATCHES,
+  CAMEO_ANCHOR, DOGHOUSE, FORM_BY_RATING, FORM_PRACTICE, FORM_RUST, FROZEN_OUT,
+  ROUNDS_PER_SEASON, SEASON_MATCHES,
   averageRating, determineRole, matchesBefore, matchesInRound, roleRank, simulateBlock,
 } from '../src/engine/performance'
 import { seasonFixtures } from '../src/engine/fixtures'
@@ -344,6 +348,83 @@ describe('движок карьеры', () => {
 
     // Без контракта продлевать нечего.
     expect(clubWantsToRenew({ ...state, contract: null }, 90, 'star')).toBe(false)
+  })
+
+  it('переход в другой клуб не переносит заработанное у прежнего', () => {
+    const start = (seed: string) => {
+      const fresh = setIdentity(newCareer(seed), {
+        lastName: 'ТЕСТОВ', shirt: 10, foot: 'right', countryCode: 'ENG', position: 'CAM',
+      })
+      const signed = ack(choose(fresh, fresh.card!.options[0].id))
+      return {
+        ...signed,
+        player: {
+          ...signed.player,
+          gauges: { ...signed.player.gauges, coachTrust: 95, fanLove: 90, lockerRoom: 80 },
+        },
+      }
+    }
+
+    const lockers: number[] = []
+    for (const seed of ['move-1', 'move-2', 'move-3', 'move-4', 'move-5', 'move-6']) {
+      const state = start(seed)
+      const to = CLUBS.find((c) => c.id !== state.contract!.clubId)!.id
+      const moved = applyEffects(state, [{ t: 'transfer', clubId: to, loan: false }])
+
+      // Новый тренер видит незнакомого игрока: доверие — база плюс-минус
+      // совместимость его схемы с позицией, а не девяносто пять с прошлой
+      // работы.
+      expect(moved.player.gauges.coachTrust).toBeGreaterThanOrEqual(TRUST_ON_ARRIVAL - 8)
+      expect(moved.player.gauges.coachTrust).toBeLessThanOrEqual(TRUST_ON_ARRIVAL + 8)
+      // Любовь трибун остаётся на прежней трибуне.
+      expect(moved.player.gauges.fanLove).toBe(FANS_ON_ARRIVAL)
+      // От авторитета в раздевалке остаётся случайная доля — от трети до двух
+      // третей.
+      expect(moved.player.gauges.lockerRoom).toBeGreaterThanOrEqual(Math.round(80 * 0.35))
+      expect(moved.player.gauges.lockerRoom).toBeLessThanOrEqual(Math.round(80 * 0.65))
+      lockers.push(moved.player.gauges.lockerRoom)
+    }
+    // Доля именно случайная, а не одна и та же на каждый переход.
+    expect(new Set(lockers).size).toBeGreaterThan(1)
+
+    // Продление в своём клубе ничего не сбрасывает: это тот же тренер, та же
+    // трибуна и та же раздевалка.
+    const stay = start('move-stay')
+    const same = applyEffects(stay, [{ t: 'transfer', clubId: stay.contract!.clubId, loan: false }])
+    expect(same.player.gauges.coachTrust).toBe(95)
+    expect(same.player.gauges.fanLove).toBe(90)
+    expect(same.player.gauges.lockerRoom).toBe(80)
+  })
+
+  it('смена тренера в клубе сбрасывает доверие', () => {
+    // Раньше новый тренер наследовал доверие предыдущего целиком: игрок,
+    // которого держали в основе, оставался в ней и при следующем, а
+    // вычеркнутый — вычеркнутым, и смена тренера была новостью, а не событием.
+    let seen = 0
+    for (let i = 0; i < 30 && seen < 3; i++) {
+      let state = setIdentity(newCareer(`sacked-${i}`), {
+        lastName: 'ТЕСТОВ', shirt: 10, foot: 'right', countryCode: 'ENG', position: 'CAM',
+      })
+      const choices = new Rng(`sacked-${i}`, 'choices', 0)
+      let guard = 0
+      while (state.phase !== 'retired' && guard < 3000) {
+        guard++
+        if (state.card?.eventKey === 'new_manager') {
+          seen++
+          expect(state.player.gauges.coachTrust).toBeGreaterThanOrEqual(TRUST_ON_ARRIVAL - 8)
+          expect(state.player.gauges.coachTrust).toBeLessThanOrEqual(TRUST_ON_ARRIVAL + 8)
+        }
+        if (state.resolution) {
+          state = ack(state)
+          continue
+        }
+        const options = state.card!.options.filter((o) => !o.disabled)
+        state = choose(state, options.length > 0 ? choices.pick(options).id : 'next')
+      }
+    }
+    // Если тренеров за тридцать карьер не сменилось ни разу — сломан не сброс,
+    // а само увольнение, и знать об этом надо тоже.
+    expect(seen).toBeGreaterThan(0)
   })
 
   it('клуб платит по своим возможностям, а не по стоимости игрока', () => {
@@ -1025,16 +1106,66 @@ describe('движок карьеры', () => {
     expect(striker.goalsConceded).toBe(0)
   })
 
-  it('отрезок без единого матча не обнуляет форму и доверие', () => {
+  it('отрезок без единого матча стоит формы, но не обнуляет доверие', () => {
     // Пока запасной не сыграл ни минуты, оценки у него нет. Если считать её
     // нулём, форма и доверие проваливаются так, что выбраться уже нельзя.
     const idle = blockFor('ST', 'reserve', 'idle', { fitness: 20 })
     if (idle.apps === 0) {
-      expect(idle.formDelta).toBeGreaterThan(-20)
+      // Полусезон вне игры — это потеря формы, и потеря заметная: прежние
+      // восемь очков за полгода без матчей позволяли сидеть весь сезон в
+      // запасе и выходить на межсезонье в хорошей форме.
+      expect(idle.formDelta).toBeLessThan(-FORM_RUST * 0.5)
+      // Но не обвал в ноль: с нулевой формы игрок уже не выбрался бы никогда.
+      expect(idle.formDelta).toBeGreaterThan(-FORM_RUST * 1.5)
       expect(idle.trustDelta).toBeGreaterThan(-15)
     }
-    // Штраф за простой всё равно есть: без практики форма падает.
     expect(idle.formDelta).toBeLessThan(0)
+  })
+
+  it('форма падает тем сильнее, чем меньше игрок играл', () => {
+    // Главный канал формы — практика, а не только оценки: иначе роль в клубе
+    // на форме почти не отражается, и запасной весь сезон ходит в хорошей
+    // форме. Считаем по нескольким сидам: на одном отрезке роль иногда
+    // проигрывает случайности, и порядок ролей виден только в среднем.
+    const seeds = ['p-1', 'p-2', 'p-3', 'p-4', 'p-5', 'p-6']
+    const mean = (xs: number[]) => xs.reduce((sum, x) => sum + x, 0) / xs.length
+    const apps = (role: Role) => mean(seeds.map((seed) => blockFor('ST', role, seed).apps))
+    const form = (role: Role) => mean(seeds.map((seed) => blockFor('ST', role, seed).formDelta))
+
+    expect(apps('reserve')).toBeLessThan(apps('rotation'))
+    expect(apps('rotation')).toBeLessThan(apps('starter'))
+    expect(form('reserve')).toBeLessThan(form('rotation'))
+    expect(form('rotation')).toBeLessThan(form('starter'))
+    // А у регулярно играющего практика не отнимает ничего: его форму двигают
+    // только оценки. Это та же арифметика, что в движке, и стоит она здесь
+    // сторожем: штраф за простой не должен капать основе.
+    for (const seed of seeds) {
+      const block = blockFor('ST', 'starter', seed)
+      if (block.apps / block.matches.length < FORM_PRACTICE) continue
+      const rating = averageRating(block.ratingSum, block.ratingCount)
+      expect(block.formDelta).toBeCloseTo((rating - CAMEO_ANCHOR) * FORM_BY_RATING, 0)
+    }
+  })
+
+  it('настрой идёт за оценками', () => {
+    // Раньше настрой не реагировал на игру вовсе: его двигали только карточки
+    // и формальная сдача задачи на сезон. Нейтральная точка у него та же, что
+    // у формы: отыграл на свой уровень — настрой на месте.
+    for (const seed of ['mood-1', 'mood-2', 'mood-3', 'mood-4']) {
+      for (const role of ['star', 'rotation', 'reserve'] as Role[]) {
+        const block = blockFor('ST', role, seed)
+        if (block.apps === 0) {
+          // Не игравший остаётся при своём: оценки у него нет, а за скамейку
+          // он платит формой.
+          expect(block.moraleDelta).toBe(0)
+          continue
+        }
+        const rating = averageRating(block.ratingSum, block.ratingCount)
+        // Вплотную к нейтральной точке сдвиг тонет в округлении до десятой.
+        if (rating > 6.85) expect(block.moraleDelta).toBeGreaterThan(0)
+        if (rating < 6.75) expect(block.moraleDelta).toBeLessThan(0)
+      }
+    }
   })
 
   it('календарь сезона — это круг чемпионата, а не случайные соперники', () => {
@@ -1413,7 +1544,7 @@ describe('движок карьеры', () => {
     expect(wageFor(80, 27, getClub('inter'))).toBeGreaterThan(1_000_000)
   })
 
-  it('пропуск по травме возвращает свежесть, но не форму', () => {
+  it('пропущенный матч возвращает свежесть, но не форму', () => {
     const club = getClub('inter')
     const base = createPlayer(
       { lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CM' },
@@ -1434,13 +1565,25 @@ describe('движок карьеры', () => {
     // Форму простой при этом не чинит, иначе травма стала бы способом отдохнуть.
     expect(injured.formDelta).toBeLessThan(0)
 
-    // Просто не попасть в заявку — ещё не отдых: там игрок тренируется со всеми.
+    // Скамейка — такой же отдых: устаёт игрок на поле, а не в общей группе.
+    // Раньше свежесть возвращали только травма и бан, и отыгравший десять
+    // матчей подряд не восстанавливался, сколько бы ни просидел в запасе.
     const benched = simulateBlock({ ...ctx, role: 'reserve', minutesMult: 1, matchesOut: 0, banMatches: 0 }, new Rng('rest', 'b', 0))
-    expect(injured.fitnessDelta).toBeGreaterThan(benched.fitnessDelta)
+    expect(benched.fitnessDelta).toBeGreaterThan(10)
+    // Но и не больше, чем у выбывшего: пара выходов на поле всё же стоит сил.
+    expect(benched.fitnessDelta).toBeLessThanOrEqual(injured.fitnessDelta)
+    // Форму скамейка при этом не сохраняет — за неё платят практикой.
+    expect(benched.formDelta).toBeLessThan(0)
 
     // Дисквалификация — такой же отдых, как травма.
     const banned = simulateBlock({ ...ctx, minutesMult: 1, matchesOut: 0, banMatches: 26 }, new Rng('rest', 'b', 0))
     expect(banned.fitnessDelta).toBeCloseTo(injured.fitnessDelta, 1)
+
+    // Половина отрезка вне игры возвращает свежесть, даже если вторую половину
+    // игрок отыграл полностью: ровно та жалоба, с которой это чинилось.
+    const half = simulateBlock({ ...ctx, minutesMult: 1, matchesOut: 13, banMatches: 0 }, new Rng('rest', 'b', 0))
+    expect(half.apps).toBeGreaterThan(0)
+    expect(half.fitnessDelta).toBeGreaterThan(0)
   })
 
   it('вариант «остаться» показывает условия, на которых игрок останется', () => {

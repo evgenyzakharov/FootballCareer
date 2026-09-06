@@ -1,12 +1,12 @@
 import type {
-  Attributes, Beat, Card, CareerState, Effect, Localized, NationalTally, NextStep, Pace, Player,
-  Role, SeasonRecord, Stage, Text,
+  Attributes, Beat, Card, CareerState, Effect, Gauges, Localized, NationalTally, NextStep, Pace,
+  Player, Role, SeasonRecord, Stage, Text,
 } from './types'
 import { ATTR_KEYS, attrAgeBand, isGoalkeeper, marketValue, overall } from './attributes'
-import { MAX_AGE, START_AGE, createPlayer, playerOvr, squadLevel } from './player'
+import { MAX_AGE, START_AGE, STARTING_GAUGES, createPlayer, playerOvr, squadLevel } from './player'
 import type { Identity } from './player'
 import {
-  BLOCK_MATCHES, DOGHOUSE, MORALE_LEVEL, ROUNDS_PER_SEASON, SEASON_MATCHES,
+  BLOCK_MATCHES, DOGHOUSE, FORM_LEVEL, MORALE_LEVEL, ROUNDS_PER_SEASON, SEASON_MATCHES,
   averageRating, determineRole, keeperRun, matchesBefore, matchesInRound, simulateBlock,
 } from './performance'
 import {
@@ -64,7 +64,7 @@ export function newCareer(seed: string, startYear = 2026, pace: Pace = 'busy'): 
       lastName: '', shirt: 10, foot: 'right', countryCode: 'ITA', position: 'CAM',
       age: START_AGE,
       attrs: { pace: 40, shooting: 40, passing: 40, dribbling: 40, defending: 40, physical: 40, mental: 40, goalkeeping: 40 },
-      gauges: { form: 60, fitness: 88, morale: 70, coachTrust: 42, fanLove: 50, mediaRep: 0, lockerRoom: 18, fame: 3 },
+      gauges: { ...STARTING_GAUGES },
       potential: 70, traits: [], injuries: [], matchesOut: 0, banMatches: 0, money: 0,
     },
     contract: null,
@@ -132,6 +132,20 @@ export function applyEffects(state: CareerState, effects: Effect[]): CareerState
   return next
 }
 
+/**
+ * Ставит показателю значение, а не сдвигает его. Нужно там, где показатель
+ * начинается заново: новый тренер, новые трибуны, новая раздевалка. Границы
+ * шкал живут здесь же, чтобы сдвиг и сброс не разошлись в том, что считать
+ * пределом.
+ */
+function setGauge(state: CareerState, key: keyof Gauges, value: number): CareerState {
+  const bounds: [number, number] = key === 'mediaRep' ? [-100, 100] : [0, 100]
+  return {
+    ...state,
+    player: { ...state.player, gauges: { ...state.player.gauges, [key]: clamp(value, bounds[0], bounds[1]) } },
+  }
+}
+
 function applyEffect(state: CareerState, effect: Effect): CareerState {
   const player = state.player
   switch (effect.t) {
@@ -140,13 +154,8 @@ function applyEffect(state: CareerState, effect: Effect): CareerState {
         ...state,
         player: { ...player, attrs: { ...player.attrs, [effect.key]: clamp(player.attrs[effect.key] + effect.delta, 20, 99) } },
       }
-    case 'gauge': {
-      const bounds: [number, number] = effect.key === 'mediaRep' ? [-100, 100] : [0, 100]
-      return {
-        ...state,
-        player: { ...player, gauges: { ...player.gauges, [effect.key]: clamp(player.gauges[effect.key] + effect.delta, bounds[0], bounds[1]) } },
-      }
-    }
+    case 'gauge':
+      return setGauge(state, effect.key, player.gauges[effect.key] + effect.delta)
     case 'money':
       return { ...state, player: { ...player, money: Math.max(0, player.money + effect.delta) } }
     case 'potential':
@@ -230,6 +239,35 @@ function applyEffect(state: CareerState, effect: Effect): CareerState {
   }
 }
 
+/**
+ * Доверие, с которого начинается работа с новым тренером. Это сброс, а не
+ * сдвиг: ни заслуги при прежнем тренере, ни ссора с ним новому не передаются —
+ * он видит незнакомого игрока и своё представление о том, как надо играть. От
+ * этой точки отсчёта совместимость со схемой даёт ±8.
+ */
+export const TRUST_ON_ARRIVAL = 45
+
+/**
+ * Отношение новых трибун. Тоже сброс: любовь заслуживают перед конкретными
+ * людьми на конкретной трибуне, и переезжать вместе с игроком она не может.
+ * Не ноль, потому что ноль на этой шкале — «ненавидят», а новичка встречают
+ * не ненавистью, а безразличием: ровно с этим отношением начинается и карьера.
+ */
+export const FANS_ON_ARRIVAL = 50
+
+/**
+ * Знакомство с тренером: доверие начинается заново и сразу получает поправку
+ * на то, ложится ли позиция игрока в его схему. Вызывается и при переходе в
+ * клуб, и при смене тренера в своём, — иначе новый тренер наследовал бы
+ * доверие предыдущего целиком.
+ */
+function meetManager(state: CareerState): CareerState {
+  const manager = find(state.relationships, 'manager')
+  if (!manager) return state
+  const style = (manager.meta?.style as ManagerStyle) ?? 'possession'
+  return setGauge(state, 'coachTrust', TRUST_ON_ARRIVAL + styleFit(style, state.player.position))
+}
+
 function joinClub(state: CareerState, effect: Extract<Effect, { t: 'transfer' }>): CareerState {
   const club = getClub(effect.clubId)
   const rng = rngFor(state, `join:${club.id}`)
@@ -261,13 +299,16 @@ function joinClub(state: CareerState, effect: Extract<Effect, { t: 'transfer' }>
       ...next,
       relationships: relocate(next.relationships, club, next.player.position, playerOvr(next.player), next.player.age, rng),
     }
-    const manager = find(next.relationships, 'manager')
-    if (manager) {
-      const fit = styleFit((manager.meta?.style as ManagerStyle) ?? 'possession', next.player.position)
-      next = applyEffect(next, { t: 'gauge', key: 'coachTrust', delta: fit })
-    }
-    // Приход в новый клуб: авторитет в раздевалке начинается заново.
-    next = applyEffect(next, { t: 'gauge', key: 'lockerRoom', delta: -Math.round(next.player.gauges.lockerRoom * 0.6) })
+    // В новом клубе игрока никто не знает: доверие тренера и отношение трибун
+    // начинаются с чистого листа, а не переезжают вместе с ним.
+    next = meetManager(next)
+    next = setGauge(next, 'fanLove', FANS_ON_ARRIVAL)
+    // Авторитет в раздевалке тоже начинается заново, но не с нуля и не с
+    // одной и той же доли: где-то к новичку с именем прислушиваются с первого
+    // дня, где-то ему заново доказывать. Остаётся случайная доля прежнего —
+    // от трети до двух третей.
+    const kept = 0.35 + rng.float() * 0.3
+    next = setGauge(next, 'lockerRoom', Math.round(next.player.gauges.lockerRoom * kept))
     if (next.season) {
       // Переход посреди сезона: роль в новом составе считаем сразу, иначе
       // подписавшийся в январе играл бы весну по старой роли.
@@ -765,6 +806,7 @@ function runBlock(state: CareerState): CareerState {
     { t: 'gauge', key: 'form', delta: result.formDelta },
     { t: 'gauge', key: 'coachTrust', delta: result.trustDelta },
     { t: 'gauge', key: 'fanLove', delta: result.fanDelta },
+    { t: 'gauge', key: 'morale', delta: result.moraleDelta },
     // Голы и передачи считаются поштучно, а вот «о вас пишут просто потому,
     // что вы в этом клубе» — величина на полусезон: её тур приносит по своей
     // доле, иначе десять туров разгоняли бы известность впятеро.
@@ -1206,7 +1248,10 @@ function develop(state: CareerState): CareerState {
     gauges: {
       ...state.player.gauges,
       fitness: clamp(state.player.gauges.fitness + 26 + (state.player.traits.includes('pro_diet') ? 6 : 0), 0, 100),
-      form: clamp(state.player.gauges.form * 0.7 + 60 * 0.3, 0, 100),
+      // Форма за лето стягивается к норме наполовину: прежняя треть оставляла
+      // блестящий сезон при игроке до самой осени, и терять форму было почти
+      // некогда.
+      form: clamp(state.player.gauges.form * 0.5 + FORM_LEVEL * 0.5, 0, 100),
       morale: clamp(state.player.gauges.morale * 0.8 + MORALE_LEVEL * 0.2, 0, 100),
     },
   }
@@ -1265,7 +1310,10 @@ function marketIsOpen(state: CareerState, rng: Rng): boolean {
 }
 
 function startNextSeason(state: CareerState): CareerState {
-  return enterStage(maybeSackManager(startSeason(state)), 'preseason')
+  // Тренера меняют до начала сезона, а не после: роль и задачу на год
+  // назначает уже новый тренер и по своему доверию. Иначе игрок весь август
+  // числился бы в основе у человека, который его впервые видит.
+  return enterStage(startSeason(maybeSackManager(state)), 'preseason')
 }
 
 // ─── Публичные переходы ─────────────────────────────────────────────────────
@@ -1367,14 +1415,18 @@ function maybeSackManager(state: CareerState): CareerState {
   const rating = last ? averageRating(last.tally.ratingSum, last.tally.ratingCount) : 6.5
   const rng = rngFor(state, 'sack')
   if (!rng.chance(managerSackChance(club, last?.trophies.length ?? 0, rating))) return state
-  return {
+  // Со старым тренером уходит и заработанное у него доверие: новый начинает с
+  // чистого листа и своей схемы. Без этого смена тренера была новостью, но не
+  // событием: игрок, которого прежний тренер держал в основе, оставался в ней
+  // и при следующем, а вычеркнутый — вычеркнутым.
+  return meetManager({
     ...state,
     relationships: [
       ...state.relationships.filter((r) => r.role !== 'manager'),
       createManager(club, state.player.age, rng),
     ],
     flags: { ...state.flags, manager_changed: 1 },
-  }
+  })
 }
 
 // ─── Производные величины для интерфейса ────────────────────────────────────

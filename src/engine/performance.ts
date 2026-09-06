@@ -47,6 +47,45 @@ const ROLE_ORDER: Role[] = ['reserve', 'bench', 'rotation', 'starter', 'star']
  */
 export const MORALE_LEVEL = 65
 
+/**
+ * Во сколько очков настроя обходится очко оценки за полусезон. Втрое слабее
+ * формы: настрой держится дольше, а к норме его стягивает межсезонье — при
+ * равном с формой размахе один хороший год уносил бы его в потолок.
+ */
+const MORALE_BY_RATING = 4
+
+/**
+ * «Нормальная» форма: к ней межсезонье стягивает игрока за лето, от неё же
+ * считается вклад формы в оценку и в роль — одно значение на все три
+ * механики, иначе они разъезжаются. Ниже нейтральной середины шкалы
+ * намеренно: форму зарабатывают игрой, и начинать август в хорошей форме,
+ * ничего для этого не сделав, игрок не должен.
+ */
+export const FORM_LEVEL = 50
+
+/**
+ * Доля матчей отрезка, при которой форма держится сама. Играешь две пятых и
+ * больше — форму двигают только оценки; играешь меньше — тянет вниз тем
+ * сильнее, чем больше матчей прошло мимо. Порог стоит между ротацией и
+ * скамейкой не случайно: игрок основы иногда выпадает из состава на пару
+ * матчей, и наказывать за это его не за что.
+ */
+export const FORM_PRACTICE = 0.4
+
+/**
+ * Сколько формы стоит полусезон, целиком просиженный вне игры. Раньше простой
+ * стоил восьми очков за полгода, и запасной ходил в хорошей форме весь сезон.
+ */
+export const FORM_RUST = 20
+
+/**
+ * Во сколько очков формы обходится очко оценки за полусезон. Вдвое больше
+ * прежнего, потому что межсезонье теперь забывает половину формы, а не треть:
+ * при старом размахе вся шкала сползлась бы к пятидесяти, и блестящий сезон с
+ * провальным читались бы одним словом.
+ */
+export const FORM_BY_RATING = 20
+
 export interface RoleContext {
   player: Player
   club: Club
@@ -76,7 +115,7 @@ export function determineRole({ player, club, rivalPressure }: RoleContext): Rol
   const score =
     gap * 1.4 +
     (player.gauges.coachTrust - 50) * 0.35 +
-    (player.gauges.form - 60) * 0.1 +
+    (player.gauges.form - FORM_LEVEL) * 0.1 +
     player.gauges.lockerRoom * 0.05 -
     rivalPressure * 5
   const byScore: Role =
@@ -181,6 +220,7 @@ export interface BlockResult {
   formDelta: number
   trustDelta: number
   fanDelta: number
+  moraleDelta: number
 }
 
 export interface BlockContext {
@@ -243,16 +283,21 @@ const MATCH_SPREAD = 4.5
  * Оценка, к которой стягивается короткий выход на замену. Это уровень «отыграл
  * ровно на свой уровень»: именно от него не двигается форма после отрезка.
  */
-const CAMEO_ANCHOR = 6.8
+export const CAMEO_ANCHOR = 6.8
 
 /**
- * Сколько свежести возвращает один матч, пропущенный по травме или бану. Просто
- * не попасть в заявку — ещё не отдых: игрок тренируется в общей группе. А вот
- * выбывший из обоймы восстанавливается, и из лазарета возвращаются физически
- * свежими. Форму это не чинит: она падает отдельно, от нехватки игровой
- * практики, — иначе травма превратилась бы в способ отдохнуть.
+ * Сколько свежести возвращает один пропущенный матч — всё равно почему.
+ * Тренировочная неделя без игры восстанавливает и травмированного, и
+ * отбывающего дисквалификацию, и того, кого просто не взяли в заявку: устаёт
+ * игрок на поле, а не в общей группе. Раньше отдыхом считались только травма и
+ * бан, и человек, отыгравший десять матчей и севший на три, возвращался в
+ * состав таким же уставшим. Форму это не чинит: она падает отдельно, от
+ * нехватки игровой практики, — иначе травма стала бы способом отдохнуть.
+ *
+ * Меньше, чем матч отнимает (0.85): иначе пропуск был бы выгоднее игры, и
+ * свежесть у всех стояла бы в потолке.
  */
-const REST_RECOVERY = 0.9
+const REST_RECOVERY = 0.5
 
 /**
  * Оценка «как игрок выглядит»: всё, что он приносит в матч сам, без учёта
@@ -264,7 +309,7 @@ function baseRating(player: Player, club: Club): number {
   return (
     6.6 +
     (playerOvr(player) - squadLevel(club.tier)) * 0.028 +
-    (player.gauges.form - 60) * 0.006 +
+    (player.gauges.form - FORM_LEVEL) * 0.006 +
     // Настрой весит в оценке ровно столько же, сколько форма. Форма при этом
     // остаётся сильнее: она вдобавок умножает голы и передачи.
     (player.gauges.morale - MORALE_LEVEL) * 0.006 +
@@ -434,19 +479,16 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   const injuries: InjuryHit[] = []
 
   const matches: MatchResult[] = []
-  let sidelined = 0
   for (const fixture of ctx.fixtures.slice(ctx.scheduledBefore, ctx.scheduledBefore + available)) {
     // Сначала отбывается травма, потом дисквалификация: лечиться и сидеть в
     // бане одновременно нельзя, иначе оба срока текли бы вдвое быстрее.
     if (out > 0) {
       out--
-      sidelined++
       matches.push(missedMatch(fixture, 'injury', ctx.club, rng))
       continue
     }
     if (ban > 0) {
       ban--
-      sidelined++
       matches.push(missedMatch(fixture, 'ban', ctx.club, rng))
       continue
     }
@@ -487,6 +529,8 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
 
   // Усталость копится от нагрузки самого тура: сыграл много — сел без сил.
   const load = available > 0 ? apps / available : 0
+  // Пропущенный матч — это отдых, какой бы ни была причина.
+  const rested = matches.length - apps
   // А вот «мало практики» считается по сезону целиком, а не по одному туру.
   // Пороги подбирались на полусезон, где доля сыгранного почти не гуляет; в
   // туре из пяти матчей она скачет так, что игрок ротации случайно проваливал
@@ -503,12 +547,21 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
   // сидящий на скамейке от прессинга не устаёт.
   const drain = styleEffects(ctx.style, player.position).fitnessDrain * load
   const fitnessDelta = round(
-    (6 - load * 22 - drain + (player.age < 24 ? 3 : player.age > 31 ? -3 : 0)) * part + sidelined * REST_RECOVERY,
+    (6 - load * 22 - drain + (player.age < 24 ? 3 : player.age > 31 ? -3 : 0)) * part + rested * REST_RECOVERY,
     1,
   )
-  const formDelta = round(((scored - 6.8) * 9 + (seasonLoad < 0.25 ? -8 : 0)) * part, 1)
+  // Форму двигают два разных канала: оценки и сам факт игры. Второй нужен
+  // затем, что раньше отрезок без единого матча стоил восьми очков формы,
+  // размазанных по туру, — и запасной с формой «хорошая» был обычным делом.
+  // Считается линейно от нехватки практики, без порога: в коротком туре доля
+  // сыгранного скачет, и любой порог игрок ротации проваливал бы через тур.
+  const practice = clamp(load / FORM_PRACTICE, 0, 1)
+  const formDelta = round(((scored - CAMEO_ANCHOR) * FORM_BY_RATING - FORM_RUST * (1 - practice)) * part, 1)
   const trustDelta = round(((scored - 6.75) * 7 + (seasonLoad > 0.55 ? 3 : -3)) * part, 1)
   const fanDelta = round((scored - 6.85) * 6 * part + goals * 0.9 + assists * 0.5 - red * 4, 1)
+  // Настрой идёт за оценками от той же нейтральной точки, что и форма, но
+  // медленнее её: он держится дольше и стягивается к норме межсезоньем.
+  const moraleDelta = round((scored - CAMEO_ANCHOR) * MORALE_BY_RATING * part, 1)
 
   return {
     matches,
@@ -519,7 +572,7 @@ export function simulateBlock(ctx: BlockContext, rng: Rng): BlockResult {
     ratingSum,
     ratingCount: minutes,
     yellow, red,
-    fitnessDelta, formDelta, trustDelta, fanDelta,
+    fitnessDelta, formDelta, trustDelta, fanDelta, moraleDelta,
   }
 }
 
