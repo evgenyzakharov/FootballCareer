@@ -13,6 +13,7 @@ import type {
 } from '../src/engine/types'
 import {
   DOGHOUSE, FORM_BY_RATING, FORM_NEUTRAL, FORM_PRACTICE, FORM_RUST, FROZEN_OUT,
+  MORALE_BY_RATING, MORALE_BY_RESULT, WIN_WEIGHT,
   ROUNDS_PER_SEASON, SEASON_MATCHES,
   averageRating, determineRole, matchesBefore, matchesInRound, roleRank, simulateBlock,
 } from '../src/engine/performance'
@@ -1147,6 +1148,48 @@ describe('движок карьеры', () => {
     }
   })
 
+  /**
+   * Вклад табло в сдвиг настроя за отрезок: победы минус поражения на матч,
+   * причём победа весит вдвое меньше. Та же арифметика, что в движке, — нужна
+   * обеим проверкам настроя, чтобы каждая смотрела на свой канал отдельно.
+   */
+  function tableSwing(block: ReturnType<typeof blockFor>): number {
+    const played = block.matches.filter((m) => m.minutes > 0)
+    if (played.length === 0) return 0
+    const won = played.filter((m) => (m.teamGoals ?? 0) > (m.teamConceded ?? 0)).length
+    const lost = played.filter((m) => (m.teamGoals ?? 0) < (m.teamConceded ?? 0)).length
+    const record = (won - lost) / played.length
+    return record < 0 ? record : record * WIN_WEIGHT
+  }
+
+  it('настрой падает от поражений и растёт от побед', () => {
+    // Настрой — единственный показатель, который смотрит на табло: хорошо
+    // отыграть в команде, проигрывающей через раз, это всё равно тяжёлый
+    // сезон. Личный канал из сдвига вычитаем, иначе проверка ловила бы его:
+    // забитый гол поднимает и оценку, и счёт на табло разом.
+    let winning = 0
+    let losing = 0
+    for (let i = 0; i < 24; i++) {
+      const block = blockFor('CM', 'starter', `mood-team-${i}`)
+      if (block.apps === 0) continue
+      const swing = tableSwing(block)
+      const rating = averageRating(block.ratingSum, block.ratingCount)
+      const byTable = block.moraleDelta - (rating - FORM_NEUTRAL) * MORALE_BY_RATING
+      // Вплотную к нулю вклад тонет в округлении сдвига до десятой.
+      if (swing > 0.03) {
+        expect(byTable).toBeGreaterThan(0)
+        winning++
+      }
+      if (swing < -0.03) {
+        expect(byTable).toBeLessThan(0)
+        losing++
+      }
+    }
+    // Проверка обязана увидеть оба случая, иначе она молча ничего не проверяет.
+    expect(winning).toBeGreaterThan(0)
+    expect(losing).toBeGreaterThan(0)
+  })
+
   it('настрой идёт за оценками', () => {
     // Раньше настрой не реагировал на игру вовсе: его двигали только карточки
     // и формальная сдача задачи на сезон. Нейтральная точка у него та же, что
@@ -1161,9 +1204,12 @@ describe('движок карьеры', () => {
           continue
         }
         const rating = averageRating(block.ratingSum, block.ratingCount)
+        // Вклад табло вычитаем: у настроя два канала, и без этого проверка
+        // ловила бы победы команды вместо игры самого игрока.
+        const byPersonal = block.moraleDelta - tableSwing(block) * MORALE_BY_RESULT
         // Вплотную к нейтральной точке сдвиг тонет в округлении до десятой.
-        if (rating > FORM_NEUTRAL + 0.05) expect(block.moraleDelta).toBeGreaterThan(0)
-        if (rating < FORM_NEUTRAL - 0.05) expect(block.moraleDelta).toBeLessThan(0)
+        if (rating > FORM_NEUTRAL + 0.05) expect(byPersonal).toBeGreaterThan(0)
+        if (rating < FORM_NEUTRAL - 0.05) expect(byPersonal).toBeLessThan(0)
       }
     }
   })

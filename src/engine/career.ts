@@ -1259,7 +1259,11 @@ function develop(state: CareerState): CareerState {
       // блестящий сезон при игроке до самой осени, и терять форму было почти
       // некогда.
       form: clamp(state.player.gauges.form * 0.5 + FORM_LEVEL * 0.5, 0, 100),
-      morale: clamp(state.player.gauges.morale * 0.8 + MORALE_LEVEL * 0.2, 0, 100),
+      // Настрой межсезонье разглаживает сильнее, чем прежде: он теперь ходит
+      // за результатами команды, а при прежней доле в 0.8 вчерашние победы
+      // держали его весь следующий год, и провальный сезон было почти не
+      // видно за инерцией предыдущих.
+      morale: clamp(state.player.gauges.morale * 0.7 + MORALE_LEVEL * 0.3, 0, 100),
     },
   }
   return { ...state, player }
