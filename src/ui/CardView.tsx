@@ -1,28 +1,38 @@
-import type { Card, Resolution } from '../engine/types'
-import type { Position } from '../engine/types'
-import { MatchList } from './Matches'
+import type { Card, Text } from '../engine/types'
 import { useT } from './locale'
 
-export function ResolutionView({ resolution, onNext }: { resolution: Resolution; onNext: () => void }) {
+/**
+ * Итог выбора. В ленте он остаётся под своей карточкой навсегда, поэтому
+ * кнопки у него нет: лента едет дальше сама, а прочитать «что вышло» можно и
+ * потом — текст никуда не денется.
+ */
+export function ResolutionView({ text }: { text: Text }) {
   const t = useT()
   return (
     <div className="card resolution">
       <div className="resolution__label">{t({ key: 'card.result' })}</div>
-      <p className="resolution__text">{t(resolution.text)}</p>
-      <button type="button" className="primary-btn" onClick={onNext}>
-        {t({ key: 'card.next' })}
-      </button>
+      <p className="resolution__text">{t(text)}</p>
     </div>
   )
 }
 
+/**
+ * Карточка события.
+ *
+ * В ленте карточка живёт дважды: сначала как решение, потом как прошедшее.
+ * Прошедшая теряет кнопки и вместо них показывает, что игрок тогда выбрал, —
+ * иначе лента превратилась бы в поле из мёртвых кнопок, по которым непонятно,
+ * нажимал ты их или нет.
+ */
 export function CardView({
   card,
-  position,
+  interactive,
+  chosen,
   onChoose,
 }: {
   card: Card
-  position: Position
+  interactive: boolean
+  chosen?: Text | null
   onChoose: (optionId: string) => void
 }) {
   const t = useT()
@@ -35,10 +45,6 @@ export function CardView({
       <h2 className="card__title">{t(card.title)}</h2>
       <p className="card__body">{t(card.body)}</p>
 
-      {card.matches && card.matches.length > 0 && (
-        <MatchList matches={card.matches} position={position} />
-      )}
-
       {card.details && card.details.length > 0 && (
         <ul className="card__details">
           {card.details.map((line, i) => (
@@ -47,7 +53,14 @@ export function CardView({
         </ul>
       )}
 
-      {card.kind === 'report' ? (
+      {!interactive ? (
+        chosen ? (
+          <div className="card__chosen">
+            <span className="card__chosen-label">{t({ key: 'card.chosen' })}</span>
+            <span className="card__chosen-text">{t(chosen)}</span>
+          </div>
+        ) : null
+      ) : card.kind === 'report' ? (
         <button type="button" className="primary-btn" onClick={() => onChoose('next')}>
           {t({ key: 'card.next' })}
         </button>

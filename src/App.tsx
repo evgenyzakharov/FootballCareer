@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { CareerState, Currency, Locale, Pace } from './engine/types'
 import type { Identity } from './engine/player'
-import { ack, choose, newCareer, setIdentity } from './engine/career'
+import { newCareer, setIdentity } from './engine/career'
 import { clearState, loadCurrency, loadLocale, loadState, saveCurrency, saveLocale, saveState } from './engine/save'
 import { t } from './i18n'
 import { CurrencyContext, LocaleContext } from './ui/locale'
 import { IdentityScreen } from './ui/Identity'
 import { HudFacts } from './ui/Hud'
 import { SeasonBar } from './ui/Season'
-import { CardView, ResolutionView } from './ui/CardView'
+import { SeasonStream } from './ui/SeasonStream'
 import { Dossier } from './ui/Dossier'
 import { Retired } from './ui/Retired'
 
@@ -123,15 +123,15 @@ export default function App() {
             <HudFacts state={state} />
             <SeasonBar state={state} />
             <div className="career__stage">
-              {state.resolution ? (
-                <ResolutionView resolution={state.resolution} onNext={() => setState(ack(state))} />
-              ) : state.card ? (
-                <CardView
-                  card={state.card}
-                  position={state.player.position}
-                  onChoose={(optionId) => setState(choose(state, optionId))}
-                />
-              ) : null}
+              {/* Лента живёт один сезон: история за десять лет — забота досье,
+                  а держать её всю в разметке значило бы возить с собой тысячу
+                  элементов ради последних пяти. Смену сезона отмечаем ключом —
+                  React пересобирает ленту сам. */}
+              <SeasonStream
+                key={state.season ? state.season.age : 'academy'}
+                state={state}
+                onState={setState}
+              />
             </div>
             <div className="career__dossier">
               <Dossier state={state} />

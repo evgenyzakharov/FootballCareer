@@ -161,7 +161,7 @@
       return setTimeout(tick, 25)
     }
 
-    const card = document.querySelector('.career__stage .card')
+    const card = document.querySelector('.career__stage .stream__item[data-state="live"] .card:not(.resolution)')
     if (card) {
       // Ждём, пока накопится история: пустой таймлайн ничего не проверяет.
       if (cards >= 16) {

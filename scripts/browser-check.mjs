@@ -125,6 +125,14 @@ async function run({ path, width, height, touch, waitMs }) {
     await cdp.send('Runtime.enable')
     await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: touch })
     await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: touch, maxTouchPoints: touch ? 5 : 1 })
+    // Лента сезона показывает матчи по одному, с задержкой, и даёт прочитать
+    // итог выбора. Живому игроку это и нужно, а сквозному прогону — нет: карьера
+    // в двадцать сезонов не уложилась бы ни в какой разумный бюджет. Просим
+    // страницу показывать всё сразу тем же способом, что и система у человека,
+    // который выключил анимации, — заодно проверяем и этот путь.
+    await cdp.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+    })
     await cdp.send('Page.navigate', { url: `http://127.0.0.1:${PORT}${path}` })
 
     // Опрашиваем, а не спим фиксированно: на медленном раннере отчёт приходит позже.

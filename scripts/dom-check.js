@@ -119,8 +119,10 @@
       return setTimeout(tick, 25)
     }
 
-    // Основной цикл: карточка → выбор → результат → дальше.
-    const card = document.querySelector('.career__stage .card')
+    // Основной цикл: карточка → выбор → результат → дальше. Прожитое остаётся
+    // в ленте, поэтому решает всегда последний её элемент, а не первый. Итог
+    // выбора — тоже карточка, но нажимать в нём нечего: он квитируется сам.
+    const card = document.querySelector('.career__stage .stream__item[data-state="live"] .card:not(.resolution)')
     if (card) {
       const tags = card.querySelectorAll('.card__tag')
       if (tags.length >= 2) {

@@ -46,6 +46,8 @@ export const UI: Content = {
   'card.next': { ru: 'Дальше', en: 'Next' },
   'card.no_money': { ru: 'Не хватает заработанного', en: 'You have not earned enough' },
   'card.result': { ru: 'Что вышло', en: 'What happened' },
+  'card.chosen': { ru: 'Вы выбрали', en: 'You chose' },
+  'stream.skip': { ru: 'Показать сразу', en: 'Show it all' },
   'card.stage': { ru: 'Этап', en: 'Stage' },
 
   'stage.preseason': { ru: 'Предсезонка', en: 'Preseason' },

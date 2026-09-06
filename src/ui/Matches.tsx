@@ -12,78 +12,141 @@ function ratingTier(rating: number): 'poor' | 'ok' | 'good' | 'great' {
   return 'poor'
 }
 
+type Translate = ReturnType<typeof useT>
+
 /**
- * Лента матчей: строка на игру, оценка крупным чипом слева, остальное словами.
- * Таблицей это читалось как выгрузка из базы — глаз пересчитывал столбцы вместо
- * того, чтобы цепляться за провал и за лучший матч.
+ * Турнир и место игры словами. Лигу называем номером тура: слово «чемпионат» и
+ * так подразумевается, а номер ставит матч на место в сезоне. Кубок и
+ * еврокубок — словом.
  */
-export function MatchList({ matches, position }: { matches: MatchResult[]; position: Position }) {
+function circumstances(match: MatchResult, t: Translate): string {
+  const comp =
+    match.competition === 'league'
+      ? match.round
+        ? t({ key: 'match.round', params: { n: match.round } })
+        : null
+      : t({ key: `match.${match.competition}` })
+  const where = t({ key: match.home ? 'match.home' : 'match.away' })
+  return [comp, where].filter(Boolean).join(' · ')
+}
+
+/** Как игрок провёл матч. У пропущенного минут нет — и строки тоже. */
+function minutesOf(match: MatchResult, t: Translate): string | null {
+  if (match.minutes === 0) return null
+  return match.started ? `${match.minutes}′` : t({ key: 'match.came_on', params: { minutes: match.minutes } })
+}
+
+/** Что случилось в матче: голы, карточки, травма — метками. */
+function MatchTags({ match, position }: { match: MatchResult; position: Position }) {
+  const t = useT()
   const gk = isGoalkeeper(position)
   // Сухой матч отмечается и защитнику: он его тоже заработал. Пропущенные
   // при этом остаются вратарской строкой.
   const clean = gk || isDefender(position)
-  const t = useT()
-  const locale = useLocale()
-  if (matches.length === 0) return null
+  const played = match.minutes > 0
 
   return (
-    <div className="feed-matches">
-      {matches.map((match, i) => {
-        const club = findClub(match.opponentId)
-        const played = match.minutes > 0
-        const where = t({ key: match.home ? 'match.home' : 'match.away' })
-        // Лигу называем номером тура: слово «чемпионат» и так подразумевается,
-        // а номер ставит матч на место в сезоне. Кубок и еврокубок — словом.
-        const comp =
-          match.competition === 'league'
-            ? match.round
-              ? t({ key: 'match.round', params: { n: match.round } })
-              : null
-            : t({ key: `match.${match.competition}` })
-        const how = match.started
-          ? `${match.minutes}′`
-          : t({ key: 'match.came_on', params: { minutes: match.minutes } })
+    <span className="fx__tags">
+      {/* Пропущенный матч объясняется словом, а не строкой прочерков. */}
+      {!played && (
+        <span className="tag" data-kind="out">
+          {t({ key: `match.absence.${match.absence ?? 'squad'}` })}
+        </span>
+      )}
+      {played && clean && match.cleanSheet && (
+        <span className="tag" data-kind="good">{t({ key: 'match.clean_sheet' })}</span>
+      )}
+      {played && gk && !match.cleanSheet && (
+        <span className="tag">{t({ key: 'match.conceded', params: { n: match.goalsConceded } })}</span>
+      )}
+      {played && !gk && match.goals > 0 && (
+        <span className="tag" data-kind="good">{t({ key: 'match.goals', params: { n: match.goals } })}</span>
+      )}
+      {played && !gk && match.assists > 0 && (
+        <span className="tag" data-kind="good">{t({ key: 'match.assists', params: { n: match.assists } })}</span>
+      )}
+      {played && match.red && <span className="tag" data-kind="bad">{t({ key: 'match.red' })}</span>}
+      {played && !match.red && match.yellow > 0 && (
+        <span className="tag" data-kind="warn">{t({ key: 'match.yellow' })}</span>
+      )}
+      {match.injury && <span className="tag" data-kind="bad">{t({ key: 'match.injured' })}</span>}
+    </span>
+  )
+}
 
-        return (
-          <div className="fx" key={`${match.opponentId}-${i}`} data-played={played}>
-            <span className="fx__mark" data-tier={played ? ratingTier(match.rating) : 'none'}>
-              {played ? match.rating.toFixed(1) : '—'}
-            </span>
-            <span className="fx__body">
-              <span className="fx__club">{club ? club.name[locale] : '—'}</span>
-              <span className="fx__meta">
-                {[comp, where, played ? how : null].filter(Boolean).join(' · ')}
-              </span>
-            </span>
-            <span className="fx__tags">
-              {/* Пропущенный матч объясняется словом, а не строкой прочерков. */}
-              {!played && (
-                <span className="tag" data-kind="out">
-                  {t({ key: `match.absence.${match.absence ?? 'squad'}` })}
-                </span>
-              )}
-              {played && clean && match.cleanSheet && (
-                <span className="tag" data-kind="good">{t({ key: 'match.clean_sheet' })}</span>
-              )}
-              {played && gk && !match.cleanSheet && (
-                <span className="tag">{t({ key: 'match.conceded', params: { n: match.goalsConceded } })}</span>
-              )}
-              {played && !gk && match.goals > 0 && (
-                <span className="tag" data-kind="good">{t({ key: 'match.goals', params: { n: match.goals } })}</span>
-              )}
-              {played && !gk && match.assists > 0 && (
-                <span className="tag" data-kind="good">{t({ key: 'match.assists', params: { n: match.assists } })}</span>
-              )}
-              {played && match.red && <span className="tag" data-kind="bad">{t({ key: 'match.red' })}</span>}
-              {played && !match.red && match.yellow > 0 && (
-                <span className="tag" data-kind="warn">{t({ key: 'match.yellow' })}</span>
-              )}
-              {match.injury && <span className="tag" data-kind="bad">{t({ key: 'match.injured' })}</span>}
-            </span>
-          </div>
-        )
-      })}
+/**
+ * Матч строкой: оценка крупным чипом слева, обстоятельства словами, события —
+ * метками справа. Таблицей это читалось как выгрузка из базы — глаз
+ * пересчитывал столбцы вместо того, чтобы цепляться за провал и за лучший матч.
+ */
+export function MatchRow({ match, position }: { match: MatchResult; position: Position }) {
+  const t = useT()
+  const locale = useLocale()
+  const club = findClub(match.opponentId)
+  const played = match.minutes > 0
+
+  return (
+    <div className="fx" data-played={played}>
+      <span className="fx__mark" data-tier={played ? ratingTier(match.rating) : 'none'}>
+        {played ? match.rating.toFixed(1) : '—'}
+      </span>
+      <span className="fx__body">
+        <span className="fx__club">{club ? club.name[locale] : '—'}</span>
+        <span className="fx__meta">
+          {[circumstances(match, t), minutesOf(match, t)].filter(Boolean).join(' · ')}
+        </span>
+      </span>
+      <MatchTags match={match} position={position} />
     </div>
+  )
+}
+
+/**
+ * Матч в ленте сезона. Рядовой остаётся строкой, матч с историей —
+ * разворачивается: соперник, табло и оценка получают место, потому что именно
+ * такие матчи игрок и вспоминает. Кому разворачиваться, решает `isBig`.
+ */
+export function MatchCard({
+  match,
+  position,
+  big,
+}: {
+  match: MatchResult
+  position: Position
+  big: boolean
+}) {
+  const t = useT()
+  const locale = useLocale()
+  if (!big) return <MatchRow match={match} position={position} />
+
+  const club = findClub(match.opponentId)
+  // У матчей из старых сохранений табло нет: строку со счётом просто не рисуем.
+  const score =
+    match.teamGoals === undefined || match.teamConceded === undefined
+      ? null
+      : `${match.teamGoals}:${match.teamConceded}`
+  const tone =
+    match.teamGoals === undefined || match.teamConceded === undefined
+      ? 'flat'
+      : match.teamGoals > match.teamConceded
+        ? 'good'
+        : match.teamGoals === match.teamConceded
+          ? 'flat'
+          : 'bad'
+
+  return (
+    <article className="mcard">
+      <span className="mcard__meta">{circumstances(match, t)}</span>
+      <div className="mcard__head">
+        <span className="mcard__club">{club ? club.name[locale] : '—'}</span>
+        {score && <span className="mcard__score" data-tone={tone}>{score}</span>}
+      </div>
+      <div className="mcard__foot">
+        <span className="fx__mark" data-tier={ratingTier(match.rating)}>{match.rating.toFixed(1)}</span>
+        {minutesOf(match, t) && <span className="mcard__how">{minutesOf(match, t)}</span>}
+        <MatchTags match={match} position={position} />
+      </div>
+    </article>
   )
 }
 
