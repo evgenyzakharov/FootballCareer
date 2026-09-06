@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { bipolarBand, gaugeBand } from './format'
 import { useT } from './locale'
 
 /**
@@ -35,14 +36,24 @@ export function Empty({ textKey }: { textKey: string }) {
   return <p className="panel__empty">{t({ key: textKey })}</p>
 }
 
+/**
+ * Показатель состояния: название, слово и полоса.
+ *
+ * Слово вместо числа — сознательно. «Доверие тренера 63» обещает точность,
+ * которой у игры нет: за этой цифрой стоит бросок и десяток слагаемых, и
+ * читать её как «шестьдесят три из ста» — значит читать шум. Ступень говорит
+ * ровно то, что игра действительно знает, и заодно не превращает состояние в
+ * счётчик, который хочется оптимизировать. Полоса при этом остаётся: движение
+ * внутри ступени видно по ней.
+ */
 export function Gauge({ labelKey, value }: { labelKey: string; value: number }) {
   const t = useT()
   const level = value < 30 ? 'low' : value < 55 ? 'mid' : 'high'
   return (
     <div className="gauge">
       <div className="gauge__head">
-        <span>{t({ key: labelKey })}</span>
-        <span>{Math.round(value)}</span>
+        <span className="gauge__name">{t({ key: labelKey })}</span>
+        <span className="gauge__band">{t({ key: `${labelKey}.b${gaugeBand(value)}` })}</span>
       </div>
       <div className="gauge__track">
         <div className="gauge__fill" data-level={level} style={{ width: `${Math.max(2, value)}%` }} />
@@ -63,8 +74,8 @@ export function BipolarGauge({ labelKey, value }: { labelKey: string; value: num
   return (
     <div className="gauge">
       <div className="gauge__head">
-        <span>{t({ key: labelKey })}</span>
-        <span>{value > 0 ? `+${Math.round(value)}` : Math.round(value)}</span>
+        <span className="gauge__name">{t({ key: labelKey })}</span>
+        <span className="gauge__band">{t({ key: `${labelKey}.b${bipolarBand(value)}` })}</span>
       </div>
       <div className="gauge__track" data-bipolar="true">
         <div

@@ -479,9 +479,19 @@ input { font: inherit; color: inherit; }
 .kv__v[data-tone='good'] { color: #86efac; }
 .kv__v[data-tone='bad'] { color: #fca5a5; }
 
-.gauge { margin-bottom: 9px; }
-.gauge__head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
-.gauge__head span:last-child { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.gauge { margin-bottom: 11px; }
+/* Название и ступень стоят друг под другом, а не по краям строки: словом
+   «не в планах» цифру не заменить в той же строке — в колонке досье шириной
+   полторы сотни пикселей они просто налезли бы друг на друга. */
+.gauge__head { display: flex; flex-direction: column; gap: 1px; margin-bottom: 4px; }
+.gauge__name {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-faint);
+}
+.gauge__band { font-size: 12.5px; font-weight: 600; overflow-wrap: anywhere; }
 .gauge__track { height: 5px; background: var(--bg-input); border-radius: 999px; overflow: hidden; position: relative; }
 .gauge__fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .3s ease; }
 /* У двусторонней шкалы ноль стоит посередине, и заливка идёт от него. */

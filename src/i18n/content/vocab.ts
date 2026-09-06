@@ -77,6 +77,87 @@ export const VOCAB: Content = {
   'gauge.lockerRoom': { ru: 'Раздевалка', en: 'Dressing room' },
   'gauge.fame': { ru: 'Известность', en: 'Fame' },
 
+  // ─── Ступени показателей ──────────────────────────────────────────────────
+  // Число игроку не показывается: за ним стоит бросок и десяток слагаемых, и
+  // «доверие 63» читалось бы как точность, которой у игры нет. Ступеней восемь,
+  // и у каждого показателя своя лексика: доверие бывает полным, а пресса —
+  // ненавидящей, и одной лестницей «мало → много» это не сказать.
+  //
+  // Шкала 0..100 делится на восемь равных полос, двусторонняя (пресса) — от
+  // −100 до 100 так же на восемь, и ноль приходится на стык b3 и b4.
+
+  'gauge.form.b0': { ru: 'потеряна', en: 'gone' },
+  'gauge.form.b1': { ru: 'провальная', en: 'dreadful' },
+  'gauge.form.b2': { ru: 'не идёт', en: 'off' },
+  'gauge.form.b3': { ru: 'ниже своей', en: 'below par' },
+  'gauge.form.b4': { ru: 'рабочая', en: 'workmanlike' },
+  'gauge.form.b5': { ru: 'хорошая', en: 'good' },
+  'gauge.form.b6': { ru: 'отличная', en: 'excellent' },
+  'gauge.form.b7': { ru: 'лучшая в карьере', en: 'career best' },
+
+  'gauge.fitness.b0': { ru: 'на исходе', en: 'running on empty' },
+  'gauge.fitness.b1': { ru: 'выжат', en: 'spent' },
+  'gauge.fitness.b2': { ru: 'тяжёлые ноги', en: 'heavy legs' },
+  'gauge.fitness.b3': { ru: 'подсел', en: 'flagging' },
+  'gauge.fitness.b4': { ru: 'в порядке', en: 'fine' },
+  'gauge.fitness.b5': { ru: 'свежий', en: 'fresh' },
+  'gauge.fitness.b6': { ru: 'полон сил', en: 'full of running' },
+  'gauge.fitness.b7': { ru: 'как новый', en: 'brand new' },
+
+  'gauge.morale.b0': { ru: 'руки опустились', en: 'broken' },
+  'gauge.morale.b1': { ru: 'подавлен', en: 'low' },
+  'gauge.morale.b2': { ru: 'не в духе', en: 'down' },
+  'gauge.morale.b3': { ru: 'без огня', en: 'flat' },
+  'gauge.morale.b4': { ru: 'ровный', en: 'steady' },
+  'gauge.morale.b5': { ru: 'бодрый', en: 'upbeat' },
+  'gauge.morale.b6': { ru: 'воодушевлён', en: 'fired up' },
+  'gauge.morale.b7': { ru: 'на подъёме', en: 'flying' },
+
+  'gauge.coachTrust.b0': { ru: 'не в планах', en: 'not in his plans' },
+  'gauge.coachTrust.b1': { ru: 'вне обоймы', en: 'frozen out' },
+  'gauge.coachTrust.b2': { ru: 'под вопросом', en: 'doubted' },
+  'gauge.coachTrust.b3': { ru: 'сдержанное', en: 'guarded' },
+  'gauge.coachTrust.b4': { ru: 'рабочее', en: 'working' },
+  'gauge.coachTrust.b5': { ru: 'крепкое', en: 'solid' },
+  'gauge.coachTrust.b6': { ru: 'высокое', en: 'high' },
+  'gauge.coachTrust.b7': { ru: 'полное', en: 'total' },
+
+  'gauge.fanLove.b0': { ru: 'освистывают', en: 'booed' },
+  'gauge.fanLove.b1': { ru: 'не простили', en: 'unforgiven' },
+  'gauge.fanLove.b2': { ru: 'холодно', en: 'cold' },
+  'gauge.fanLove.b3': { ru: 'присматриваются', en: 'watching you' },
+  'gauge.fanLove.b4': { ru: 'приняли', en: 'accepted' },
+  'gauge.fanLove.b5': { ru: 'любят', en: 'loved' },
+  'gauge.fanLove.b6': { ru: 'обожают', en: 'adored' },
+  'gauge.fanLove.b7': { ru: 'кумир', en: 'an idol' },
+
+  'gauge.mediaRep.b0': { ru: 'ненавидит', en: 'hates you' },
+  'gauge.mediaRep.b1': { ru: 'травит', en: 'hounds you' },
+  'gauge.mediaRep.b2': { ru: 'придирается', en: 'picks at you' },
+  'gauge.mediaRep.b3': { ru: 'пишет холодно', en: 'cool on you' },
+  'gauge.mediaRep.b4': { ru: 'пишет ровно', en: 'even about you' },
+  'gauge.mediaRep.b5': { ru: 'хвалит', en: 'praises you' },
+  'gauge.mediaRep.b6': { ru: 'носит на руках', en: 'champions you' },
+  'gauge.mediaRep.b7': { ru: 'сделала звездой', en: 'made you a star' },
+
+  'gauge.lockerRoom.b0': { ru: 'чужой', en: 'an outsider' },
+  'gauge.lockerRoom.b1': { ru: 'сторонятся', en: 'avoided' },
+  'gauge.lockerRoom.b2': { ru: 'терпят', en: 'tolerated' },
+  'gauge.lockerRoom.b3': { ru: 'приняли не все', en: 'half-accepted' },
+  'gauge.lockerRoom.b4': { ru: 'свой', en: 'one of them' },
+  'gauge.lockerRoom.b5': { ru: 'уважают', en: 'respected' },
+  'gauge.lockerRoom.b6': { ru: 'слушают', en: 'listened to' },
+  'gauge.lockerRoom.b7': { ru: 'лидер', en: 'the leader' },
+
+  'gauge.fame.b0': { ru: 'никто не знает', en: 'unknown' },
+  'gauge.fame.b1': { ru: 'знают в клубе', en: 'known at the club' },
+  'gauge.fame.b2': { ru: 'знают в лиге', en: 'known in the league' },
+  'gauge.fame.b3': { ru: 'узнают на улице', en: 'recognised in the street' },
+  'gauge.fame.b4': { ru: 'заметная фигура', en: 'a name' },
+  'gauge.fame.b5': { ru: 'звезда лиги', en: 'a league star' },
+  'gauge.fame.b6': { ru: 'известен всюду', en: 'known everywhere' },
+  'gauge.fame.b7': { ru: 'мировое имя', en: 'a global name' },
+
   // ─── Цели сезона ──────────────────────────────────────────────────────────
   'objective.apps': { ru: 'матчей', en: 'appearances' },
   'objective.goals': { ru: 'голов', en: 'goals' },
