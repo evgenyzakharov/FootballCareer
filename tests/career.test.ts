@@ -22,7 +22,9 @@ import { LEAGUES, getLeague } from '../src/data/leagues'
 import {
   NATIONAL_TOURNAMENT, isOlympicYear, leagueLift, rollLeaguePosition, tournamentThisSeason,
 } from '../src/engine/competitions'
-import { academyOffers, clubWageCeiling, clubWantsToRenew, generateOffers, wageFor } from '../src/engine/offers'
+import {
+  MAX_SQUAD_GAP, academyOffers, clubWageCeiling, clubWantsToRenew, generateOffers, wageFor,
+} from '../src/engine/offers'
 
 /** Прогоняет карьеру до конца, выбирая варианты по сиду. Возвращает финальное состояние. */
 function playCareer(
@@ -493,6 +495,43 @@ describe('движок карьеры', () => {
     // Молодого чаще замечают дома: лестница снизу должна вести через свои
     // дивизионы, а не сразу за рубеж.
     expect(young).toBeGreaterThan(older + 0.15)
+  })
+
+  it('рынок предлагает свой уровень и выше, а не середину чужих чемпионатов', () => {
+    // Игрок уровня основы клуба четвёртого тира: OVR ровно равен силе такого
+    // состава. Раньше половина его предложений приходила снизу — не потому,
+    // что такие клубы сильно его хотели, а потому, что их в базе больше всех.
+    let state = setIdentity(newCareer('market-level'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 2,
+      foot: 'right',
+      countryCode: 'ITA',
+      position: 'RB',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+    const attrs = { ...state.player.attrs }
+    for (const key of Object.keys(attrs) as Array<keyof typeof attrs>) attrs[key] = 78
+    const grown: CareerState = {
+      ...state,
+      player: { ...state.player, age: 27, attrs, gauges: { ...state.player.gauges, fame: 40 } },
+    }
+    const ovr = playerOvr(grown.player)
+
+    const tiers: number[] = []
+    for (let i = 0; i < 300; i++) {
+      for (const offer of generateOffers(grown, new Rng(`level-${i}`, 'market', 0), { count: 2 })) {
+        tiers.push(getClub(offer.clubId).tier)
+      }
+    }
+
+    // Клуб, который игрок перерос больше чем на ступень, за ним не приходит:
+    // он не потянет ни зарплату, ни самолюбие.
+    for (const tier of tiers) expect(ovr - squadLevel(tier)).toBeLessThanOrEqual(MAX_SQUAD_GAP)
+    // Большая часть рынка — свой уровень и выше: карьера должна вести наверх.
+    const up = tiers.filter((tier) => squadLevel(tier) >= ovr).length / tiers.length
+    expect(up).toBeGreaterThan(0.7)
+    // И при этом топ континента не раздаёт контракты всем подряд.
+    expect(tiers.filter((tier) => tier === 6).length / tiers.length).toBeLessThan(0.3)
   })
 
   it('выбор насыщенности меняет число карточек за сезон', () => {

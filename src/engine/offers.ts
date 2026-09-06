@@ -78,10 +78,12 @@ export function wageFor(ovr: number, age: number, club: Club | null): number {
 
 /**
  * Насколько игрок может быть сильнее состава, чтобы клуб всё-таки его взял.
- * Кто перерос клуб сильнее — уходит выше. Порог общий для рынка и для
- * продления: иначе продление становится лазейкой мимо этой проверки.
+ * Кто перерос клуб сильнее — уходит выше. Шестнадцать пунктов оказались почти
+ * двумя дивизионами: лидера Бундеслиги звала середина Про-лиги, а сама же игра
+ * потом упиралась в потолок зарплат такого клуба и предлагала ему втрое меньше
+ * текущей. Восемь — это ровно ступень вверх и ступень вниз.
  */
-export const MAX_SQUAD_GAP = 16
+export const MAX_SQUAD_GAP = 8
 
 /** Насколько клуб «хочет» игрока: вес в лотерее предложений. */
 function interest(club: Club, state: CareerState, ovr: number): number {
@@ -100,7 +102,13 @@ function interest(club: Club, state: CareerState, ovr: number): number {
   // на остаток срока в матчах: пропуск пары туров за красную никого не пугает,
   // полсезона сбивает цену, а допинговый бан закрывает рынок целиком.
   if (player.banMatches >= 26) return 0
-  let w = 10 - Math.abs(gap + 2) * 0.55
+  // Спад несимметричный. Оказаться слабее состава — нормально: за место в нём
+  // и борются, поэтому вниз от пика вес падает полого. А вот клуб, который
+  // игрок перерос, теряет к нему интерес быстро: он не потянет ни зарплату, ни
+  // самолюбие. При общем пологом спаде состав уровня 66 сохранял четверть веса
+  // на игроке за 78 — и такие клубы, которых в базе больше всех, забирали
+  // треть рынка.
+  let w = gap > -2 ? 10 - (gap + 2) * 1.2 : 10 - Math.abs(gap + 2) * 1.15
   if (player.banMatches >= 6) w *= 0.45
   w += player.gauges.fame * 0.06
   w += (league.strength - 3) * 0.6
@@ -225,12 +233,21 @@ export function generateOffers(state: CareerState, rng: Rng, req: OfferRequest =
     .map((club) => ({ item: club, weight: interest(club, state, ovr) }))
     .filter((e) => e.weight > 0)
 
+  // Пирамида клубов сужается кверху: середины чемпионатов в базе в десяток раз
+  // больше, чем топов континента. При лотерее по клубам туда стекала вся масса
+  // вероятности, даже когда каждый отдельный клуб снизу хотел игрока заметно
+  // слабее. Делим вес на число клубов своего уровня: лотерея разыгрывает
+  // уровень, а внутри уровня клубы соревнуются между собой как раньше.
+  const perTier = new Map<number, number>()
+  for (const e of weighted) perTier.set(e.item.tier, (perTier.get(e.item.tier) ?? 0) + 1)
+  const byLevel = weighted.map((e) => ({ item: e.item, weight: e.weight / (perTier.get(e.item.tier) ?? 1) }))
+
   const offers: Offer[] = []
   const seen = new Set<string>()
   let guard = 0
-  while (offers.length < count && weighted.length > 0 && guard < 40) {
+  while (offers.length < count && byLevel.length > 0 && guard < 40) {
     guard++
-    const club = rng.weighted(weighted)
+    const club = rng.weighted(byLevel)
     if (seen.has(club.id)) continue
     seen.add(club.id)
     const role = expectedRole(ovr, club.tier)
