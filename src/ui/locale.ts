@@ -26,3 +26,18 @@ export function useMoney(): (value: number) => string {
   const currency = useCurrency()
   return (value) => formatMoney(value, locale, currency)
 }
+
+/**
+ * Режим проверки: величины показываются числами вместо слов.
+ *
+ * Живёт рядом с локалью и валютой не случайно — это такой же сквозной способ
+ * показа, который знать умеет каждый компонент и не должен тащить через
+ * пропсы. Компонент, заменивший число словом или спрятавший его, обязан
+ * спросить `useRaw()` и показать исходное значение: иначе проверять
+ * калибровку будет нечем.
+ */
+export const RawContext = createContext(false)
+
+export function useRaw(): boolean {
+  return useContext(RawContext)
+}

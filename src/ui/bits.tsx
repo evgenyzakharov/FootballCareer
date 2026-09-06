@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { bipolarBand, gaugeBand } from './format'
-import { useT } from './locale'
+import { useRaw, useT } from './locale'
 
 /**
  * Заголовок необязателен: во вкладке досье он повторял бы имя самой вкладки,
@@ -48,12 +48,15 @@ export function Empty({ textKey }: { textKey: string }) {
  */
 export function Gauge({ labelKey, value }: { labelKey: string; value: number }) {
   const t = useT()
+  const raw = useRaw()
   const level = value < 30 ? 'low' : value < 55 ? 'mid' : 'high'
   return (
     <div className="gauge">
       <div className="gauge__head">
         <span className="gauge__name">{t({ key: labelKey })}</span>
-        <span className="gauge__band">{t({ key: `${labelKey}.b${gaugeBand(value)}` })}</span>
+        <span className="gauge__band" data-raw={raw || undefined}>
+          {raw ? value.toFixed(1) : t({ key: `${labelKey}.b${gaugeBand(value)}` })}
+        </span>
       </div>
       <div className="gauge__track">
         <div className="gauge__fill" data-level={level} style={{ width: `${Math.max(2, value)}%` }} />
@@ -70,12 +73,17 @@ export function Gauge({ labelKey, value }: { labelKey: string; value: number }) 
 export function BipolarGauge({ labelKey, value }: { labelKey: string; value: number }) {
   const t = useT()
   const half = Math.min(50, Math.abs(value) / 2)
+  const raw = useRaw()
   const level = value < -25 ? 'low' : value < 10 ? 'mid' : 'high'
   return (
     <div className="gauge">
       <div className="gauge__head">
         <span className="gauge__name">{t({ key: labelKey })}</span>
-        <span className="gauge__band">{t({ key: `${labelKey}.b${bipolarBand(value)}` })}</span>
+        <span className="gauge__band" data-raw={raw || undefined}>
+          {/* Знак у двусторонней величины — половина смысла: «−80» и «80» это
+              разные новости, и в режиме проверки он должен быть виден. */}
+          {raw ? `${value > 0 ? '+' : ''}${value.toFixed(1)}` : t({ key: `${labelKey}.b${bipolarBand(value)}` })}
+        </span>
       </div>
       <div className="gauge__track" data-bipolar="true">
         <div

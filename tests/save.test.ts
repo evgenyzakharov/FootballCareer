@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { STATE_VERSION, newCareer, setIdentity } from '../src/engine/career'
-import { clearState, loadState, migrate, saveState } from '../src/engine/save'
+import { clearState, loadRaw, loadState, migrate, saveRaw, saveState } from '../src/engine/save'
 import type { CareerState } from '../src/engine/types'
 
 /** Минимальный localStorage в памяти: тесты гоняются без jsdom. */
@@ -176,5 +176,47 @@ describe('сохранение', () => {
   it('текущая версия проходит миграции без изменений', () => {
     const state = sampleState() as unknown as Record<string, unknown>
     expect(migrate(state)).toEqual(state)
+  })
+})
+
+describe('режим проверки', () => {
+  /** Адрес страницы подделываем: тесты гоняются без окна браузера. */
+  function setUrl(search: string): void {
+    Object.defineProperty(globalThis, 'location', {
+      value: { search },
+      configurable: true,
+      writable: true,
+    })
+  }
+
+  beforeEach(() => {
+    installStorage()
+    setUrl('')
+  })
+
+  it('по умолчанию выключен: игрок его видеть не должен', () => {
+    expect(loadRaw()).toBe(false)
+  })
+
+  it('включается адресом и остаётся включённым после перезагрузки', () => {
+    setUrl('?raw=1')
+    expect(loadRaw()).toBe(true)
+    // Следующий заход уже без параметра — режим обязан пережить его сам.
+    setUrl('')
+    expect(loadRaw()).toBe(true)
+  })
+
+  it('адрес сильнее сохранённого: ?raw=0 выключает забытый режим', () => {
+    saveRaw(true)
+    setUrl('?raw=0')
+    expect(loadRaw()).toBe(false)
+    setUrl('')
+    expect(loadRaw()).toBe(false)
+  })
+
+  it('чужие значения параметра ничего не переключают', () => {
+    saveRaw(true)
+    setUrl('?raw=да&other=1')
+    expect(loadRaw()).toBe(true)
   })
 })

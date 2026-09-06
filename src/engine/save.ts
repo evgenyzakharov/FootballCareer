@@ -5,6 +5,7 @@ import { BLOCK_MATCHES } from './performance'
 const STATE_KEY = 'football-career:state'
 const LOCALE_KEY = 'football-career:locale'
 const CURRENCY_KEY = 'football-career:currency'
+const RAW_KEY = 'football-career:raw'
 
 function storage(): Storage | null {
   try {
@@ -208,4 +209,37 @@ export function saveCurrency(currency: Currency | null): void {
 export function loadCurrency(): Currency | null {
   const value = storage()?.getItem(CURRENCY_KEY)
   return value === 'RUB' || value === 'EUR' ? value : null
+}
+
+/**
+ * Режим проверки: величины показываются числами вместо слов.
+ *
+ * Он нужен не игроку, а тому, кто эти слова калибрует: словом «сдержанное»
+ * нельзя проверить, там ли стоит граница ступени. Показатели состояния уже
+ * названы словами, дальше так же будут названы или спрятаны другие числа, и
+ * сверять их придётся всё тем же способом.
+ *
+ * Включается один раз через `?raw=1` в адресе и дальше живёт в настройках,
+ * пока его не выключат. Кнопки в интерфейсе для включения нет намеренно:
+ * игроку этот режим не нужен и попадаться на глаза не должен.
+ */
+export function saveRaw(on: boolean): void {
+  const store = storage()
+  if (!store) return
+  if (on) store.setItem(RAW_KEY, '1')
+  else store.removeItem(RAW_KEY)
+}
+
+export function loadRaw(): boolean {
+  // Адрес сильнее сохранённого: `?raw=0` выключает режим, забытый включённым.
+  const fromUrl = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('raw')
+  if (fromUrl === '1') {
+    saveRaw(true)
+    return true
+  }
+  if (fromUrl === '0') {
+    saveRaw(false)
+    return false
+  }
+  return storage()?.getItem(RAW_KEY) === '1'
 }

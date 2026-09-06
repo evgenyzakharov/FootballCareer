@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import type { CareerState, Currency, Locale, Pace } from './engine/types'
 import type { Identity } from './engine/player'
 import { newCareer, setIdentity } from './engine/career'
-import { clearState, loadCurrency, loadLocale, loadState, saveCurrency, saveLocale, saveState } from './engine/save'
+import { clearState, loadCurrency, loadLocale, loadRaw, loadState, saveCurrency, saveLocale, saveRaw, saveState } from './engine/save'
 import { t } from './i18n'
-import { CurrencyContext, LocaleContext } from './ui/locale'
+import { CurrencyContext, LocaleContext, RawContext } from './ui/locale'
 import { IdentityScreen } from './ui/Identity'
 import { HudFacts } from './ui/Hud'
 import { SeasonBar } from './ui/Season'
@@ -24,6 +24,27 @@ export default function App() {
   // Сколько матчей сезона лента ещё держит при себе: шапка считает свою сводку
   // без них, иначе она рассказывала бы про тур раньше самой ленты.
   const [pending, setPending] = useState(0)
+  // Режим проверки: величины показываются числами вместо слов. Включается
+  // через `?raw=1` и переключается с клавиатуры — кнопки для включения нет,
+  // игроку он не нужен и попадаться на глаза не должен.
+  const [raw, setRaw] = useState(loadRaw)
+
+  useEffect(() => {
+    saveRaw(raw)
+  }, [raw])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || !e.altKey || e.key.toLowerCase() !== 'r') return
+      // В поле ввода сочетание не перехватываем: имя игрока набирают там же.
+      const el = document.activeElement
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return
+      e.preventDefault()
+      setRaw((on) => !on)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     if (state) saveState(state)
@@ -63,9 +84,18 @@ export default function App() {
   return (
     <LocaleContext value={locale}>
       <CurrencyContext value={currency}>
+      <RawContext value={raw}>
       <div className={careerScreen ? 'app app--fixed' : 'app'}>
         <header className="topbar">
           <span className="topbar__brand">{tr('app.title')}</span>
+          {/* Признак режима проверки. Он же кнопка выключения: перепутать
+              такой экран с настоящей игрой нельзя, и выйти из него надо уметь
+              не вспоминая сочетание клавиш. */}
+          {raw && (
+            <button type="button" className="raw-flag" onClick={() => setRaw(false)}>
+              {tr('app.raw')}
+            </button>
+          )}
           <span className="topbar__spacer" />
           {state && (
             <button type="button" className="ghost-btn" onClick={onReset}>
@@ -147,6 +177,7 @@ export default function App() {
 
         <p className="footer-note">{tr('app.disclaimer')}</p>
       </div>
+      </RawContext>
       </CurrencyContext>
     </LocaleContext>
   )

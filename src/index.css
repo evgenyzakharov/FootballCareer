@@ -492,6 +492,25 @@ input { font: inherit; color: inherit; }
   color: var(--text-faint);
 }
 .gauge__band { font-size: 12.5px; font-weight: 600; overflow-wrap: anywhere; }
+/* Режим проверки: число вместо слова. Цифры выделяем — экран с ними не должен
+   выглядеть как обычная игра ни секунды. */
+.gauge__band[data-raw] { font-variant-numeric: tabular-nums; color: var(--info); }
+
+/* Признак режима проверки в шапке. Заметный намеренно: перепутать проверочный
+   экран с настоящей игрой — значит потом чинить то, что не сломано. */
+.raw-flag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--info);
+  background: transparent;
+  color: var(--info);
+  margin-left: 10px;
+}
+.raw-flag:hover { background: rgba(96, 165, 250, .12); }
 .gauge__track { height: 5px; background: var(--bg-input); border-radius: 999px; overflow: hidden; position: relative; }
 .gauge__fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .3s ease; }
 /* У двусторонней шкалы ноль стоит посередине, и заливка идёт от него. */

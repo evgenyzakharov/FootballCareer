@@ -13,6 +13,9 @@ export const UI: Content = {
     en: 'Club and league names are used solely for identification within the simulation. This project is not affiliated with or endorsed by the clubs mentioned.',
   },
   'app.locale': { ru: 'EN', en: 'RU' },
+  // Признак режима проверки. Он же кнопка выхода из него, поэтому подпись
+  // говорит и что включено, и что будет по нажатию.
+  'app.raw': { ru: 'ЧИСЛА · выключить', en: 'RAW · turn off' },
   'app.reset': { ru: 'Новая карьера', en: 'New career' },
   'app.reset_confirm': { ru: 'Стереть текущую карьеру и начать заново?', en: 'Erase the current career and start over?' },
 
