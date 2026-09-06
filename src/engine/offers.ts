@@ -1,10 +1,10 @@
-import type { CareerState, Club, Role } from './types'
+import type { CareerState, Club, Role, SeasonRecord } from './types'
 import { CLUBS, findClub, getClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
 import { getLeague } from '../data/leagues'
 import { marketValue } from './attributes'
 import { playerOvr, squadLevel } from './player'
-import { FROZEN_OUT, roleRank } from './performance'
+import { FROZEN_OUT, averageRating, roleRank } from './performance'
 import { Rng, clamp } from './rng'
 
 export type OfferKind = 'transfer' | 'loan' | 'stay' | 'academy' | 'free'
@@ -85,12 +85,80 @@ export function wageFor(ovr: number, age: number, club: Club | null): number {
  */
 export const MAX_SQUAD_GAP = 8
 
-/** Насколько клуб «хочет» игрока: вес в лотерее предложений. */
-function interest(club: Club, state: CareerState, ovr: number): number {
+/**
+ * Насколько разовый сезон двигает игрока по пирамиде. Шесть пунктов — примерно
+ * ступень тира: выдающийся год поднимает на ступень выше, провальный опускает
+ * на ступень ниже, и дальше этого один сезон не двигает.
+ */
+export const MAX_SEASON_SWING = 6
+
+/**
+ * Сколько один сезон стоит на рынке: насколько он разошёлся с задачей, которую
+ * ставил тренер, — в пунктах силы состава.
+ *
+ * Сравниваем именно с задачей, а не с общей планкой: она уже посчитана от
+ * позиции, роли и тира, игрок видел её весь сезон и торговался за неё осенью.
+ * Со своей второй планкой защитник с оценкой 6.9 считался бы провалившим
+ * сезон, а нападающий с той же цифрой — выдающимся.
+ */
+function seasonMargin(season: SeasonRecord): number {
+  const { objective, tally } = season
+  // Задачи нет: сезон без клуба или старое сохранение. Сравнивать не с чем.
+  if (!objective) return 0
+  // Сезон, просиженный в запасе, не читается ни в плюс, ни в минус: пять
+  // матчей — это решение тренера, а не приговор игроку. Чем больше сыграно,
+  // тем громче сезон звучит на рынке.
+  const voice = clamp(tally.apps / 15, 0, 1)
+  let margin: number
+  if (objective.kind === 'rating') {
+    // Оценка живёт в узком коридоре 6–8, поэтому разница берётся абсолютная и
+    // с большим множителем: 7.94 против 6.97 — это выдающийся сезон, а не «плюс один».
+    margin = (averageRating(tally.ratingSum, tally.ratingCount) - objective.target) * 4
+  } else if (objective.kind === 'trophy') {
+    margin = season.objectiveMet ? 3 : -1
+  } else {
+    // Счётные задачи считаются в долях от цели, и множитель у них меньше: у
+    // нападающего разброс по голам сам по себе широкий, и удвоить цель за
+    // сезон — обычное везение, а прибавить целый балл к средней оценке — нет.
+    // При равном множителе рынок швырял форвардов вверх-вниз втрое сильнее,
+    // чем защитников, за одинаково рядовые сезоны.
+    const done = objective.kind === 'goals' ? tally.goals
+      : objective.kind === 'assists' ? tally.assists
+      : tally.apps
+    margin = (done / Math.max(1, objective.target) - 1) * 3
+  }
+  return clamp(margin, -MAX_SEASON_SWING, MAX_SEASON_SWING) * voice
+}
+
+/**
+ * Как рынок читает последние сезоны игрока — прибавка к его силе в глазах
+ * клубов.
+ *
+ * До этого рынок видел только OVR: лидер Бундеслиги со средней 7.94 и тот же
+ * игрок, просидевший год в запасе, получали один и тот же список клубов, и
+ * сезон, который игрок только что отыграл, ни на что не влиял.
+ *
+ * Прошлый сезон весит вдвое больше позапрошлого: рынок помнит последнее, но
+ * один яркий год не перечёркивает предыдущий провал.
+ */
+export function seasonStanding(state: CareerState): number {
+  const seasons = state.history.filter((s) => s.clubId !== null).slice(-2)
+  if (seasons.length === 0) return 0
+  const weights = seasons.map((_, i) => (i === seasons.length - 1 ? 1 : 0.5))
+  const sum = seasons.reduce((acc, season, i) => acc + seasonMargin(season) * weights[i], 0)
+  return clamp(sum / weights.reduce((a, b) => a + b, 0), -MAX_SEASON_SWING, MAX_SEASON_SWING)
+}
+
+/**
+ * Насколько клуб «хочет» игрока: вес в лотерее предложений. `standing` — то,
+ * что рынок думает о последних сезонах: он сдвигает игрока по пирамиде, но не
+ * меняет ни его цену, ни роль в новом составе — там всё считается от OVR.
+ */
+function interest(club: Club, state: CareerState, ovr: number, standing: number): number {
   const player = state.player
   const current = findClub(state.contract?.clubId ?? null)
   const league = getLeague(club.leagueId)
-  const gap = ovr - squadLevel(club.tier)
+  const gap = ovr + standing - squadLevel(club.tier)
 
   // Клуб не смотрит на тех, кто заметно слабее его состава, и не берёт
   // тех, кто заметно сильнее — они уйдут выше.
@@ -223,6 +291,7 @@ export interface OfferRequest {
 
 export function generateOffers(state: CareerState, rng: Rng, req: OfferRequest = {}): Offer[] {
   const ovr = playerOvr(state.player)
+  const standing = seasonStanding(state)
   const { count = 2, allowLoans = false, country, minTier } = req
 
   let pool = CLUBS
@@ -230,7 +299,7 @@ export function generateOffers(state: CareerState, rng: Rng, req: OfferRequest =
   if (minTier !== undefined) pool = pool.filter((c) => c.tier >= minTier)
 
   const weighted = pool
-    .map((club) => ({ item: club, weight: interest(club, state, ovr) }))
+    .map((club) => ({ item: club, weight: interest(club, state, ovr, standing) }))
     .filter((e) => e.weight > 0)
 
   // Пирамида клубов сужается кверху: середины чемпионатов в базе в десяток раз

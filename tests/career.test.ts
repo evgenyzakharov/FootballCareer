@@ -5,7 +5,9 @@ import { Timeline } from '../src/ui/Timeline'
 import { Sidebar } from '../src/ui/Sidebar'
 import { seasonLabel } from '../src/ui/format'
 import { ack, applyEffects, choose, currentOvr, newCareer, setIdentity, squadStanding } from '../src/engine/career'
-import type { CareerState, Confederation, Gauges, Objective, Pace, Position, Role } from '../src/engine/types'
+import type {
+  CareerState, Confederation, Gauges, Objective, Pace, Position, Role, SeasonRecord,
+} from '../src/engine/types'
 import {
   DOGHOUSE, FROZEN_OUT, ROUNDS_PER_SEASON, SEASON_MATCHES,
   averageRating, determineRole, matchesBefore, matchesInRound, roleRank, simulateBlock,
@@ -532,6 +534,70 @@ describe('движок карьеры', () => {
     expect(up).toBeGreaterThan(0.7)
     // И при этом топ континента не раздаёт контракты всем подряд.
     expect(tiers.filter((tier) => tier === 6).length / tiers.length).toBeLessThan(0.3)
+  })
+
+  it('сезон выше задачи двигает рынок вверх, провал — вниз', () => {
+    // Один и тот же игрок с одним и тем же OVR: разница только в том, как он
+    // отыграл прошлый сезон. Раньше рынок этого не видел вовсе.
+    let state = setIdentity(newCareer('market-season'), {
+      lastName: 'ТЕСТОВ',
+      shirt: 2,
+      foot: 'right',
+      countryCode: 'ITA',
+      position: 'RB',
+    })
+    state = ack(choose(state, state.card!.options[0].id))
+    const attrs = { ...state.player.attrs }
+    for (const key of Object.keys(attrs) as Array<keyof typeof attrs>) attrs[key] = 78
+    const player = { ...state.player, age: 27, attrs }
+
+    /** Сезон из 30 матчей со средней оценкой rating при задаче 6.9. */
+    const season = (rating: number): SeasonRecord => ({
+      age: 26,
+      clubId: 'freiburg',
+      loan: false,
+      parentClubId: null,
+      ovrStart: 77,
+      ovrEnd: 78,
+      role: 'starter',
+      tally: {
+        apps: 30, goals: 0, assists: 0, cleanSheets: 0, goalsConceded: 0,
+        ratingSum: rating * 30 * 85, ratingCount: 30 * 85, yellow: 0, red: 0,
+      },
+      national: { caps: 0, goals: 0, cleanSheets: 0, goalsConceded: 0, tournament: null, trophy: null },
+      trophies: [],
+      awards: [],
+      objective: { kind: 'rating', target: 6.9, reward: 12, penalty: 20 },
+      objectiveMet: rating >= 6.9,
+      leaguePos: 4,
+    })
+
+    const averageTier = (history: SeasonRecord[]): number => {
+      const withSeason: CareerState = { ...state, player, history }
+      const tiers: number[] = []
+      for (let i = 0; i < 200; i++) {
+        for (const offer of generateOffers(withSeason, new Rng(`season-${i}`, 'market', 0), { count: 2 })) {
+          tiers.push(getClub(offer.clubId).tier)
+        }
+      }
+      return tiers.reduce((a, b) => a + b, 0) / tiers.length
+    }
+
+    const great = averageTier([season(7.9)])
+    const par = averageTier([season(6.9)])
+    const poor = averageTier([season(6.0)])
+
+    // Выдающийся сезон поднимает рынок примерно на ступень, провальный — на
+    // столько же опускает. Сравниваем середины, а не отдельные предложения:
+    // лотерея остаётся лотереей.
+    expect(great).toBeGreaterThan(par + 0.4)
+    expect(poor).toBeLessThan(par - 0.4)
+    // Игрок при этом не стал ни дороже, ни сильнее: сдвиг живёт только в
+    // интересе клубов.
+    expect(playerOvr(player)).toBe(78)
+    // И один сезон не двигает дальше ступени: не бывает, чтобы средняя оценка
+    // за год перенесла игрока из середины в топ континента.
+    expect(great - par).toBeLessThan(2)
   })
 
   it('выбор насыщенности меняет число карточек за сезон', () => {
