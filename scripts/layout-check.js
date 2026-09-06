@@ -16,6 +16,9 @@
 
   let phase = 0
   let cards = 0
+  // Уводили ли экран вниз перед последним замером: проверка возврата к началу
+  // имеет смысл только оттуда, куда лента сама игрока не возвращает.
+  let scrolledAway = false
   let ticks = 0
   const report = { width: 0, cards: 0, ticks: 0, screens: {}, errors }
 
@@ -96,19 +99,31 @@
         .filter(function (x) { return x.top !== null })
         .sort(function (a, b) { return a.top - b.top })
         .map(function (x) { return x.sel + '@' + x.top })
-      const card = document.querySelector('.career__stage .card')
-      snapshot.cardTop = card ? Math.round(card.getBoundingClientRect().top + window.scrollY) : null
-      // На узком экране блоки складываются в один столбец, и первым должно
-      // быть то, что игрок сейчас выбирает, а не его рост и зарплата.
+      // На узком экране блоки складываются в один столбец, и первой должна
+      // быть лента, а не рост и зарплата игрока.
+      snapshot.stageTop = top('.career__stage')
       snapshot.factsTop = top('.facts')
       snapshot.seasonTop = top('.season')
       snapshot.dossierTop = top('.career__dossier')
-      snapshot.cardBeforeFacts = snapshot.cardTop !== null && snapshot.factsTop !== null
-        ? snapshot.cardTop < snapshot.factsTop
+      snapshot.streamBeforeFacts = snapshot.stageTop !== null && snapshot.factsTop !== null
+        ? snapshot.stageTop < snapshot.factsTop
         : null
-      snapshot.cardBeforeSeason = snapshot.cardTop !== null && snapshot.seasonTop !== null
-        ? snapshot.cardTop < snapshot.seasonTop
+      snapshot.streamBeforeSeason = snapshot.stageTop !== null && snapshot.seasonTop !== null
+        ? snapshot.stageTop < snapshot.seasonTop
         : null
+      // Главное требование к ленте: она растёт, и решение живёт в её начале.
+      // Порядком блоков это не проверяется — лента может быть первой на
+      // странице, а активная запись при этом уехать за край прокрутки. Мерим
+      // то, что действительно нужно: видно ли её на самом деле. Координаты
+      // здесь от окна, а не от документа, поэтому годятся одинаково и для
+      // страницы на телефоне, и для прокрутки колонки на десктопе.
+      const live = document.querySelector('.career__stage .stream__item[data-state="live"]')
+      const box = live ? live.getBoundingClientRect() : null
+      snapshot.liveTop = box ? Math.round(box.top) : null
+      snapshot.liveHeight = box ? Math.round(box.height) : null
+      // Начало записи в окне, и видно её не на просвет: строку в сорок
+      // пикселей у самого края читать всё равно нельзя.
+      snapshot.liveVisible = box ? box.top >= -1 && box.top < window.innerHeight - 40 : null
       // Вкладка досье показывается одна: если видно сразу несколько панелей,
       // значит переключение сломалось и вернулась стопка на весь экран.
       snapshot.visiblePanes = document.querySelectorAll('.dossier__body:not([hidden])').length
@@ -165,6 +180,22 @@
     if (card) {
       // Ждём, пока накопится история: пустой таймлайн ничего не проверяет.
       if (cards >= 16) {
+        // Замерять решение там, где мы его и оставили, бессмысленно: лента
+        // растёт вверх, и активная запись видна у начала прокрутки сама по
+        // себе — такая проверка проходила бы и со сломанным возвратом к
+        // началу. Поэтому сначала уходим вниз, как ушёл бы игрок, севший
+        // перечитывать прошлые матчи, и только потом вызываем следующее
+        // решение: увидеть его — уже работа ленты, а не случайность.
+        if (!scrolledAway) {
+          const stage = document.querySelector('.career__stage')
+          if (stage) stage.scrollTop = stage.scrollHeight
+          window.scrollTo(0, document.body.scrollHeight)
+          scrolledAway = true
+          const option = card.querySelector('.options .option:not([disabled])')
+          const next = card.querySelector('.primary-btn')
+          if (option) { option.click() } else if (next) { next.click() }
+          return setTimeout(tick, 25)
+        }
         measure('career')
         return finish()
       }
