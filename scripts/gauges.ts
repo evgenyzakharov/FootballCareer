@@ -27,8 +27,9 @@ interface Sample {
   trust: number
   fans: number
   locker: number
-  /** Сдвиг настроя за этот тур; null — первый тур сезона. */
+  /** Сдвиги за этот тур; null — первый тур сезона, сравнивать не с чем. */
   moraleStep: number | null
+  fansStep: number | null
 }
 
 const samples: Sample[] = []
@@ -44,8 +45,8 @@ function play(seed: string): CareerState {
   })
   const choices = new Rng(seed, 'choices', 0)
   let guard = 0
-  // Настрой на прошлом туре того же сезона: по нему считается шаг за тур.
-  let prev: { age: number; morale: number } | null = null
+  // Показатели на прошлом туре того же сезона: по ним считается шаг за тур.
+  let prev: { age: number; morale: number; fans: number } | null = null
   while (state.phase !== 'retired' && guard < 4000) {
     guard++
     if (state.card?.eventKey === 'block_report' && state.season) {
@@ -67,8 +68,15 @@ function play(seed: string): CareerState {
         moraleStep: prev && prev.age === state.season.age
           ? state.player.gauges.morale - prev.morale
           : null,
+        fansStep: prev && prev.age === state.season.age
+          ? state.player.gauges.fanLove - prev.fans
+          : null,
       })
-      prev = { age: state.season.age, morale: state.player.gauges.morale }
+      prev = {
+        age: state.season.age,
+        morale: state.player.gauges.morale,
+        fans: state.player.gauges.fanLove,
+      }
     }
     if (state.resolution) {
       state = ack(state)
@@ -127,15 +135,18 @@ const moods: Array<[string, (s: Sample) => boolean]> = [
   ['команда выигрывает', (s) => s.apps > 0 && s.results > 0.15],
 ]
 console.log('')
+const signed = (x: number) => `${x >= 0 ? '+' : ''}${x.toFixed(2)}`
 for (const [label, fits] of moods) {
   const rows = samples.filter(fits)
-  const steps = rows.map((s) => s.moraleStep).filter((x): x is number => x !== null)
+  const steps = (pick: (s: Sample) => number | null) =>
+    mean(rows.map(pick).filter((x): x is number => x !== null))
   // Уровень копится годами и меряет всю карьеру разом; шаг за тур показывает,
-  // куда настрой едет прямо сейчас, — и именно он отвечает на вопрос
-  // «падает ли настрой от поражений».
+  // куда показатель едет прямо сейчас, — и именно он отвечает на вопрос
+  // «падает ли это от поражений».
   console.log(
-    `${label.padEnd(26)} n=${String(rows.length).padStart(6)}  настрой ${mean(rows.map((s) => s.morale)).toFixed(1)}` +
-    `  шаг за тур ${mean(steps) >= 0 ? '+' : ''}${mean(steps).toFixed(2)}` +
-    `  (оценка ${mean(rows.map((s) => s.rating)).toFixed(2)})`,
+    `${label.padEnd(26)} n=${String(rows.length).padStart(6)}` +
+    `  настрой ${mean(rows.map((s) => s.morale)).toFixed(1)} (${signed(steps((s) => s.moraleStep))})` +
+    `  трибуны ${mean(rows.map((s) => s.fans)).toFixed(1)} (${signed(steps((s) => s.fansStep))})` +
+    `  оценка ${mean(rows.map((s) => s.rating)).toFixed(2)}`,
   )
 }

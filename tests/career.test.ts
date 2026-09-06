@@ -13,6 +13,7 @@ import type {
 } from '../src/engine/types'
 import {
   DOGHOUSE, FORM_BY_RATING, FORM_NEUTRAL, FORM_PRACTICE, FORM_RUST, FROZEN_OUT,
+  FANS_BY_ASSIST, FANS_BY_GOAL, FANS_BY_RATING, FANS_BY_RED, FANS_NEUTRAL,
   MORALE_BY_RATING, MORALE_BY_RESULT, WIN_WEIGHT,
   ROUNDS_PER_SEASON, SEASON_MATCHES,
   averageRating, determineRole, matchesBefore, matchesInRound, roleRank, simulateBlock,
@@ -1021,9 +1022,19 @@ describe('движок карьеры', () => {
     expect(mediaSwing).toBeLessThan(moraleSwing * 0.6)
   })
 
-  /** Отрезок за одного и того же игрока: нужен нескольким проверкам подряд. */
-  function blockFor(position: Position, role: Role, seed: string, gauges: Partial<Gauges> = {}) {
-    const club = getClub('inter')
+  /**
+   * Отрезок за одного и того же игрока: нужен нескольким проверкам подряд.
+   * Клуб по умолчанию сильный; проверкам про табло нужен слабый, иначе среди
+   * отрезков не найдётся ни одного с отрицательной разницей побед.
+   */
+  function blockFor(
+    position: Position,
+    role: Role,
+    seed: string,
+    gauges: Partial<Gauges> = {},
+    clubId = 'inter',
+  ) {
+    const club = getClub(clubId)
     const base = createPlayer(
       { lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position },
       5,
@@ -1169,8 +1180,8 @@ describe('движок карьеры', () => {
     // забитый гол поднимает и оценку, и счёт на табло разом.
     let winning = 0
     let losing = 0
-    for (let i = 0; i < 24; i++) {
-      const block = blockFor('CM', 'starter', `mood-team-${i}`)
+    for (let i = 0; i < 40; i++) {
+      const block = blockFor('CM', 'starter', `mood-team-${i}`, {}, 'oxford-utd')
       if (block.apps === 0) continue
       const swing = tableSwing(block)
       const rating = averageRating(block.ratingSum, block.ratingCount)
@@ -1186,6 +1197,34 @@ describe('движок карьеры', () => {
       }
     }
     // Проверка обязана увидеть оба случая, иначе она молча ничего не проверяет.
+    expect(winning).toBeGreaterThan(0)
+    expect(losing).toBeGreaterThan(0)
+  })
+
+  it('трибуны тоже смотрят на табло, а не только на голы', () => {
+    // Раньше трибуны прибавляли одинаково при любом положении команды: игрок
+    // вылетающего клуба зарабатывал их любовь ровно так же, как игрок
+    // чемпиона. Личные каналы вычитаем — голы поднимают и любовь, и счёт.
+    let winning = 0
+    let losing = 0
+    for (let i = 0; i < 40; i++) {
+      const block = blockFor('CM', 'starter', `fans-team-${i}`, {}, 'oxford-utd')
+      if (block.apps === 0) continue
+      const swing = tableSwing(block)
+      const rating = averageRating(block.ratingSum, block.ratingCount)
+      const personal =
+        (rating - FANS_NEUTRAL) * FANS_BY_RATING +
+        block.goals * FANS_BY_GOAL + block.assists * FANS_BY_ASSIST - block.red * FANS_BY_RED
+      const byTable = block.fanDelta - personal
+      if (swing > 0.03) {
+        expect(byTable).toBeGreaterThan(0)
+        winning++
+      }
+      if (swing < -0.03) {
+        expect(byTable).toBeLessThan(0)
+        losing++
+      }
+    }
     expect(winning).toBeGreaterThan(0)
     expect(losing).toBeGreaterThan(0)
   })
