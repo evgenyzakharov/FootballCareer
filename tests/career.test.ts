@@ -1330,6 +1330,63 @@ describe('движок карьеры', () => {
     expect(healthy.some((season) => season.national.caps > 0)).toBe(true)
   })
 
+  it('после сезона выше задачи в сборную зовут чаще, чем после провального', () => {
+    /** Сезон из 30 матчей со средней оценкой rating при задаче 6.9. */
+    const past = (rating: number): SeasonRecord => ({
+      age: 25,
+      clubId: 'milan',
+      loan: false,
+      parentClubId: null,
+      ovrStart: 76,
+      ovrEnd: 76,
+      role: 'starter',
+      tally: {
+        apps: 30, goals: 0, assists: 0, cleanSheets: 0, goalsConceded: 0,
+        ratingSum: rating * 30 * 85, ratingCount: 30 * 85, yellow: 0, red: 0,
+      },
+      national: { caps: 0, goals: 0, cleanSheets: 0, goalsConceded: 0, tournament: null, trophy: null },
+      trophies: [],
+      awards: [],
+      objective: { kind: 'rating', target: 6.9, reward: 12, penalty: 20 },
+      objectiveMet: rating >= 6.9,
+      leaguePos: 4,
+    })
+
+    /** Доигрывает один сезон и возвращает его запись в истории. */
+    function seasonAfter(seed: string, previous: SeasonRecord): SeasonRecord {
+      let state = setIdentity(newCareer(seed), {
+        lastName: 'ТЕСТОВ', shirt: 9, foot: 'right', countryCode: 'ITA', position: 'CM',
+      })
+      state = ack(choose(state, state.card!.options[0].id))
+      const attrs = { ...state.player.attrs }
+      for (const key of Object.keys(attrs) as Array<keyof typeof attrs>) attrs[key] = 76
+      state = {
+        ...state,
+        player: { ...state.player, age: 26, attrs },
+        flags: { ...state.flags, national_established: 1 },
+        history: [previous],
+      }
+      const rng = new Rng(seed, 'choices', 0)
+      let guard = 0
+      while (state.history.length < 2 && guard < 600) {
+        guard++
+        if (state.resolution) { state = ack(state); continue }
+        if (!state.card) break
+        const available = state.card.options.filter((o) => !o.disabled)
+        state = choose(state, available.length > 0 ? rng.pick(available).id : 'next')
+      }
+      return state.history[state.history.length - 1]
+    }
+
+    const seeds = Array.from({ length: 24 }, (_, i) => `nat-form-${i}`)
+    const called = (rating: number) =>
+      seeds.filter((seed) => seasonAfter(seed, past(rating)).national.caps > 0).length
+
+    // Тренер сборной смотрит на то же, что и рынок: класс игрока не изменился,
+    // изменилось только то, как он отыграл прошлый год.
+    expect(called(7.9)).toBeGreaterThan(called(6.0))
+  })
+
   it('олимпиада идёт летом и только в свой год', () => {
     // Игры и Евро делят одни и те же годы — так и в жизни.
     for (const year of [2028, 2032, 2036]) expect(isOlympicYear(year)).toBe(true)

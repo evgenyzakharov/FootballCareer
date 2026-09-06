@@ -23,7 +23,7 @@ import { seasonFixtures } from './fixtures'
 import type { EventCtx } from './events'
 import { SUMMER_RECOVERY, injuryMatches } from './injuries'
 import { adjustObjective, makeObjective } from './events/structural'
-import { academyOffers, clubWantsToRenew, generateOffers } from './offers'
+import { academyOffers, clubWantsToRenew, generateOffers, seasonStanding } from './offers'
 import {
   createAgent, createJournalist, createManager, find, managerSackChance, relocate, styleFit,
 } from './relationships'
@@ -596,6 +596,10 @@ function shouldCallUp(state: CareerState): boolean {
     age: state.player.age,
     form: state.player.gauges.form,
     established: false,
+    // Сезон берётся прошлый, и это правильно: состав на осень тренер называет
+    // по тому, что игрок уже показал, а как идёт текущий год — за это отвечает
+    // форма.
+    standing: seasonStanding(state),
   })
   return rngFor(state, 'callup').chance(p)
 }
@@ -1112,6 +1116,9 @@ function simulateNational(state: CareerState, rng: Rng): NationalTally {
     age: state.player.age,
     form: state.player.gauges.form,
     established: true,
+    // Сезон, который только что закончился, в историю ещё не попал: здесь
+    // читается предыдущий — тот, после которого игрока и звали на эти сборы.
+    standing: seasonStanding(state),
   })
   if (!rng.chance(p)) return emptyNational()
 
