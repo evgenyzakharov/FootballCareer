@@ -138,6 +138,11 @@ export function ingestCard(card: Card, position: Position): Ingested {
   }
 }
 
+/** Сколько матчей в списке элементов. Ими считается, что лента ещё должна. */
+export function countMatches(items: StreamItem[]): number {
+  return items.reduce((n, item) => n + (item.t === 'match' ? 1 : 0), 0)
+}
+
 /**
  * Чем лента заполняется на старте. Сама она живёт только в сессии: после
  * перезагрузки страницы событий сезона уже не собрать — их текстов в

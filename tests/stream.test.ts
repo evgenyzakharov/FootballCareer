@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Card, CareerState, MatchResult } from '../src/engine/types'
-import { ingestCard, isBig, restore, stopAtInjury } from '../src/ui/stream'
+import { ack, choose, newCareer, setIdentity } from '../src/engine/career'
+import { tallyOf } from '../src/engine/performance'
+import { Rng } from '../src/engine/rng'
+import { countMatches, ingestCard, isBig, restore, stopAtInjury } from '../src/ui/stream'
 
 /**
  * Лента сезона разбирает карточки движка на элементы. Движок при этом не
@@ -151,6 +154,78 @@ describe('какой матч разворачивать', () => {
     expect(isBig(match({ rating: 8.4 }), 'CM')).toBe(true)
     expect(isBig(match({ rating: 5.2 }), 'CM')).toBe(true)
     expect(isBig(match({ rating: 6.9 }), 'CM')).toBe(false)
+  })
+})
+
+describe('из чего складывается сводка сезона', () => {
+  it('матчи дают её целиком, кроме голов и передач — их добавляют события', () => {
+    // На этом стоит поправка на спойлер в шапке: она вычитает из готовой
+    // `season.tally` то, что лента ещё не показала, а вычитать можно только
+    // те величины, которые матчами и создаются.
+    //
+    // Голы, передачи и появления так вычитать нельзя было бы вслепую: события
+    // раздают их напрямую эффектом `stat` — пенальти, гол в дерби, штрафные на
+    // сборе. Они приходят в сводку без матча, и пересчёт сводки по матчам их
+    // стёр бы. Вычитание же их не трогает: непоказанный матч уносит ровно свои.
+    //
+    // Тест сторожит именно эту границу. Если однажды событие начнёт раздавать
+    // карточки или сухие матчи, равенства ниже сломаются — и поправку надо
+    // будет чинить, а не молча показывать игроку не то число.
+    let state = setIdentity(newCareer('tally-check'), {
+      lastName: 'ТЕСТОВ', shirt: 10, foot: 'right', countryCode: 'ITA', position: 'CAM',
+    })
+    const rng = new Rng('tally-check', 'choices', 0)
+    let checked = 0
+    let topUps = 0
+    for (let guard = 0; guard < 4000 && state.phase !== 'retired'; guard++) {
+      const season = state.season
+      if (season && season.matches.length > 0) {
+        const own = tallyOf(season.matches)
+        // Приходят только из матчей — совпадают в точности.
+        expect(own.cleanSheets).toBe(season.tally.cleanSheets)
+        expect(own.goalsConceded).toBe(season.tally.goalsConceded)
+        expect(own.yellow).toBe(season.tally.yellow)
+        expect(own.red).toBe(season.tally.red)
+        expect(own.ratingCount).toBe(season.tally.ratingCount)
+        // Сумма оценок складывается движком по турам, а здесь — по всем матчам
+        // разом: сложение с плавающей точкой не ассоциативно, и требовать
+        // побитового совпадения было бы придиркой к последнему знаку.
+        expect(own.ratingSum).toBeCloseTo(season.tally.ratingSum, 6)
+        // Событие может только добавить сверх сыгранного, но не отнять.
+        expect(season.tally.goals).toBeGreaterThanOrEqual(own.goals)
+        expect(season.tally.assists).toBeGreaterThanOrEqual(own.assists)
+        expect(season.tally.apps).toBeGreaterThanOrEqual(own.apps)
+        if (season.tally.goals > own.goals || season.tally.assists > own.assists) topUps++
+        checked++
+      }
+      if (state.resolution) { state = ack(state); continue }
+      const card = state.card
+      if (!card) break
+      const options = card.options.filter((o) => !o.disabled)
+      state = choose(state, options.length > 0 ? options[rng.int(0, options.length - 1)].id : 'next')
+    }
+    // Проверка молчала бы и на пустой карьере — убеждаемся, что она отработала
+    // и что случай с добавкой от события в ней действительно встретился.
+    expect(checked).toBeGreaterThan(200)
+    expect(topUps).toBeGreaterThan(0)
+  })
+})
+
+describe('сколько лента ещё должна', () => {
+  it('считает только матчи, разделители и карточки не в счёт', () => {
+    const got = ingestCard(report([match(), match(), match()]), 'ST')
+    expect(got.queue).toHaveLength(4)
+    expect(countMatches(got.queue)).toBe(3)
+  })
+
+  it('придержанный хвост тоже ещё не показан', () => {
+    const matches = [
+      match(),
+      match({ injury: { kind: 'hamstring', severity: 3 } }),
+      match({ minutes: 0, absence: 'injury' }),
+    ]
+    const got = ingestCard(report(matches), 'ST')
+    expect(countMatches(got.queue) + countMatches(got.held)).toBe(3)
   })
 })
 

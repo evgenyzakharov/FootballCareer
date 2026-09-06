@@ -1,4 +1,4 @@
-import type { Absence, Club, InjuryHit, MatchResult, Pace, Player, Position, Role } from './types'
+import type { Absence, Club, InjuryHit, MatchResult, Pace, Player, Position, Role, SeasonTally } from './types'
 import type { Fixture } from './fixtures'
 import { isDefender } from './attributes'
 import { INJURY_TYPES, injuryMatches, injuryRisk } from './injuries'
@@ -540,4 +540,33 @@ export function poisson(lambda: number, rng: Rng): number {
 
 export function averageRating(sum: number, count: number): number {
   return count > 0 ? round(sum / count, 2) : 0
+}
+
+/**
+ * Сводка по списку матчей — та же свёртка, что и внутри `simulateBlock`, но
+ * поверх готовых матчей.
+ *
+ * Нужна интерфейсу: движок копит `season.tally` турами и кладёт туда весь тур
+ * до показа, а лента показывает его по одному матчу. Сводка сезона поэтому
+ * считается не по накопленному, а по той части матчей, которую игрок уже
+ * увидел, — иначе шапка сообщала бы про голы, до которых лента ещё не доехала.
+ *
+ * Живёт здесь, а не в разметке, потому что средняя оценка взвешивается
+ * минутами: второе место, где записано это правило, рано или поздно разошлось
+ * бы с первым. Что они не разошлись, проверяет тест на равенство
+ * `tallyOf(season.matches)` и накопленной движком `season.tally`.
+ */
+export function tallyOf(matches: MatchResult[]): SeasonTally {
+  const played = matches.filter((m) => m.minutes > 0)
+  return {
+    apps: played.length,
+    goals: played.reduce((sum, m) => sum + m.goals, 0),
+    assists: played.reduce((sum, m) => sum + m.assists, 0),
+    cleanSheets: played.reduce((sum, m) => sum + (m.cleanSheet ? 1 : 0), 0),
+    goalsConceded: played.reduce((sum, m) => sum + m.goalsConceded, 0),
+    ratingSum: played.reduce((sum, m) => sum + m.rating * m.minutes, 0),
+    ratingCount: played.reduce((sum, m) => sum + m.minutes, 0),
+    yellow: played.reduce((sum, m) => sum + m.yellow, 0),
+    red: played.reduce((sum, m) => sum + (m.red ? 1 : 0), 0),
+  }
 }

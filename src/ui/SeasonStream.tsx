@@ -3,7 +3,7 @@ import type { Card, CareerState, Resolution, Text } from '../engine/types'
 import { ack, choose } from '../engine/career'
 import { CardView, ResolutionView } from './CardView'
 import { MatchCard } from './Matches'
-import { ingestCard, restore, type Ingested, type StreamItem } from './stream'
+import { countMatches, ingestCard, restore, type Ingested, type StreamItem } from './stream'
 import { useT } from './locale'
 
 /** Шаг показа матчей. */
@@ -99,9 +99,16 @@ function instantReveal(): boolean {
 export function SeasonStream({
   state,
   onState,
+  onPending,
 }: {
   state: CareerState
   onState: (next: CareerState) => void
+  /**
+   * Сколько матчей сезона лента ещё не показала. Нужно шапке: она читает те же
+   * `season.matches`, куда движок кладёт весь тур разом, и без этой поправки
+   * отчитывалась бы о матчах раньше, чем они появятся в ленте.
+   */
+  onPending?: (count: number) => void
 }) {
   const t = useT()
   const position = state.player.position
@@ -173,6 +180,11 @@ export function SeasonStream({
       dispatch({ t: 'ingest', got: ingestCard(state.card, position) })
     }
   })
+
+  const pending = countMatches(view.queue) + countMatches(view.held)
+  useEffect(() => {
+    onPending?.(pending)
+  }, [pending, onPending])
 
   // Новое приходит наверх, и там же всегда стоит решение. Само по себе это не
   // держит его на виду: вставка сверху сдвигает всё вниз, и читающий остаётся

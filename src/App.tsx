@@ -21,6 +21,9 @@ export default function App() {
   const [state, setState] = useState<CareerState | null>(loadState)
   const [seed, setSeed] = useState(randomSeed)
   const [currencyPref, setCurrencyPref] = useState<Currency | null>(loadCurrency)
+  // Сколько матчей сезона лента ещё держит при себе: шапка считает свою сводку
+  // без них, иначе она рассказывала бы про тур раньше самой ленты.
+  const [pending, setPending] = useState(0)
 
   useEffect(() => {
     if (state) saveState(state)
@@ -121,7 +124,7 @@ export default function App() {
                 условиях он в клубе и как идёт сезон. Ниже только выбор и
                 досье, и обоим достаётся вся высота экрана. */}
             <HudFacts state={state} />
-            <SeasonBar state={state} />
+            <SeasonBar state={state} pending={pending} />
             <div className="career__stage">
               {/* Лента живёт один сезон: история за десять лет — забота досье,
                   а держать её всю в разметке значило бы возить с собой тысячу
@@ -131,6 +134,7 @@ export default function App() {
                 key={state.season ? state.season.age : 'academy'}
                 state={state}
                 onState={setState}
+                onPending={setPending}
               />
             </div>
             <div className="career__dossier">
