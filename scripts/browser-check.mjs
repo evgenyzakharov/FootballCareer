@@ -260,7 +260,7 @@ try {
       check(
         'шкалы прячутся при прокрутке вниз',
         report.gaugesWhenScrolled === 0,
-        `${report.gaugesWhenScrolled}px на прокрутке ${report.scrollWhenProbed}`,
+        `${report.gaugesWhenScrolled}px на прокрутке ${report.scrollWhenProbed}, запас страницы ${report.roomWhenProbed}`,
       )
       // Свёрнутая шапка — имя, рейтинг и восемь шкал. Развернувшись во весь
       // список фактов, она одна съела бы экран, и до ленты пришлось бы листать.

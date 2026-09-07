@@ -207,8 +207,22 @@
 
     const card = document.querySelector('.career__stage .stream__item[data-state="live"] .card:not(.resolution)')
     if (card) {
+      // Уходить вниз можно только там, где есть куда: лента живёт один сезон и
+      // на его первом ходу состоит из одной карточки. Дождаться шестнадцати
+      // ответов мало — они копятся через смены сезонов, а лента после каждой
+      // начинается заново, и замер мог попасть ровно на такое начало. Тогда
+      // прокрутка не двигалась, шкалы не прятались, и проверка падала не на
+      // раскладке, а на том, что её нечем было проверить.
+      //
+      // Спрашивать запас страницы имеет смысл только там, где прокручивается
+      // страница. На широком экране карьера держится в одном окне, и лента
+      // листается сама в себе: запаса там нет никогда, и ждать его значило бы
+      // не дождаться замера вообще.
+      const tabs = document.querySelector('.dossier .tabs')
+      const pinned = tabs && getComputedStyle(tabs).position === 'sticky'
+      const room = document.documentElement.scrollHeight - window.innerHeight
       // Ждём, пока накопится история: пустой таймлайн ничего не проверяет.
-      if (cards >= 16) {
+      if (cards >= 16 && (!pinned || room > 600)) {
         // Замерять решение там, где мы его и оставили, бессмысленно: лента
         // растёт вверх, и активная запись видна у начала прокрутки сама по
         // себе — такая проверка проходила бы и со сломанным возвратом к
@@ -232,6 +246,7 @@
           const gauges = document.querySelector('.facts .facts__state')
           report.gaugesWhenScrolled = gauges ? Math.round(gauges.getBoundingClientRect().height) : null
           report.scrollWhenProbed = Math.round(window.scrollY)
+          report.roomWhenProbed = Math.round(room)
           const option = card.querySelector('.options .option:not([disabled])')
           const next = card.querySelector('.primary-btn')
           if (option) { option.click() } else if (next) { next.click() }

@@ -59,10 +59,28 @@ export function useCompactWhenScrolled(active: boolean): void {
       return clear
     }
 
+    /**
+     * Хватит ли странице длины, чтобы пережить исчезновение шкал.
+     *
+     * Прячась, они укорачивают документ на свою высоту, и если прокрутке после
+     * этого некуда деться, браузер подтянет её к началу сам — шкалы вернутся,
+     * страница дёрнется, и так на каждое движение пальцем. Короткая лента
+     * бывает не в углу: первый ход сезона — это одна карточка на весь экран.
+     *
+     * Гистерезис от этого не спасает: он держит границу по прокрутке, а здесь
+     * прокрутку меняет сам браузер.
+     */
+    const roomToHide = () => {
+      const gauges = document.querySelector('.career > .facts .facts__state')
+      const shrink = gauges ? gauges.getBoundingClientRect().height : 0
+      const room = document.documentElement.scrollHeight - window.innerHeight
+      return room - shrink > SHOW_AT
+    }
+
     let compact = false
     const check = () => {
       const y = window.scrollY
-      if (!compact && y > HIDE_AT) {
+      if (!compact && y > HIDE_AT && roomToHide()) {
         compact = true
         root.setAttribute('data-scrolled', 'yes')
       } else if (compact && y < SHOW_AT) {
