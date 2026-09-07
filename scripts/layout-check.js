@@ -19,6 +19,9 @@
   // Уводили ли экран вниз перед последним замером: проверка возврата к началу
   // имеет смысл только оттуда, куда лента сама игрока не возвращает.
   let scrolledAway = false
+  // Сняли ли замер «страницу листают»: он делается один раз, между уходом вниз
+  // и вызовом следующего решения.
+  let probed = false
   let ticks = 0
   const report = { width: 0, cards: 0, ticks: 0, screens: {}, errors }
 
@@ -105,12 +108,19 @@
       snapshot.factsTop = top('.facts')
       snapshot.seasonTop = top('.season')
       snapshot.dossierTop = top('.career__dossier')
-      snapshot.streamBeforeFacts = snapshot.stageTop !== null && snapshot.factsTop !== null
-        ? snapshot.stageTop < snapshot.factsTop
+      // На узком экране лента уезжает в досье первой вкладкой, а сверху
+      // остаётся одна шапка: сезон свёрнут в неё же.
+      snapshot.streamInDossier = !!document.querySelector('.career__dossier .career__stage')
+      snapshot.seasonMerged = snapshot.seasonTop === null
+      snapshot.factsBeforeDossier = snapshot.factsTop !== null && snapshot.dossierTop !== null
+        ? snapshot.factsTop < snapshot.dossierTop
         : null
-      snapshot.streamBeforeSeason = snapshot.stageTop !== null && snapshot.seasonTop !== null
-        ? snapshot.stageTop < snapshot.seasonTop
-        : null
+      // Свёрнутая шапка — две строки, а не десяток фактов в столбик: полосу
+      // сезона она обязана оставить в первом экране.
+      snapshot.factsHeight = (function () {
+        const el = document.querySelector('.facts')
+        return el ? Math.round(el.getBoundingClientRect().height) : null
+      })()
       // Главное требование к ленте: она растёт, и решение живёт в её начале.
       // Порядком блоков это не проверяется — лента может быть первой на
       // странице, а активная запись при этом уехать за край прокрутки. Мерим
@@ -121,13 +131,32 @@
       const box = live ? live.getBoundingClientRect() : null
       snapshot.liveTop = box ? Math.round(box.top) : null
       snapshot.liveHeight = box ? Math.round(box.height) : null
+      // Низ закреплённой стопки: под ним и начинается видимая часть окна.
+      // Закреплённое считается по факту, а не по ширине окна: на десктопе
+      // ничего не закреплено, и порог там нулевой.
+      const tabs = document.querySelector('.dossier .tabs')
+      const pinned = tabs && getComputedStyle(tabs).position === 'sticky'
+      snapshot.pinBottom = pinned ? Math.round(tabs.getBoundingClientRect().bottom) : 0
       // Начало записи в окне, и видно её не на просвет: строку в сорок
-      // пикселей у самого края читать всё равно нельзя.
-      snapshot.liveVisible = box ? box.top >= -1 && box.top < window.innerHeight - 40 : null
+      // пикселей у самого края читать всё равно нельзя. Закреплённая шапка
+      // тоже край: приехать ей за спину — это и значит остаться невидимым.
+      snapshot.liveVisible = box
+        ? box.top >= snapshot.pinBottom - 1 && box.top < window.innerHeight - 40
+        : null
       // Вкладка досье показывается одна: если видно сразу несколько панелей,
       // значит переключение сломалось и вернулась стопка на весь экран.
       snapshot.visiblePanes = document.querySelectorAll('.dossier__body:not([hidden])').length
       snapshot.tabs = document.querySelectorAll('.dossier .tab').length
+      // Закреплённое остаётся на месте после ухода вниз: замер идёт оттуда,
+      // куда драйвер сам увёл экран, — то есть ровно там, где закрепление и
+      // проверяется. Верх шапки должен стоять под верхней панелью, а не
+      // уехать в минус вместе со страницей.
+      const factsBox = document.querySelector('.facts')?.getBoundingClientRect()
+      const topbarBox = document.querySelector('.topbar')?.getBoundingClientRect()
+      snapshot.factsWindowTop = factsBox ? Math.round(factsBox.top) : null
+      snapshot.factsUnderTopbar = factsBox && topbarBox
+        ? Math.abs(factsBox.top - topbarBox.bottom) <= 2
+        : null
     }
     report.screens[name] = snapshot
   }
@@ -191,6 +220,18 @@
           if (stage) stage.scrollTop = stage.scrollHeight
           window.scrollTo(0, document.body.scrollHeight)
           scrolledAway = true
+          // Решение вызываем не здесь, а следующим тиком: обработчик прокрутки
+          // срабатывает после самой прокрутки, и шкалы, которые в этот момент
+          // должны спрятаться, замерялись бы ещё видимыми.
+          return setTimeout(tick, 80)
+        }
+        if (!probed) {
+          probed = true
+          // Ушли вниз — шкалы уступили место ленте. Мерить их надо ровно тут:
+          // лента, показав решение, вернёт экран наверх, и там они снова все.
+          const gauges = document.querySelector('.facts .facts__state')
+          report.gaugesWhenScrolled = gauges ? Math.round(gauges.getBoundingClientRect().height) : null
+          report.scrollWhenProbed = Math.round(window.scrollY)
           const option = card.querySelector('.options .option:not([disabled])')
           const next = card.querySelector('.primary-btn')
           if (option) { option.click() } else if (next) { next.click() }

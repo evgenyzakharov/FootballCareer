@@ -1,6 +1,7 @@
 import type { CareerState, League } from '../engine/types'
 import { isGoalkeeper } from '../engine/attributes'
-import { careerTotals } from '../engine/career'
+import { act, careerTotals } from '../engine/career'
+import { actionForRole } from '../engine/actions'
 import { findClub } from '../data/clubs'
 import { getCountry } from '../data/countries'
 import { getLeague } from '../data/leagues'
@@ -33,23 +34,62 @@ function stanceKey(stance: number): string {
   return 'stance.neutral'
 }
 
-export function PeopleBody({ state }: { state: CareerState }) {
+/**
+ * Люди вокруг игрока — и то, что игрок может начать с ними сам.
+ *
+ * Кнопка разговора стоит здесь, а не отдельной полосой над лентой, потому что
+ * разговор — это про человека: «спросить о месте в составе» без имени тренера
+ * и его отношения к игроку читается как абстрактная команда, а рядом с ними —
+ * как решение. Причина, по которой сейчас нельзя, пишется на самой кнопке:
+ * подсказки по наведению на телефоне не существует.
+ *
+ * `onState` необязателен: без него панель остаётся тем, чем была, — списком.
+ * Так её и рисует боковая колонка, которой ходы игрока не принадлежат.
+ */
+export function PeopleBody({
+  state,
+  onState,
+}: {
+  state: CareerState
+  onState?: (next: CareerState) => void
+}) {
   const t = useT()
   const locale = useLocale()
   if (state.relationships.length === 0) return <Empty textKey="panel.no_traits" />
   return (
     <div className="people">
-      {state.relationships.map((person) => (
-        <div className="person" key={`${person.role}-${person.name.en}-${person.sinceAge}`}>
-          <span>
-            <span className="person__role">{t({ key: `rel.${person.role}` })}: </span>
-            <span className="person__name">{person.name[locale]}</span>
-          </span>
-          <span className="person__stance" data-tone={stanceTone(person.stance)}>
-            {t({ key: stanceKey(person.stance) })}
-          </span>
-        </div>
-      ))}
+      {state.relationships.map((person) => {
+        const action = onState ? actionForRole(state, person.role) : null
+        return (
+          <div className="person" key={`${person.role}-${person.name.en}-${person.sinceAge}`}>
+            <div className="person__line">
+              <span>
+                <span className="person__role">{t({ key: `rel.${person.role}` })}: </span>
+                <span className="person__name">{person.name[locale]}</span>
+              </span>
+              <span className="person__stance" data-tone={stanceTone(person.stance)}>
+                {t({ key: stanceKey(person.stance) })}
+              </span>
+            </div>
+            {action && onState && (
+              <button
+                type="button"
+                className="person__act"
+                disabled={action.reason !== null}
+                title={t({
+                  key: action.reason ? `action.reason.${action.reason}` : `action.${action.key}.about`,
+                })}
+                onClick={() => onState(act(state, action.key))}
+              >
+                <span className="person__act-label">{t({ key: `action.${action.key}` })}</span>
+                {action.reason !== null && (
+                  <span className="person__act-note">{t({ key: `action.reason.${action.reason}` })}</span>
+                )}
+              </button>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

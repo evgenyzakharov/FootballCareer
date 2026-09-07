@@ -258,12 +258,10 @@ export function SeasonStream({
   const ordered = view.items.slice().reverse()
   return (
     <div className="stream">
-      <div ref={topRef} />
-      {view.queue.length > 0 && (
-        <button type="button" className="ghost-btn stream__skip" onClick={() => dispatch({ t: 'flush' })}>
-          {t({ key: 'stream.skip' })}
-        </button>
-      )}
+      {/* Якорь возврата к началу. Классом он не украшается, а живёт: на
+          телефоне у него `scroll-margin-top` под закреплённую шапку, иначе
+          решение приезжает ровно ей за спину. */}
+      <div className="stream__anchor" ref={topRef} />
       {ordered.map((item, i) => (
         <div className="stream__item" key={item.key} data-state={i === 0 ? 'live' : 'past'}>
           {render(item, i === 0)}

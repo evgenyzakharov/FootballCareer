@@ -594,4 +594,72 @@ export const EVENTS_C: Content = {
   'ev.olympics.res.no_medal': { ru: 'До медали не дошли, но турнир такого уровня даром не проходит.', en: 'No medal, but a tournament at that level never goes to waste.' },
   'ev.olympics.res.club_first': { ru: 'Клуб выдохнул. В федерации отказ записали.', en: 'The club exhaled. The federation wrote the refusal down.' },
   'ev.olympics.res.club_said_no': { ru: 'Клуб решил за вас, и решение было предсказуемым.', en: 'The club decided for you, and the decision was predictable.' },
+
+  // ─── agent_transfer_request ───────────────────────────────────────────────
+  'ev.agent_transfer_request.title': { ru: 'Звонок агенту', en: 'A call to your agent' },
+  'ev.agent_transfer_request.body': {
+    ru: 'Вы набираете {agent} сами. В {club} всё понятно, и понятнее уже не станет: вопрос в том, что вы просите искать.',
+    en: 'You call {agent} yourself. Things at {club} are clear and will not get clearer: the question is what you ask him to look for.',
+  },
+  'ev.agent_transfer_request.opt.any': { ru: 'Любой клуб, где я буду играть', en: 'Any club where I will play' },
+  'ev.agent_transfer_request.opt.higher': { ru: 'Только клуб уровнем выше', en: 'Only a bigger club' },
+  'ev.agent_transfer_request.opt.ask': { ru: 'Просто узнать, есть ли интерес', en: 'Just find out if there is interest' },
+  'ev.agent_transfer_request.opt.cancel': { ru: 'Не звонить', en: 'Hang up' },
+  'ev.agent_transfer_request.res.any': {
+    ru: 'Агент обещал обзвонить всех, кому нужен игрок вашего амплуа. Ждать недолго.',
+    en: 'He promised to ring everyone who needs a player in your position. It will not take long.',
+  },
+  'ev.agent_transfer_request.res.higher': {
+    ru: 'Агент присвистнул, но записал: звонить только тем, кто выше.',
+    en: 'He whistled, then wrote it down: only clubs above your own.',
+  },
+  'ev.agent_transfer_request.res.ask': {
+    ru: 'Договорились: он разузнает, а вы пока никому ничего не обещали.',
+    en: 'Agreed: he will ask around, and you have promised nobody anything.',
+  },
+  'ev.agent_transfer_request.res.cancel': { ru: 'Вы сбросили вызов до соединения.', en: 'You hung up before it connected.' },
+
+  // ─── agent_transfer_reply ─────────────────────────────────────────────────
+  'ev.agent_transfer_reply.title': { ru: 'Что ответил агент', en: 'What the agent came back with' },
+  'ev.agent_transfer_reply.body': {
+    ru: '{agent} перезвонил через пару дней. {reply}',
+    en: '{agent} called back a couple of days later. {reply}',
+  },
+  'ev.agent_transfer_reply.reply_warm': {
+    ru: 'Есть клуб, который готов говорить предметно — и готов уже сейчас.',
+    en: 'There is a club ready to talk properly — and ready now.',
+  },
+  'ev.agent_transfer_reply.reply_cool': {
+    ru: 'Интерес есть, но вялый: пара звонков и никакой конкретики.',
+    en: 'There is interest, but it is limp: a couple of calls and nothing concrete.',
+  },
+  'ev.agent_transfer_reply.reply_cold': {
+    ru: 'Ничего. Сейчас вами не интересуется никто.',
+    en: 'Nothing. Right now nobody is interested.',
+  },
+  'ev.agent_transfer_reply.opt.to': { ru: 'Уйти в {club} сейчас', en: 'Join {club} now' },
+  'ev.agent_transfer_reply.opt.push': { ru: 'Пусть работает: я хочу уйти', en: 'Let him work: I want out' },
+  'ev.agent_transfer_reply.opt.quiet': { ru: 'Пока никому ничего не говорить', en: 'Keep it between us for now' },
+  'ev.agent_transfer_reply.res.moved': {
+    ru: 'Вы собрали вещи посреди сезона: теперь {club}.',
+    en: 'You packed up mid-season: {club} now.',
+  },
+  'ev.agent_transfer_reply.hl.moved': { ru: 'Переход в {club} в зимнее окно', en: 'A winter-window move to {club}' },
+  'ev.agent_transfer_reply.res.push': {
+    ru: 'Агент пошёл работать. К вечеру о вашем желании уйти знал и тренер.',
+    en: 'The agent got to work. By the evening the manager knew you wanted out too.',
+  },
+  'ev.agent_transfer_reply.hl.push': { ru: 'Хочет уйти: агент получил задание', en: 'Wants out: the agent has his brief' },
+  'ev.agent_transfer_reply.res.push_cold': {
+    ru: 'Вы сказали, что хотите уйти, — а уходить пока некуда. Худший из возможных раскладов.',
+    en: 'You said you want out — and there is nowhere to go. The worst of all the versions.',
+  },
+  'ev.agent_transfer_reply.hl.push_cold': {
+    ru: 'Просит на выход, а предложений нет',
+    en: 'Asking for the exit with no offers on the table',
+  },
+  'ev.agent_transfer_reply.res.quiet': {
+    ru: 'Вы попросили ничего не двигать. Агент не в восторге, но это ваша карьера.',
+    en: 'You asked him to leave it. He is not thrilled, but it is your career.',
+  },
 }

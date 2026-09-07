@@ -294,5 +294,5 @@ export const TRAINING_EVENTS: EventDef[] = [
       if (id === 'give') return { outcome: 'give', effects: [gauge('lockerRoom', 9), gauge('coachTrust', -3)], tone: 'neutral' }
       return { outcome: 'share', effects: [attr('shooting', 1), gauge('lockerRoom', 4)], tone: 'neutral' }
     },
-  }
+  },
 ]

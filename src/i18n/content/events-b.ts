@@ -367,4 +367,5 @@ export const EVENTS_B: Content = {
   'ev.driving_ban.hl.convicted': { ru: 'Проиграл дело о превышении скорости', en: 'Loses the speeding case' },
   'ev.driving_ban.res.silence': { ru: 'Молчание журналисты заполнили сами.', en: 'The journalists filled your silence themselves.' },
   'ev.driving_ban.hl.silence': { ru: 'Отмолчался после скандала с превышением', en: 'Stays silent after the speeding row' },
+
 }

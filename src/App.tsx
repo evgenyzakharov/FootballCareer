@@ -11,6 +11,7 @@ import { SeasonBar } from './ui/Season'
 import { SeasonStream } from './ui/SeasonStream'
 import { Dossier } from './ui/Dossier'
 import { Retired } from './ui/Retired'
+import { useCompactWhenScrolled, useIsPhone, usePinnedStack } from './ui/media'
 
 function randomSeed(): string {
   return Math.random().toString(36).slice(2, 10)
@@ -28,6 +29,9 @@ export default function App() {
   // через `?raw=1` и переключается с клавиатуры — кнопки для включения нет,
   // игроку он не нужен и попадаться на глаза не должен.
   const [raw, setRaw] = useState(loadRaw)
+  // На телефоне лента едет во вкладку досье, а шапка и полоса сезона
+  // сворачиваются: три длинных блока подряд в один столбец не помещаются.
+  const phone = useIsPhone()
 
   useEffect(() => {
     saveRaw(raw)
@@ -80,6 +84,21 @@ export default function App() {
   // а не страницей. Остальные экраны — обычная лента: интро, выбор игрока и
   // итоги карьеры читаются сверху вниз.
   const careerScreen = state?.phase === 'academy' || state?.phase === 'season'
+
+  // Шапка и ряд вкладок закрепляются у верхнего края, а высоты для их
+  // раскладки CSS вывести не может — их меряют здесь. Уйдя вниз по ленте,
+  // шапка ужимается: закреплённой ей столько места не положено.
+  usePinnedStack(phone && careerScreen)
+  useCompactWhenScrolled(phone && careerScreen)
+
+  const stream = state && (
+    <SeasonStream
+      key={state.season ? state.season.age : 'academy'}
+      state={state}
+      onState={setState}
+      onPending={setPending}
+    />
+  )
 
   return (
     <LocaleContext value={locale}>
@@ -153,22 +172,31 @@ export default function App() {
             {/* Всё про «сейчас» — наверху во всю ширину: кто игрок, на каких
                 условиях он в клубе и как идёт сезон. Ниже только выбор и
                 досье, и обоим достаётся вся высота экрана. */}
-            <HudFacts state={state} />
-            <SeasonBar state={state} pending={pending} />
-            <div className="career__stage">
-              {/* Лента живёт один сезон: история за десять лет — забота досье,
-                  а держать её всю в разметке значило бы возить с собой тысячу
-                  элементов ради последних пяти. Смену сезона отмечаем ключом —
-                  React пересобирает ленту сам. */}
-              <SeasonStream
-                key={state.season ? state.season.age : 'academy'}
+            <HudFacts state={state} pending={pending} />
+            {/* На телефоне полоса сезона свернулась в строку этой же шапки:
+                двумя блоками подряд она повторяла бы её клуб. */}
+            {!phone && <SeasonBar state={state} pending={pending} />}
+            {/* Лента живёт один сезон: история за десять лет — забота досье,
+                а держать её всю в разметке значило бы возить с собой тысячу
+                элементов ради последних пяти. Смену сезона отмечаем ключом —
+                React пересобирает ленту сам.
+
+                На широком экране лента — колонка рядом с досье. На телефоне
+                колонок нет, и два длинных блока подряд означали бы, что до
+                истории карьеры надо пролистать весь сезон; там лента въезжает
+                в досье первой вкладкой. Обёртка `career__stage` едет с ней:
+                по ней ленту находят и стили, и проверки раскладки. */}
+            {!phone && <div className="career__stage">{stream}</div>}
+            <div className="career__dossier">
+              <Dossier
                 state={state}
                 onState={setState}
-                onPending={setPending}
+                lead={
+                  phone
+                    ? { id: 'now', titleKey: 'tab.now', body: <div className="career__stage">{stream}</div> }
+                    : undefined
+                }
               />
-            </div>
-            <div className="career__dossier">
-              <Dossier state={state} />
             </div>
           </main>
         )}

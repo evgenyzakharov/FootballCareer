@@ -1,9 +1,12 @@
 import { H, attr, flag, gauge, minutes, money, rel, step, trait, wageMult } from './context'
-import type { EventDef, EventResult, OptionDraft } from './context'
+import type { EventCtx, EventDef, EventResult, OptionDraft } from './context'
 import type { Effect } from '../types'
-import { getClub } from '../../data/clubs'
+import { findClub, getClub } from '../../data/clubs'
 import { getCountry } from '../../data/countries'
 import { contractYears, generateOffers, wageFor } from '../offers'
+import { find } from '../relationships'
+import { squadLevel } from '../player'
+import { clamp } from '../rng'
 
 /** Опция «уйти в клуб X» кодирует клуб прямо в id, чтобы разбор не зависел от RNG. */
 const TO = 'to:'
@@ -17,6 +20,31 @@ function moveEffect(clubId: string, ovr: number, age: number): Effect {
     wage: wageFor(ovr, age, club),
     years: contractYears(age, club.tier, false),
   }
+}
+
+/** Как агент оценивает шансы: что он скажет игроку, который просит его искать клуб. */
+type AgentMood = 'warm' | 'cool' | 'cold'
+
+/**
+ * Настроение агента из первого хода сцены. Карточку собирают и вне сцены —
+ * проверкой переводов, например, — поэтому чужой payload не должен ронять
+ * сборку: без ответа считаем, что интереса нет.
+ */
+function moodOf(payload: Record<string, string | number>): AgentMood {
+  const value = String(payload.mood)
+  return value === 'warm' || value === 'cool' ? value : 'cold'
+}
+
+/**
+ * Насколько рынок готов слушать про этого игрока. Считается от того же, от
+ * чего считается интерес клубов: насколько игрок выше состава своего клуба,
+ * насколько он известен и насколько старается агент. В warm-ответ это
+ * превращается броском — агент не всеведущ, а звонки бывают безответными.
+ */
+function agentAppetite(c: EventCtx): number {
+  const gap = c.ovr - squadLevel(c.club?.tier ?? 3)
+  const stance = find(c.state.relationships, 'agent')?.stance ?? 0
+  return clamp(0.4 + gap * 0.05 + (c.player.gauges.fame - 50) * 0.004 + stance * 0.002, 0.08, 0.9)
 }
 
 export const TRANSFER_EVENTS: EventDef[] = [
@@ -415,5 +443,111 @@ export const TRANSFER_EVENTS: EventDef[] = [
       if (id === 'postpone') return { outcome: 'postpone', effects: [gauge('fanLove', 6), gauge('morale', 6)], tone: 'neutral' }
       return { outcome: 'decline', effects: [gauge('morale', 8), gauge('mediaRep', 6)], tone: 'neutral' }
     },
-  }
+  },
+  {
+    /**
+     * Звонок агенту: игрок сам просит искать ему клуб. Действие по инициативе
+     * — в лотерее ситуации нет, вес нулевой.
+     *
+     * Ответ агента не выдуман: клуб для него ищет тот же `generateOffers`, что
+     * работает на трансферном окне, — поэтому «вами никто не интересуется»
+     * означает ровно то, что летом предложений и не будет.
+     */
+    key: 'agent_transfer_request',
+    channel: 'transfer',
+    stages: ['preseason', 'autumn', 'winter', 'spring', 'run_in'],
+    once: false,
+    weight: 0,
+    build: (c) => ({
+      bodyParams: {
+        agent: find(c.state.relationships, 'agent')?.name ?? { key: 'npc.agent' },
+        club: c.club?.name ?? '',
+      },
+      options: [
+        { id: 'any', hints: [H.minutesUp, H.leaveClub] },
+        { id: 'higher', hints: [H.gamble, H.moneyUp] },
+        { id: 'ask', hints: [H.safe] },
+        { id: 'cancel', hints: [H.noEffect] },
+      ],
+    }),
+    resolve: (c, id): EventResult => {
+      if (id === 'cancel') return { outcome: 'cancel', effects: [] }
+      const higher = id === 'higher'
+      const target = generateOffers(
+        c.state,
+        c.rng,
+        higher ? { count: 1, minTier: Math.min(6, (c.club?.tier ?? 1) + 1) } : { count: 1 },
+      )[0]
+      // Клуб уровнем выше найти труднее: планка та же, но агенту приходится
+      // звонить тем, кто может и не ответить.
+      const mood: AgentMood = !target
+        ? 'cold'
+        : c.rng.chance(agentAppetite(c) - (higher ? 0.15 : 0))
+          ? 'warm'
+          : 'cool'
+      const payload: Record<string, string | number> = { mood }
+      if (mood === 'warm' && target) payload.club = target.clubId
+      return {
+        outcome: id,
+        effects: [rel('agent', id === 'ask' ? 3 : 8)],
+        next: step('agent_transfer_reply', payload),
+        tone: 'neutral',
+      }
+    },
+  },
+  {
+    /**
+     * Что ответил агент. Второй ход той же сцены: в лотерею не попадает,
+     * приходит только продолжением, поэтому стадии у него те же, что у
+     * первого хода.
+     */
+    key: 'agent_transfer_reply',
+    channel: 'transfer',
+    stages: ['preseason', 'autumn', 'winter', 'spring', 'run_in'],
+    once: false,
+    weight: 0,
+    build: (c) => {
+      const mood = moodOf(c.payload)
+      const club = findClub(String(c.payload.club ?? ''))
+      const options: OptionDraft[] = []
+      // Уйти сейчас можно только зимой и только если есть куда: летнее окно —
+      // это уже трансферное решение по итогам сезона, а не этот разговор.
+      if (mood === 'warm' && club && c.stage === 'winter') {
+        options.push({ id: `${TO}${club.id}`, labelParams: { club: club.name }, hints: [H.leaveClub, H.minutesUp] })
+      }
+      options.push({ id: 'push', hints: [H.leaveClub, H.trustDown] })
+      options.push({ id: 'quiet', hints: [H.stayClub, H.safe] })
+      return {
+        bodyParams: {
+          agent: find(c.state.relationships, 'agent')?.name ?? { key: 'npc.agent' },
+          reply: { key: `ev.agent_transfer_reply.reply_${mood}` },
+        },
+        options,
+      }
+    },
+    resolve: (c, id): EventResult => {
+      if (id.startsWith(TO)) {
+        const clubId = id.slice(TO.length)
+        return {
+          outcome: 'moved',
+          params: { club: getClub(clubId).name },
+          effects: [moveEffect(clubId, c.ovr, c.player.age), gauge('fanLove', -10), gauge('morale', 10)],
+          headline: true,
+          tone: 'neutral',
+        }
+      }
+      if (id === 'push') {
+        // Открытое «я хочу уйти» открывает рынок летом (`wants_out`), но
+        // тренер и раздевалка узнают об этом сразу — и это не бесплатно.
+        const effects = [
+          flag('wants_out'), rel('agent', 10),
+          gauge('coachTrust', -10), gauge('lockerRoom', -5), gauge('fame', 4),
+        ]
+        return moodOf(c.payload) === 'cold'
+          ? { outcome: 'push_cold', effects: [...effects, gauge('morale', -8)], headline: true, tone: 'bad' }
+          : { outcome: 'push', effects, headline: true, tone: 'neutral' }
+      }
+      return { outcome: 'quiet', effects: [rel('agent', -4), gauge('morale', -3)], tone: 'neutral' }
+    },
+  },
 ]

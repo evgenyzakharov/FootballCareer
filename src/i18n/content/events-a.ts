@@ -466,4 +466,5 @@ export const EVENTS_A: Content = {
     ru: 'Вы попросили не держать вас. Агенту позвонили в тот же вечер.',
     en: 'You asked them not to hold on to you. Your agent got the call that evening.',
   },
+
 }

@@ -268,5 +268,5 @@ export const MEDIA_EVENTS: EventDef[] = [
       id === 'go'
         ? { outcome: 'go', effects: [gauge('fame', 14), money(150_000), gauge('coachTrust', -8), gauge('fitness', -6)], tone: 'neutral' }
         : { outcome: 'decline', effects: [gauge('coachTrust', 6), gauge('fame', -2), gauge('form', 3)], tone: 'neutral' },
-  }
+  },
 ]

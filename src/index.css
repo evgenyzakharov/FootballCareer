@@ -336,16 +336,25 @@ input { font: inherit; color: inherit; }
 /* ─── Полоса сезона ────────────────────────────────────────────────────────
    Сводка слева, форма по матчам справа: перед решением нужны ровно эти две
    вещи — как идёт сезон и как идут последние матчи. */
+/* Заголовок и счёт слева, форма по матчам справа. Раскладка по областям, а не
+   по вложенности: те же три куска шапка игрока на телефоне ставит в столбик,
+   и лишняя обёртка вокруг двух из них мешала бы ей, а не помогала. */
 .season {
   display: grid;
   grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
-  gap: 22px;
+  grid-template-areas:
+    'title graph'
+    'stats graph';
+  column-gap: 22px;
   align-items: center;
   padding: 12px 16px;
   background: var(--bg-raised);
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
 }
+.season > .season__title { grid-area: title; align-self: end; }
+.season > .season__stats { grid-area: stats; align-self: start; }
+.season > .season__graph { grid-area: graph; }
 .season__title { font-size: 13.5px; font-weight: 700; }
 .season__league { color: var(--text-faint); font-weight: 500; }
 .season__stats { display: flex; flex-wrap: wrap; gap: 9px 18px; margin-top: 9px; }
@@ -440,20 +449,99 @@ input { font: inherit; color: inherit; }
 }
 
 /*
- * Одна колонка: сначала решение, потом всё остальное. На телефоне первым без
- * прокрутки должно быть видно то, что игрок сейчас выбирает, а не его рост и
- * зарплата — их он посмотрит, когда захочет.
+ * Одна колонка. Сверху шапка — кто игрок, в каком он состоянии и какой идёт
+ * сезон, — под ней лента, ушедшая первой вкладкой досье.
+ *
+ * Раньше лента стояла первой на странице, а всё остальное под ней. Это честно
+ * отвечало на «что я сейчас выбираю», но и только: лента растёт весь сезон, и
+ * до истории карьеры под ней приходилось листать сотню записей. Вкладка решает
+ * это тем же способом, каким досье решило стопку своих панелей.
+ *
+ * Полосы сезона здесь нет: она была вторым свёрнутым блоком под первым и
+ * повторяла в нём клуб. Сезон переехал в шапку — лига и год дописаны к строке
+ * клуба, цифры раскрываются той же кнопкой.
  */
 @media (max-width: 860px) {
   .career { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 10px; }
-  .career__stage { order: 1; }
-  .career > .facts { order: 2; }
-  .career > .season { order: 3; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .career__dossier { order: 4; }
   .facts__ident { border-right: none; padding-right: 0; }
   /* В узкой колонке две колонки шкал не помещаются: подписи режутся. */
   .dossier__body .gauge-grid { grid-template-columns: minmax(0, 1fr); }
+
+  /* Свёрнутая шапка: строка с именем — она же кнопка. Кнопку из неё делает
+     разметка, а не стили: на широком экране сворачивать нечего, и
+     aria-expanded там был бы обещанием, которого никто не даёт. */
+  .facts__toggle {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    justify-content: space-between;
+    /* Под палец: строка заголовка сама по себе высотой в два десятка пикселей. */
+    min-height: 44px;
+  }
+  /* Стрелка вниз: свёрнутый блок должен выглядеть свёрнутым, а не обрезанным. */
+  .facts__chev {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    margin: 0 4px 3px;
+    border-right: 2px solid var(--text-faint);
+    border-bottom: 2px solid var(--text-faint);
+    transform: rotate(45deg);
+    transition: transform .15s;
+  }
+  [aria-expanded='true'] .facts__chev { transform: rotate(-135deg); margin-bottom: -3px; }
+  /* Сезон внутри шапки: та же граница, что отделяет шкалы состояния. */
+  .facts__season { width: 100%; min-width: 0; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+  .facts__season .season__stats { margin-top: 0; margin-bottom: 10px; }
+  .facts__season .form { margin-bottom: 0; }
+  /* Лента внутри вкладки прокручивается вместе со страницей: своя полоса
+     прокрутки на телефоне означала бы окно в окне высотой в пол-экрана. */
+  .dossier__body { overflow-y: visible; scrollbar-gutter: auto; }
+
+  /*
+   * Закреплённая шапка: кто я, в каком состоянии и чем сейчас занят — это
+   * ответы, которые нужны посреди чтения ленты, а не до него. Уезжая вверх,
+   * они заставляли листать обратно ради одной шкалы.
+   *
+   * Стопка собирается сверху вниз, и каждый следующий закреплённый кусок
+   * должен знать высоту предыдущих. Высоты эти живут в переменных, которые
+   * считает `usePinnedStack`: верхняя панель растёт от длины названия, шапка —
+   * от числа шкал, ряд вкладок переносится на две строки. Ни одну из них CSS
+   * не выведет сам, а промахнуться нельзя — куски наедут друг на друга.
+   *
+   * Раскрытая шапка не закрепляется: развернувшись во весь список фактов и
+   * сезон, она бывает выше экрана, и закреплённой от неё была бы видна только
+   * верхушка, а лента не поместилась бы вовсе.
+   */
+  .career > .facts:not([data-open='yes']) {
+    position: sticky;
+    top: var(--pin-top, 0px);
+    z-index: 5;
+  }
+  /* Ушли вниз по ленте — шкалы уступают ей место. Наверху они снова все
+     восемь: там за ними и приходят. Признак ставит `useCompactWhenScrolled`. */
+  :root[data-scrolled='yes'] .career > .facts:not([data-open='yes']) .facts__state {
+    display: none;
+  }
+  .dossier .tabs {
+    position: sticky;
+    top: var(--pin-tabs, 0px);
+    z-index: 4;
+    background: var(--bg-raised);
+    margin-bottom: 0;
+    /* Отступ до содержимого переехал в саму панель: у закреплённой полосы он
+       был бы полосой пустого фона, сквозь которую едет лента. */
+    padding-top: 2px;
+  }
+  .dossier__body { padding-top: 12px; }
+  /* Лента возвращается к началу на каждом решении. «Начало» — под закреплённой
+     стопкой, а не под верхним краем окна: иначе решение уезжает ей за спину. */
+  .stream__anchor { scroll-margin-top: var(--pin-end, 0px); }
 }
+
 
 .panel {
   background: var(--bg-raised);
@@ -754,7 +842,6 @@ input { font: inherit; color: inherit; }
 .stream__notes li { font-size: 12px; color: var(--text-faint); }
 
 /* Кнопка стоит там же, где появляются матчи, — сверху. */
-.stream__skip { align-self: center; margin-bottom: 2px; }
 
 /* ─── Таймлайн ────────────────────────────────────────────────────────────── */
 
@@ -960,8 +1047,37 @@ input { font: inherit; color: inherit; }
 .feed__age { color: var(--text-faint); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .feed__text { color: var(--text-dim); }
 
-.people { display: grid; gap: 7px; }
-.person { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.people { display: grid; gap: 9px; }
+.person { display: grid; gap: 5px; font-size: 12.5px; }
+.person__line { display: flex; justify-content: space-between; gap: 8px; }
+/* Ход игрока внутри списка людей: разговор принадлежит человеку, а не экрану.
+   Причина, по которой сейчас нельзя, стоит на самой кнопке — подсказки по
+   наведению на телефоне не существует. */
+.person__act {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  transition: border-color .15s, background .15s;
+}
+.person__act:hover:not([disabled]) { border-color: var(--accent-dim); background: #1d242b; }
+.person__act:active:not([disabled]) { transform: translateY(1px); }
+.person__act:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.person__act[disabled] { opacity: .42; cursor: not-allowed; }
+.person__act-label { font-weight: 600; }
+.person__act-note { font-size: 11px; color: var(--text-faint); }
+@media (max-width: 860px), (pointer: coarse) {
+  .person__act { min-height: 44px; padding: 8px 12px; justify-content: center; }
+  .person__act:hover { border-color: var(--line); background: var(--bg); }
+}
 .person__role { color: var(--text-faint); }
 .person__name { font-weight: 600; }
 .person__stance { font-size: 11px; }

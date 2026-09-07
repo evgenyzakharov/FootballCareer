@@ -50,7 +50,6 @@ export const UI: Content = {
   'card.no_money': { ru: 'Не хватает заработанного', en: 'You have not earned enough' },
   'card.result': { ru: 'Что вышло', en: 'What happened' },
   'card.chosen': { ru: 'Вы выбрали', en: 'You chose' },
-  'stream.skip': { ru: 'Показать сразу', en: 'Show it all' },
   'card.stage': { ru: 'Этап', en: 'Stage' },
 
   'stage.preseason': { ru: 'Предсезонка', en: 'Preseason' },
@@ -105,6 +104,9 @@ export const UI: Content = {
   'hud.status_suspended': { ru: 'дисквалификация, {matches} матч.', en: 'suspended, {matches} game(s)' },
 
   // Вкладки досье: там, где панель называлась длинно, у вкладки имя короче.
+  // Лента сезона, ставшая вкладкой на телефоне. Не «Лента»: рядом стоят
+  // «Заголовки», и две ленты в одном ряду вкладок различать было бы нечем.
+  'tab.now': { ru: 'Сейчас', en: 'Now' },
   'tab.history': { ru: 'История', en: 'History' },
   'tab.people': { ru: 'Люди', en: 'People' },
   'season.now': { ru: 'Сезон {season}', en: 'Season {season}' },
@@ -263,4 +265,24 @@ export const UI: Content = {
   'retired.verdict_star': { ru: 'Крепкая карьера на высоком уровне.', en: 'A solid career at a high level.' },
   'retired.verdict_pro': { ru: 'Честная профессиональная карьера.', en: 'An honest professional career.' },
   'retired.verdict_journeyman': { ru: 'Дорога вышла длинной и извилистой.', en: 'The road turned out long and winding.' },
+
+  // ─── Инициатива игрока ────────────────────────────────────────────────────
+  // Подписи кнопок во вкладке «Люди» и причины отказа. Подсказка объясняет,
+  // зачем это вообще нажимать; цену разговор называет сам, уже в карточке.
+  'action.talk_manager': { ru: 'Спросить о месте в составе', en: 'Ask about your place' },
+  'action.talk_manager.about': {
+    ru: 'Разговор с тренером: почему вы не играете',
+    en: 'A talk with the manager: why you are not playing',
+  },
+  'action.ask_transfer': { ru: 'Попросить искать клуб', en: 'Ask him to find a club' },
+  'action.ask_transfer.about': {
+    ru: 'Разговор с агентом: вы хотите уйти',
+    en: 'A talk with your agent: you want out',
+  },
+  'action.reason.busy': { ru: 'Сначала ответьте на карточку', en: 'Answer the card first' },
+  'action.reason.club': { ru: 'Без клуба не с кем говорить', en: 'With no club there is nobody to talk to' },
+  'action.reason.stage': { ru: 'Не в этот момент сезона', en: 'Not at this point of the season' },
+  'action.reason.used': { ru: 'В этом сезоне уже', en: 'Already done this season' },
+  'action.reason.role': { ru: 'Вы и так в составе', en: 'You are in the side already' },
+  'action.reason.age': { ru: 'Ещё слишком рано', en: 'Too early for that' },
 }

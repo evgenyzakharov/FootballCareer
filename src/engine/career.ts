@@ -23,6 +23,7 @@ import { seasonFixtures } from './fixtures'
 import type { EventCtx } from './events'
 import { SUMMER_RECOVERY, injuryMatches } from './injuries'
 import { adjustObjective, makeObjective } from './events/structural'
+import { queueAction, resetActionUses } from './actions'
 import { academyOffers, clubWantsToRenew, generateOffers, seasonStanding } from './offers'
 import {
   createAgent, createJournalist, createManager, find, managerSackChance, relocate, styleFit,
@@ -381,7 +382,9 @@ function startSeason(state: CareerState): CareerState {
     stage: 'preseason',
     queue: [],
     flags: {
-      ...state.flags,
+      // Счётчики инициативы живут один сезон: к тренеру ходят раз в год, а не
+      // раз в карьеру.
+      ...resetActionUses(state.flags),
       // Желание уйти живёт одно окно: новый сезон — новая расстановка.
       wants_out: 0,
       free_agent_soon: 0,
@@ -1395,6 +1398,20 @@ function queueScene(
 /** Карточка помнит свой контекст: травма, турнир, список академий. */
 function payloadOf(card: Card): Record<string, string | number> {
   return card.payload ?? {}
+}
+
+/**
+ * Действие по инициативе игрока: разговор, который заводит он сам.
+ *
+ * Ситуация встаёт в начало очереди и разыгрывается как любая другая — отдельной
+ * ветки в движке у инициативы нет. Недоступное действие ничего не меняет:
+ * проверки живут в `actions.ts`, и вызов мимо интерфейса их не обходит.
+ */
+export function act(state: CareerState, key: string): CareerState {
+  const queued = queueAction(state, key)
+  // Карточка на экране насос не пускает — и это правильно: инициатива дождётся
+  // своей очереди, а не сотрёт вопрос, на который игрок ещё не ответил.
+  return queued === state ? state : pump(queued)
 }
 
 export function ack(state: CareerState): CareerState {
